@@ -1,0 +1,40 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push checks..."
+
+# Backend build verification
+echo "🐹 Verifying backend build..."
+if [ -d "backend" ]; then
+  cd backend
+  
+  echo "  🔨 Building backend..."
+  if go build ./cmd/...; then
+    echo "  ✅ Backend build successful"
+    # Clean up build artifacts
+    rm -f server migrate
+  else
+    echo "  ❌ Backend build failed"
+    exit 1
+  fi
+  
+  cd ..
+fi
+
+# Frontend build verification
+echo "🌐 Verifying frontend build..."
+if [ -d "frontend" ]; then
+  cd frontend
+  
+  echo "  🔨 Building frontend..."
+  if npm run build; then
+    echo "  ✅ Frontend build successful"
+  else
+    echo "  ❌ Frontend build failed"
+    exit 1
+  fi
+  
+  cd ..
+fi
+
+echo "✅ All pre-push checks passed!"

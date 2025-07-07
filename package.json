@@ -1,0 +1,17 @@
+{
+  "name": "realworld-conduit",
+  "version": "1.0.0",
+  "description": "RealWorld implementation using Vibe Coding methodology",
+  "scripts": {
+    "dev": "make dev",
+    "build": "make build",
+    "test": "make test",
+    "lint": "make lint",
+    "format": "make fmt",
+    "migrate": "make migrate",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}
