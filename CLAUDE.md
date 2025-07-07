@@ -124,11 +124,15 @@ All responses follow standard RealWorld JSON format with consistent error handli
 
 ### Progress Tracking and Issue Management
 - **Commit-level Completion**: Each commit should represent a complete, working increment of functionality
+- **GitHub Operations**: Always use `gh` CLI for all GitHub-related operations (issues, PRs, comments)
+  - **Issue Management**: Use `gh issue` commands for creating, updating, and commenting on issues
+  - **Pull Request Management**: Use `gh pr` commands for creating and managing pull requests
+  - **Repository Operations**: Use `gh repo` and `gh api` for repository-level operations
 - **Issue Status Updates**: After each significant commit, update the corresponding GitHub issue with:
-  - Progress comment describing what was completed
+  - Progress comment describing what was completed using `gh issue comment`
   - Mark relevant acceptance criteria as completed using checkboxes
   - Include commit hash reference for traceability
-  - If all acceptance criteria are met, close the issue with a summary comment
+  - If all acceptance criteria are met, close the issue with a summary comment using `gh issue close`
 
 ## Testing Strategy
 
