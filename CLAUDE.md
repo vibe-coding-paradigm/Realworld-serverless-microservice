@@ -108,12 +108,36 @@ All responses follow standard RealWorld JSON format with consistent error handli
 - CORS configured for development
 - SQL injection prevention through prepared statements
 
+## Development Methodology
+
+### Backend Development Guidelines
+- **Test-Driven Development (TDD)**: All backend and core logic implementation must follow TDD principles
+  - Write failing tests first
+  - Implement minimal code to pass tests
+  - Refactor while maintaining test coverage
+- **SOLID Principles**: Adhere to Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, and Dependency Inversion principles
+- **Clean Architecture**: Implement using Clean Architecture pattern with clear separation of concerns
+  - Domain layer: Business entities and rules
+  - Application layer: Use cases and application services
+  - Infrastructure layer: External dependencies (database, HTTP, etc.)
+  - Presentation layer: HTTP handlers and request/response models
+
+### Progress Tracking and Issue Management
+- **Commit-level Completion**: Each commit should represent a complete, working increment of functionality
+- **Issue Status Updates**: After each significant commit, update the corresponding GitHub issue with:
+  - Progress comment describing what was completed
+  - Mark relevant acceptance criteria as completed using checkboxes
+  - Include commit hash reference for traceability
+  - If all acceptance criteria are met, close the issue with a summary comment
+
 ## Testing Strategy
 
 ### Backend Testing
 - Unit tests for business logic in `internal/` packages
 - Integration tests for API endpoints
 - Test database isolation using separate SQLite files
+- **TDD Implementation**: Tests written before implementation code
+- Minimum 80% code coverage for core business logic
 
 ### Frontend Testing
 - Component tests with Vitest/Jest
