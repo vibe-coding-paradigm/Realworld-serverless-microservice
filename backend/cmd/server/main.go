@@ -5,6 +5,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+
+	"github.com/vibe-coding-paradigm/realworld-build-from-prd/internal/db"
+	"github.com/vibe-coding-paradigm/realworld-build-from-prd/internal/handlers"
 )
 
 func main() {
@@ -13,16 +17,34 @@ func main() {
 		port = "8080"
 	}
 
+	// Initialize database connection
+	database, err := db.NewConnection()
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer database.Close()
+
+	// Initialize repositories
+	userRepo := db.NewUserRepository(database.DB)
+
+	// Initialize handlers
+	userHandler := handlers.NewUserHandler(userRepo)
+
 	mux := http.NewServeMux()
 
 	// Health check endpoint
 	mux.HandleFunc("/health", healthCheckHandler)
 
-	// API routes
+	// User API routes
+	mux.HandleFunc("/api/users", userHandler.Register)
+	mux.HandleFunc("/api/users/login", userHandler.Login)
+	mux.HandleFunc("/api/user", handlers.AuthMiddleware(userHandler.GetCurrentUser))
+
+	// Default API route
 	mux.HandleFunc("/api/", apiHandler)
 
 	fmt.Printf("Server starting on port %s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
+	log.Fatal(http.ListenAndServe(":"+port, handlers.CORSMiddleware(mux)))
 }
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -32,22 +54,17 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Conduit API - RealWorld implementation"}`))
-}
+	// Handle different endpoints based on the path
+	path := strings.TrimPrefix(r.URL.Path, "/api")
 
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
+	switch {
+	case path == "/" || path == "":
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "Conduit API - RealWorld implementation"}`))
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"errors": {"path": ["Endpoint not found"]}}`))
+	}
 }
