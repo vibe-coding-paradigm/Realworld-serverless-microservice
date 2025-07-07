@@ -132,7 +132,10 @@ All responses follow standard RealWorld JSON format with consistent error handli
   - Progress comment describing what was completed using `gh issue comment`
   - Mark relevant acceptance criteria as completed using checkboxes
   - Include commit hash reference for traceability
-  - If all acceptance criteria are met, close the issue with a summary comment using `gh issue close`
+- **Issue Closing Policy**: **NEVER close issues before committing changes**
+  - Only close issues AFTER all related changes have been committed and pushed
+  - Use `gh issue close` only when all acceptance criteria are met AND code is committed
+  - If work is complete but not yet committed, add a completion comment but keep issue open
 
 ## Testing Strategy
 
