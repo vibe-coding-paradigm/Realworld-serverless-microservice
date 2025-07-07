@@ -1,167 +1,167 @@
 .PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps
 
-# Default target
+# 기본 타겟
 help:
-	@echo "Available commands:"
-	@echo "  dev            - Start development environment"
-	@echo "  build          - Build production images"
-	@echo "  test           - Run all tests"
-	@echo "  lint           - Run linters"
-	@echo "  fmt            - Format code"
-	@echo "  migrate        - Run database migrations"
-	@echo "  clean          - Clean up containers and images"
-	@echo "  deps           - Install dependencies"
-	@echo "  check-deps     - Check if required tools are installed"
+	@echo "사용 가능한 명령어:"
+	@echo "  dev            - 개발 환경 시작"
+	@echo "  build          - 프로덕션 이미지 빌드"
+	@echo "  test           - 모든 테스트 실행"
+	@echo "  lint           - 린터 실행"
+	@echo "  fmt            - 코드 포맷팅"
+	@echo "  migrate        - 데이터베이스 마이그레이션 실행"
+	@echo "  clean          - 컨테이너와 이미지 정리"
+	@echo "  deps           - 의존성 설치"
+	@echo "  check-deps     - 필요한 도구 설치 확인"
 
-# Development commands
+# 개발 명령어
 dev: check-deps
-	@echo "🚀 Starting development environment..."
+	@echo "🚀 개발 환경을 시작하는 중..."
 	docker-compose -f docker-compose.dev.yml up --build
 
 dev-detach: check-deps
-	@echo "🚀 Starting development environment (detached)..."
+	@echo "🚀 개발 환경을 시작하는 중 (백그라운드)..."
 	docker-compose -f docker-compose.dev.yml up --build -d
 
 dev-logs:
-	@echo "📋 Showing development logs..."
+	@echo "📋 개발 로그를 표시하는 중..."
 	docker-compose -f docker-compose.dev.yml logs -f
 
 dev-stop:
-	@echo "🛑 Stopping development environment..."
+	@echo "🛑 개발 환경을 중단하는 중..."
 	docker-compose -f docker-compose.dev.yml down
 
-# Production commands
+# 프로덕션 명령어
 build:
-	@echo "🔨 Building production images..."
+	@echo "🔨 프로덕션 이미지를 빌드하는 중..."
 	docker-compose build
 
 prod:
-	@echo "🚀 Starting production environment..."
+	@echo "🚀 프로덕션 환경을 시작하는 중..."
 	docker-compose up --build
 
 prod-detach:
-	@echo "🚀 Starting production environment (detached)..."
+	@echo "🚀 프로덕션 환경을 시작하는 중 (백그라운드)..."
 	docker-compose up --build -d
 
-# Testing commands
+# 테스트 명령어
 test: test-backend test-frontend
 
 test-backend:
-	@echo "🧪 Running backend tests..."
+	@echo "🧪 백엔드 테스트를 실행하는 중..."
 	cd backend && go test ./...
 
 test-frontend:
-	@echo "🧪 Running frontend tests..."
+	@echo "🧪 프론트엔드 테스트를 실행하는 중..."
 	cd frontend && npm test -- --run
 
 test-integration:
-	@echo "🔧 Running integration tests..."
-	# TODO: Add integration tests
+	@echo "🔧 통합 테스트를 실행하는 중..."
+	# TODO: 통합 테스트 추가
 
-# Code quality commands
+# 코드 품질 명령어
 lint: lint-backend lint-frontend
 
 lint-backend:
-	@echo "🔍 Linting backend code..."
-	cd backend && golangci-lint run || echo "⚠️  golangci-lint not found, install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+	@echo "🔍 백엔드 코드를 린팅하는 중..."
+	cd backend && golangci-lint run || echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
 
 lint-frontend:
-	@echo "🔍 Linting frontend code..."
+	@echo "🔍 프론트엔드 코드를 린팅하는 중..."
 	cd frontend && npm run lint
 
 fmt: fmt-backend fmt-frontend
 
 fmt-backend:
-	@echo "📝 Formatting backend code..."
+	@echo "📝 백엔드 코드를 포맷팅하는 중..."
 	cd backend && go fmt ./...
 
 fmt-frontend:
-	@echo "📝 Formatting frontend code..."
-	cd frontend && npm run format || echo "⚠️  No format script found"
+	@echo "📝 프론트엔드 코드를 포맷팅하는 중..."
+	cd frontend && npm run format || echo "⚠️  format 스크립트를 찾을 수 없습니다"
 
-# Database commands
+# 데이터베이스 명령어
 migrate:
-	@echo "🗄️  Running database migrations..."
+	@echo "🗄️  데이터베이스 마이그레이션을 실행하는 중..."
 	cd backend && go run cmd/migrate/main.go
 
 migrate-docker:
-	@echo "🗄️  Running database migrations in Docker..."
+	@echo "🗄️  Docker에서 데이터베이스 마이그레이션을 실행하는 중..."
 	docker-compose exec backend ./migrate
 
-# Dependency management
+# 의존성 관리
 deps: deps-backend deps-frontend
 
 deps-backend:
-	@echo "📦 Installing backend dependencies..."
+	@echo "📦 백엔드 의존성을 설치하는 중..."
 	cd backend && go mod tidy && go mod download
 
 deps-frontend:
-	@echo "📦 Installing frontend dependencies..."
+	@echo "📦 프론트엔드 의존성을 설치하는 중..."
 	cd frontend && npm install
 
 install-deps:
-	@echo "🛠️  Installing development dependencies..."
-	@echo "Please install the following tools:"
+	@echo "🛠️  개발 의존성을 설치하는 중..."
+	@echo "다음 도구들을 설치해주세요:"
 	@echo "  - Docker & Docker Compose"
 	@echo "  - Go 1.24+ (https://go.dev/doc/install)"
 	@echo "  - Node.js 20+ (https://nodejs.org/en/download)"
 	@echo "  - golangci-lint: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
 
 check-deps:
-	@echo "✅ Checking dependencies..."
-	@command -v docker >/dev/null 2>&1 || (echo "❌ Docker not found"; exit 1)
-	@command -v docker-compose >/dev/null 2>&1 || command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 || (echo "❌ Docker Compose not found"; exit 1)
-	@command -v go >/dev/null 2>&1 || (echo "❌ Go not found"; exit 1)
-	@command -v node >/dev/null 2>&1 || (echo "❌ Node.js not found"; exit 1)
-	@command -v npm >/dev/null 2>&1 || (echo "❌ npm not found"; exit 1)
-	@echo "✅ All required dependencies found"
+	@echo "✅ 의존성을 확인하는 중..."
+	@command -v docker >/dev/null 2>&1 || (echo "❌ Docker를 찾을 수 없습니다"; exit 1)
+	@command -v docker-compose >/dev/null 2>&1 || command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 || (echo "❌ Docker Compose를 찾을 수 없습니다"; exit 1)
+	@command -v go >/dev/null 2>&1 || (echo "❌ Go를 찾을 수 없습니다"; exit 1)
+	@command -v node >/dev/null 2>&1 || (echo "❌ Node.js를 찾을 수 없습니다"; exit 1)
+	@command -v npm >/dev/null 2>&1 || (echo "❌ npm을 찾을 수 없습니다"; exit 1)
+	@echo "✅ 모든 필요한 의존성을 찾았습니다"
 
-# Cleanup commands
+# 정리 명령어
 clean:
-	@echo "🧹 Cleaning up..."
+	@echo "🧹 정리하는 중..."
 	docker-compose down -v
 	docker-compose -f docker-compose.dev.yml down -v
 	docker system prune -f
 
 clean-all:
-	@echo "🧹 Deep cleaning..."
+	@echo "🧹 전체 정리하는 중..."
 	docker-compose down -v --rmi all
 	docker-compose -f docker-compose.dev.yml down -v --rmi all
 	docker system prune -a -f
 
-# Database commands
+# 데이터베이스 명령어
 db-reset:
-	@echo "🗄️  Resetting database..."
+	@echo "🗄️  데이터베이스를 재설정하는 중..."
 	rm -f data/conduit.db
 	$(MAKE) migrate
 
 db-backup:
-	@echo "💾 Backing up database..."
+	@echo "💾 데이터베이스를 백업하는 중..."
 	cp data/conduit.db data/conduit_backup_$$(date +%Y%m%d_%H%M%S).db
 
-# Health checks
+# 헬스 체크
 health:
-	@echo "🏥 Checking service health..."
-	@curl -f http://localhost:8080/health || echo "❌ Backend health check failed"
-	@curl -f http://localhost:3000 || echo "❌ Frontend health check failed"
+	@echo "🏥 서비스 헬스를 확인하는 중..."
+	@curl -f http://localhost:8080/health || echo "❌ 백엔드 헬스 체크 실패"
+	@curl -f http://localhost:3000 || echo "❌ 프론트엔드 헬스 체크 실패"
 
-# Development utilities
+# 개발 유틸리티
 logs:
-	@echo "📋 Showing all logs..."
+	@echo "📋 모든 로그를 표시하는 중..."
 	docker-compose logs -f
 
 logs-backend:
-	@echo "📋 Showing backend logs..."
+	@echo "📋 백엔드 로그를 표시하는 중..."
 	docker-compose logs -f backend
 
 logs-frontend:
-	@echo "📋 Showing frontend logs..."
+	@echo "📋 프론트엔드 로그를 표시하는 중..."
 	docker-compose logs -f frontend
 
 shell-backend:
-	@echo "🐚 Opening backend shell..."
+	@echo "🐚 백엔드 쉘을 여는 중..."
 	docker-compose exec backend sh
 
 shell-frontend:
-	@echo "🐚 Opening frontend shell..."
+	@echo "🐚 프론트엔드 쉘을 여는 중..."
 	docker-compose exec frontend sh
