@@ -156,7 +156,11 @@ func applyMigration(db *sql.DB, dir, filename, version string) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Split by semicolon and execute each statement
 	statements := strings.Split(string(content), ";")

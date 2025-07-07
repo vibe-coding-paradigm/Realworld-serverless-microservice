@@ -50,7 +50,9 @@ func main() {
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "ok", "service": "conduit-api"}`))
+	if _, err := w.Write([]byte(`{"status": "ok", "service": "conduit-api"}`)); err != nil {
+		log.Printf("Failed to write health check response: %v", err)
+	}
 }
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
@@ -61,10 +63,14 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	case path == "/" || path == "":
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message": "Conduit API - RealWorld implementation"}`))
+		if _, err := w.Write([]byte(`{"message": "Conduit API - RealWorld implementation"}`)); err != nil {
+			log.Printf("Failed to write API response: %v", err)
+		}
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"errors": {"path": ["Endpoint not found"]}}`))
+		if _, err := w.Write([]byte(`{"errors": {"path": ["Endpoint not found"]}}`)); err != nil {
+			log.Printf("Failed to write error response: %v", err)
+		}
 	}
 }

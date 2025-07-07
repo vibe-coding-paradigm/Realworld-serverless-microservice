@@ -77,7 +77,9 @@ func TestUserHandler_Register(t *testing.T) {
 	}
 
 	var response map[string]interface{}
-	json.NewDecoder(rr.Body).Decode(&response)
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
 
 	user, ok := response["user"].(map[string]interface{})
 	if !ok {
@@ -185,7 +187,9 @@ func TestUserHandler_Login(t *testing.T) {
 	}
 
 	var response map[string]interface{}
-	json.NewDecoder(loginRecorder.Body).Decode(&response)
+	if err := json.NewDecoder(loginRecorder.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode login response: %v", err)
+	}
 
 	user, ok := response["user"].(map[string]interface{})
 	if !ok {

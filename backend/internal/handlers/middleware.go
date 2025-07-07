@@ -28,14 +28,26 @@ func WriteErrorResponse(w http.ResponseWriter, statusCode int, field, message st
 	w.WriteHeader(statusCode)
 
 	errorResp := NewErrorResponse(field, message)
-	json.NewEncoder(w).Encode(errorResp)
+	if err := json.NewEncoder(w).Encode(errorResp); err != nil {
+		// If we can't encode the error response, write a basic error
+		if _, writeErr := w.Write([]byte(`{"errors": {"system": ["Internal error"]}}`)); writeErr != nil {
+			// Last resort: do nothing if we can't even write basic error
+			return
+		}
+	}
 }
 
 // WriteJSONResponse writes a JSON response to the HTTP response writer
 func WriteJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// If we can't encode the response, write a basic error
+		if _, writeErr := w.Write([]byte(`{"errors": {"system": ["Internal error"]}}`)); writeErr != nil {
+			// Last resort: do nothing if we can't even write basic error
+			return
+		}
+	}
 }
 
 // AuthMiddleware validates JWT tokens for protected routes
