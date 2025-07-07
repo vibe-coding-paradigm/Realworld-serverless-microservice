@@ -58,7 +58,8 @@
 ## 4. 기술 스택
 
 ### 4.1 백엔드 기술 스택
-- **언어**: Go 1.21+
+- **언어**: Go 1.24 (LTS)
+  - 공식 문서: https://go.dev/doc/install
   - 명시적 컨텍스트 시스템
   - 간단한 테스트 캐싱
   - 구조적 인터페이스
@@ -73,19 +74,29 @@
 - **빌드**: Makefile 기반 개발 프로세스 관리
 
 ### 4.2 프론트엔드 기술 스택
-- **프레임워크**: React 18+
-- **타입 시스템**: TypeScript
-- **CSS**: shadcn/ui + Tailwind CSS
+- **런타임**: Node.js 20.x (LTS)
+  - 공식 문서: https://nodejs.org/en/download
+- **프레임워크**: React 18.2.0 (Stable)
+  - 공식 문서: https://react.dev/learn
+- **타입 시스템**: TypeScript 5.6.x
+  - 공식 문서: https://www.typescriptlang.org/docs/handbook/intro.html
+- **CSS**: shadcn/ui + Tailwind CSS 3.5.x
+  - shadcn/ui 공식 문서: https://ui.shadcn.com/docs/installation
+  - Tailwind CSS 공식 문서: https://tailwindcss.com/docs/installation
   - 재사용 가능한 컴포넌트 라이브러리
   - 유틸리티 기반 CSS 프레임워크
-- **라우팅**: Tanstack Router
-- **빌드 도구**: Vite
-- **상태 관리**: React Query + Context API
+- **라우팅**: Tanstack Router 1.2.x
+  - 공식 문서: https://tanstack.com/router/latest/docs/guide/installation
+- **빌드 도구**: Vite 5.2.x
+  - 공식 문서: https://vitejs.dev/guide/
+- **상태 관리**: React Query 5.25.0 + Context API
+  - 공식 문서: https://tanstack.com/query/latest/docs/framework/react/overview
 - **패키지 관리**: npm
 - **반응형 디자인**: 모바일/태블릿/데스크톱 지원
 
 ### 4.3 인프라 및 배포
-- **컨테이너**: Docker
+- **컨테이너**: Docker 26.0.0 (Stable)
+  - 공식 문서: https://docs.docker.com/get-started/
   - 개발 환경 표준화
   - 배포 환경 일관성
 - **개발 환경**: Docker Compose
