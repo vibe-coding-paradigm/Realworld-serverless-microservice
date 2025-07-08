@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useArticles } from '@/hooks/useArticles';
+import { ArticleCard } from '@/components/article/ArticleCard';
 import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'global' | 'personal'>('global');
+  
+  const { data: articlesData, isLoading, error } = useArticles({
+    limit: 10,
+    offset: 0,
+  });
 
   return (
     <div className="home-page">
@@ -65,43 +73,72 @@ const HomePage: React.FC = () => {
               <ul className="nav nav-pills outline-active flex border-b border-gray-200">
                 {user && (
                   <li className="nav-item">
-                    <a 
-                      className="nav-link active" 
-                      href="#" 
+                    <button 
+                      className={`nav-link ${activeTab === 'personal' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('personal')}
                       style={{ 
-                        color: '#5cb85c', 
-                        borderBottom: '2px solid #5cb85c',
+                        color: activeTab === 'personal' ? '#5cb85c' : '#aaa', 
+                        borderBottom: activeTab === 'personal' ? '2px solid #5cb85c' : 'none',
                         padding: '0.75rem 1rem',
                         display: 'block',
-                        textDecoration: 'none'
+                        textDecoration: 'none',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer'
                       }}
                     >
                       Your Feed
-                    </a>
+                    </button>
                   </li>
                 )}
                 <li className="nav-item">
-                  <a 
-                    className="nav-link" 
-                    href="#"
+                  <button 
+                    className={`nav-link ${activeTab === 'global' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('global')}
                     style={{ 
-                      color: '#aaa', 
+                      color: activeTab === 'global' ? '#5cb85c' : '#aaa', 
+                      borderBottom: activeTab === 'global' ? '2px solid #5cb85c' : 'none',
                       padding: '0.75rem 1rem',
                       display: 'block',
-                      textDecoration: 'none'
+                      textDecoration: 'none',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer'
                     }}
                   >
                     Global Feed
-                  </a>
+                  </button>
                 </li>
               </ul>
             </div>
 
-            {/* Coming Soon Message */}
-            <div className="text-center py-12 text-gray-500">
-              <h3 className="text-xl font-semibold mb-4">Articles Coming Soon!</h3>
-              <p>We're working hard to bring you the complete article reading experience.</p>
-              <p className="mt-2">Stay tuned for updates!</p>
+            {/* Articles List */}
+            <div className="articles-container">
+              {isLoading && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Loading articles...</p>
+                </div>
+              )}
+
+              {error && (
+                <div className="text-center py-8">
+                  <p className="text-red-500">Error loading articles. Please try again.</p>
+                </div>
+              )}
+
+              {articlesData && articlesData.articles.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No articles are here... yet.</p>
+                </div>
+              )}
+
+              {articlesData && articlesData.articles.length > 0 && (
+                <div className="articles-list">
+                  {articlesData.articles.map((article) => (
+                    <ArticleCard key={article.slug} article={article} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -240,3 +240,113 @@ html {
   background: rgba(92, 184, 92, 0.3);
   color: inherit;
 }
+
+/* Article preview styles */
+.article-preview {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 1.5rem 0;
+}
+
+.article-preview:first-child {
+  border-top: none;
+}
+
+.article-meta {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.article-meta .author {
+  text-decoration: none;
+  color: #5cb85c;
+  font-weight: 500;
+}
+
+.article-meta img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 0.3rem;
+}
+
+.article-meta .info {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+  margin-left: 0.3rem;
+}
+
+.article-meta .date {
+  color: #bbb;
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.pull-xs-right {
+  margin-left: auto;
+}
+
+.preview-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.preview-link:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+.preview-link h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #373a3c;
+  margin-bottom: 0.25rem;
+}
+
+.preview-link p {
+  font-size: 1rem;
+  font-weight: 300;
+  color: #999;
+  margin-bottom: 0.75rem;
+}
+
+.preview-link span {
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: #bbb;
+}
+
+.tag-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tag-default {
+  padding: 0.125rem 0.5rem;
+  border-radius: 10rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.tag-pill {
+  background-color: #818a91;
+  color: white;
+}
+
+.tag-outline {
+  background-color: transparent;
+  border: 1px solid #ddd;
+  color: #aaa;
+}
