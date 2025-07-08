@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { LoadingSpinner } from '@/components/ui/loading';
 import { ErrorMessage } from '@/components/ui/error';
 
 const RegisterPage: React.FC = () => {
@@ -76,86 +72,115 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-md mx-auto">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl">Sign up</CardTitle>
-            <p className="text-muted-foreground">
-              <Link to="/login" className="text-primary hover:underline">
+    <div className="auth-page">
+      <div className="realworld-container" style={{ padding: '2rem 15px' }}>
+        <div className="flex justify-center">
+          <div className="w-full max-w-lg">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-medium mb-2">Sign up</h1>
+              <Link to="/login" className="text-green-500 hover:underline">
                 Have an account?
               </Link>
-            </p>
-          </CardHeader>
+            </div>
 
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <ErrorMessage message={error} className="text-center" />
-              )}
+            {error && (
+              <ul className="error-messages mb-4" style={{ 
+                backgroundColor: '#f2dede',
+                border: '1px solid #ebccd1',
+                color: '#a94442',
+                padding: '1rem',
+                borderRadius: '0.25rem',
+                listStyle: 'none',
+                margin: '0'
+              }}>
+                <li><ErrorMessage message={error} /></li>
+              </ul>
+            )}
 
-              <div className="space-y-2">
-                <Input
-                  name="username"
-                  type="text"
-                  placeholder="Username"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className={formErrors.username ? 'border-destructive' : ''}
+            <form onSubmit={handleSubmit}>
+              <fieldset style={{ border: 'none', padding: '0', margin: '0' }}>
+                <fieldset className="form-group mb-4">
+                  <input
+                    name="username"
+                    type="text"
+                    placeholder="Your Name"
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    className="form-control"
+                    disabled={loading}
+                    style={{
+                      fontSize: '1.25rem',
+                      padding: '0.75rem',
+                      border: formErrors.username ? '1px solid #d9534f' : '1px solid #ccc'
+                    }}
+                  />
+                  {formErrors.username && (
+                    <div style={{ color: '#d9534f', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                      <ErrorMessage message={formErrors.username} />
+                    </div>
+                  )}
+                </fieldset>
+
+                <fieldset className="form-group mb-4">
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="Email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="form-control"
+                    disabled={loading}
+                    style={{
+                      fontSize: '1.25rem',
+                      padding: '0.75rem',
+                      border: formErrors.email ? '1px solid #d9534f' : '1px solid #ccc'
+                    }}
+                  />
+                  {formErrors.email && (
+                    <div style={{ color: '#d9534f', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                      <ErrorMessage message={formErrors.email} />
+                    </div>
+                  )}
+                </fieldset>
+
+                <fieldset className="form-group mb-4">
+                  <input
+                    name="password"
+                    type="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="form-control"
+                    disabled={loading}
+                    style={{
+                      fontSize: '1.25rem',
+                      padding: '0.75rem',
+                      border: formErrors.password ? '1px solid #d9534f' : '1px solid #ccc'
+                    }}
+                  />
+                  {formErrors.password && (
+                    <div style={{ color: '#d9534f', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                      <ErrorMessage message={formErrors.password} />
+                    </div>
+                  )}
+                </fieldset>
+
+                <button 
+                  type="submit" 
+                  className="btn-realworld btn-primary w-full"
                   disabled={loading}
-                />
-                {formErrors.username && (
-                  <ErrorMessage message={formErrors.username} />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="Email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={formErrors.email ? 'border-destructive' : ''}
-                  disabled={loading}
-                />
-                {formErrors.email && (
-                  <ErrorMessage message={formErrors.email} />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Input
-                  name="password"
-                  type="password"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={formErrors.password ? 'border-destructive' : ''}
-                  disabled={loading}
-                />
-                {formErrors.password && (
-                  <ErrorMessage message={formErrors.password} />
-                )}
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={loading}
-              >
-                {loading ? (
-                  <div className="flex items-center space-x-2">
-                    <LoadingSpinner size="sm" />
-                    <span>Creating account...</span>
-                  </div>
-                ) : (
-                  'Sign up'
-                )}
-              </Button>
+                  style={{
+                    width: '100%',
+                    fontSize: '1.25rem',
+                    padding: '0.75rem'
+                  }}
+                >
+                  {loading ? 'Creating account...' : 'Sign up'}
+                </button>
+              </fieldset>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
