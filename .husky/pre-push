@@ -21,6 +21,22 @@ if [ -d "backend" ]; then
   ) || exit 1
 fi
 
+# Frontend test verification
+echo "🧪 Running frontend tests..."
+if [ -d "frontend" ]; then
+  (
+    cd frontend
+    
+    echo "  🔍 Running frontend tests..."
+    if npm run test:run; then
+      echo "  ✅ Frontend tests passed"
+    else
+      echo "  ❌ Frontend tests failed"
+      exit 1
+    fi
+  ) || exit 1
+fi
+
 # Frontend build verification
 echo "🌐 Verifying frontend build..."
 if [ -d "frontend" ]; then
