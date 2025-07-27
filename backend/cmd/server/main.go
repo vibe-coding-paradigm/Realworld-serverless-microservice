@@ -102,7 +102,7 @@ func main() {
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte(`{"status": "ok", "service": "conduit-api"}`)); err != nil {
+	if _, err := w.Write([]byte(`{"status": "ok", "service": "conduit-api", "version": "1.0.0"}`)); err != nil {
 		log.Printf("Failed to write health check response: %v", err)
 	}
 }
