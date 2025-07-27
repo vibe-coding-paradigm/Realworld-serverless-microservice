@@ -29,9 +29,9 @@
 graph TB
     subgraph "AWS Infrastructure"
         ALB[Application Load Balancer]
-        ECS[ECS Cluster - Fargate]
+        ECS[ECS Cluster - Fargate Spot]
         ECR[Elastic Container Registry]
-        RDS[RDS SQLite-compatible Aurora Serverless v2]
+        EFS[Amazon EFS - SQLite 저장소]
     end
     
     subgraph "CI/CD Pipeline"
@@ -48,7 +48,7 @@ graph TB
     OIDC --> ECR
     GHA --> ECS
     ALB --> ECS
-    ECS --> RDS
+    ECS --> EFS
     ECS --> CW
     ECS --> XR
 ```
@@ -57,9 +57,10 @@ graph TB
 - **컨테이너화**: Docker 기반 Go 애플리케이션
 - **오케스트레이션**: AWS ECS with Fargate Spot (100% 스팟 인스턴스)
 - **IaC**: AWS CDK (TypeScript)
-- **데이터베이스**: RDS Aurora Serverless v2 (SQLite 호환 모드) 또는 EFS 마운트 SQLite
+- **데이터베이스**: EFS + SQLite (영속성 보장, 비용 효율적)
+- **스토리지**: Amazon EFS for 컨테이너 간 공유 스토리지
 - **로드 밸런싱**: Application Load Balancer (ALB)
-- **비용 최적화**: Fargate Spot으로 최대 70% 비용 절감
+- **비용 최적화**: Fargate Spot + EFS로 인프라 비용 최대 절감
 
 #### 2.1.3 배포 파이프라인
 ```yaml
@@ -133,6 +134,7 @@ jobs:
 import * as cdk from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as efs from 'aws-cdk-lib/aws-efs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
@@ -154,10 +156,27 @@ export class BackendStack extends cdk.Stack {
       containerInsights: true
     });
 
+    // EFS File System
+    const fileSystem = new efs.FileSystem(this, 'ConduitEFS', {
+      vpc: cluster.vpc,
+      lifecyclePolicy: efs.LifecyclePolicy.AFTER_30_DAYS,
+      performanceMode: efs.PerformanceMode.GENERAL_PURPOSE,
+      enableBackups: true
+    });
+
     // Fargate Task Definition
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'ConduitTaskDef', {
       memoryLimitMiB: 512,
       cpu: 256
+    });
+
+    // EFS Volume
+    taskDefinition.addVolume({
+      name: 'conduit-efs-volume',
+      efsVolumeConfiguration: {
+        fileSystemId: fileSystem.fileSystemId,
+        transitEncryption: 'ENABLED'
+      }
     });
 
     // Container
@@ -168,14 +187,26 @@ export class BackendStack extends cdk.Stack {
       }),
       environment: {
         PORT: '8080',
-        DATABASE_URL: '/data/conduit.db'
+        DATABASE_URL: '/mnt/efs/conduit.db'
       }
+    });
+
+    // Mount EFS Volume
+    container.addMountPoints({
+      containerPath: '/mnt/efs',
+      sourceVolume: 'conduit-efs-volume',
+      readOnly: false
     });
 
     container.addPortMappings({
       containerPort: 8080,
       protocol: ecs.Protocol.TCP
     });
+
+    // EFS Security Group Access
+    fileSystem.connections.allowDefaultPortFrom(
+      ecs.Connections.fromSecurityGroups([cluster.vpc.vpcDefaultSecurityGroup])
+    );
 
     // ALB
     const alb = new elbv2.ApplicationLoadBalancer(this, 'ConduitALB', {
@@ -659,12 +690,35 @@ Dashboards:
 - **헬스체크 강화**: 빠른 장애 감지 및 복구
 - **모니터링 설정**: Spot 인터럽션 알람 구성
 
+## 6.4 EFS + SQLite 아키텍처 가이드
+
+### 6.4.1 EFS + SQLite 장점 (학습 프로젝트용)
+- **비용 효율성**: RDS 대비 70-80% 비용 절감
+- **데이터 영속성**: 컨테이너 재시작/재배포 시에도 데이터 보존
+- **기존 코드 재사용**: SQLite 기반 기존 애플리케이션 그대로 활용
+- **운영 단순성**: 별도 데이터베이스 서버 관리 불필요
+- **학습 가치**: 파일 시스템 기반 스토리지 운영 경험
+
+### 6.4.2 EFS + SQLite 고려사항
+- **동시성 제한**: SQLite WAL 모드로 읽기 동시성 개선 (학습용 충분)
+- **성능 특성**: EFS 네트워크 지연으로 RDS 대비 응답 시간 증가
+- **백업 전략**: EFS 자동 백업 + 주기적 SQLite 파일 복사
+- **마이그레이션**: Phase 2에서 DynamoDB로 전환 시 데이터 이관 필요
+
+### 6.4.3 구현 고려사항
+- **WAL 모드 활성화**: 읽기 성능 및 동시성 개선
+- **EFS 마운트 옵션**: 성능 모드 및 처리량 모드 설정
+- **보안**: EFS 전송 중 암호화 및 액세스 포인트 활용
+- **모니터링**: EFS 성능 메트릭 및 SQLite 락 상태 추적
+
 ## 7. 질문 및 추가 확인 사항
 
 ### 7.1 기술적 결정 사항
-1. **데이터베이스 선택**: Phase 1에서 RDS Aurora Serverless v2를 사용할지, EFS에 SQLite를 마운트할지 결정이 필요합니다. 각각의 장단점은:
-   - RDS Aurora Serverless v2: 관리형 서비스, 자동 스케일링, 높은 비용
-   - EFS + SQLite: 낮은 비용, 직접 관리 필요, 동시성 제한
+1. **데이터베이스 선택**: ✅ **EFS + SQLite 결정 완료**
+   - **선택 이유**: 비용 효율성과 학습 목적에 최적
+   - **장점**: 낮은 비용, 데이터 영속성, 기존 SQLite 코드 재사용
+   - **고려사항**: 동시성 제한 (학습용이므로 허용), EFS 성능 특성
+   - **구현**: EFS 마운트를 통한 컨테이너 간 공유 스토리지
 
 2. **인증 전략**: Phase 2에서 Cognito를 사용할지, 자체 JWT 구현을 유지할지 결정이 필요합니다.
 
