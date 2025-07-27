@@ -134,7 +134,7 @@ const HomePage: React.FC = () => {
 
               {articlesData && articlesData.articles.length > 0 && (
                 <div className="articles-list">
-                  {articlesData.articles.map((article) => (
+                  {articlesData.articles.map((article: any) => (
                     <ArticleCard key={article.slug} article={article} />
                   ))}
                 </div>

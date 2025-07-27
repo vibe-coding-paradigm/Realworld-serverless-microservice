@@ -123,7 +123,7 @@ const ArticlePage: React.FC = () => {
           <div className="article-content">
             <p className="lead text-lg text-gray-600 mb-6">{article.description}</p>
             <div className="prose prose-lg max-w-none">
-              {article.body.split('\n').map((paragraph, index) => (
+              {article.body.split('\n').map((paragraph: string, index: number) => (
                 <p key={index} className="mb-4">{paragraph}</p>
               ))}
             </div>
@@ -133,7 +133,7 @@ const ArticlePage: React.FC = () => {
           {article.tagList && article.tagList.length > 0 && (
             <div className="article-tags mt-8 pt-4 border-t">
               <ul className="tag-list">
-                {article.tagList.map((tag, index) => (
+                {article.tagList.map((tag: string, index: number) => (
                   <li key={index} className="tag-default tag-pill">
                     {tag}
                   </li>

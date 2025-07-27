@@ -4,7 +4,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: (failureCount, error: unknown) => {
+      retry: (failureCount: number, error: unknown) => {
         // Don't retry on 4xx errors
         const axiosError = error as { response?: { status?: number } };
         if (axiosError?.response?.status && axiosError.response.status >= 400 && axiosError.response.status < 500) {
