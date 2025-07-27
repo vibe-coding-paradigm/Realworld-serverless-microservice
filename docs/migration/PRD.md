@@ -14,53 +14,50 @@
 - **Phase 1**: 기존 모노리식 백엔드를 AWS ECS + Fargate로 배포, 프론트엔드는 GitHub Pages로 배포
 - **Phase 2**: 백엔드만 스트랭글러 패턴을 활용한 서버리스 마이크로서비스로 전환 (프론트엔드는 GitHub Pages 유지)
 
-### 1.4 핵심 요구사항
-- MVP 수준의 최소한의 구현으로 빠른 가치 창출
-- 속도와 품질의 균형 유지
-- 실무에서 활용 가능한 배포 파이프라인 구축
-- **학습 목적의 비용 최적화**: Fargate Spot 인스턴스 100% 활용으로 비용 절감
+### 1.4 핵심 요구사항 (학습 최적화)
+- **초고속 MVP**: 2일 내 동작하는 시스템 구축 목표
+- **극단적 비용 절감**: 월 $25 이하 운영 비용 목표
+- **학습 가치 최대화**: 핵심 AWS 서비스 실전 경험
+- **복잡도 최소화**: 막히는 요소 제거, 빠른 성취감 우선
+- **점진적 확장**: 동작 후 필요한 기능만 추가
 
 ## 2. Phase 1: AWS와 GitHub Pages 배포
 
 ### 2.1 백엔드 배포 아키텍처
 
-#### 2.1.1 인프라 구성
+#### 2.1.1 학습용 초간단 인프라 구성
 ```mermaid
 graph TB
-    subgraph "AWS Infrastructure"
-        ALB[Application Load Balancer]
-        ECS[ECS Cluster - Fargate Spot]
-        ECR[Elastic Container Registry]
-        EFS[Amazon EFS - SQLite 저장소]
-    end
-    
-    subgraph "CI/CD Pipeline"
+    subgraph "GitHub (무료)"
         GHA[GitHub Actions]
-        OIDC[AWS OIDC Provider]
+        GHP[GitHub Pages - 프론트엔드]
     end
     
-    subgraph "Monitoring"
-        CW[CloudWatch Logs]
-        XR[X-Ray Tracing]
+    subgraph "AWS (최소 비용 - 월 $25)"
+        ECR[ECR - 이미지 저장]
+        ALB[Application Load Balancer]
+        ECS[ECS Fargate Spot - 1개 태스크]
+        EFS[EFS - SQLite 저장]
+        CW[CloudWatch Logs - 1일 보관]
     end
     
-    GHA --> OIDC
-    OIDC --> ECR
+    GHA --> ECR
     GHA --> ECS
+    GHP --> ALB
     ALB --> ECS
     ECS --> EFS
     ECS --> CW
-    ECS --> XR
 ```
 
-#### 2.1.2 기술 스택
+#### 2.1.2 학습용 기술 스택 (극도로 단순화)
 - **컨테이너화**: Docker 기반 Go 애플리케이션
-- **오케스트레이션**: AWS ECS with Fargate Spot (100% 스팟 인스턴스)
-- **IaC**: AWS CDK (TypeScript)
+- **오케스트레이션**: AWS ECS with Fargate Spot (1개 태스크)
+- **배포**: AWS CLI 스크립트 (CDK는 확장 단계에서)
 - **데이터베이스**: EFS + SQLite (영속성 보장, 비용 효율적)
-- **스토리지**: Amazon EFS for 컨테이너 간 공유 스토리지
 - **로드 밸런싱**: Application Load Balancer (ALB)
-- **비용 최적화**: Fargate Spot + EFS로 인프라 비용 최대 절감
+- **모니터링**: CloudWatch Logs만 (1일 보관)
+- **보안**: HTTP만 사용 (HTTPS는 확장 단계에서)
+- **비용 목표**: 월 $25 이하
 
 #### 2.1.3 배포 파이프라인
 ```yaml
@@ -136,6 +133,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as efs from 'aws-cdk-lib/aws-efs';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 export class BackendStack extends cdk.Stack {
@@ -150,18 +148,18 @@ export class BackendStack extends cdk.Stack {
       }]
     });
 
-    // ECS Cluster
+    // ECS Cluster (학습용 최적화 - Container Insights 비활성화)
     const cluster = new ecs.Cluster(this, 'ConduitCluster', {
       clusterName: 'conduit-cluster',
-      containerInsights: true
+      containerInsights: false  // 비용 절감
     });
 
-    // EFS File System
+    // EFS File System (학습용 최적화)
     const fileSystem = new efs.FileSystem(this, 'ConduitEFS', {
       vpc: cluster.vpc,
-      lifecyclePolicy: efs.LifecyclePolicy.AFTER_30_DAYS,
+      lifecyclePolicy: efs.LifecyclePolicy.AFTER_7_DAYS,  // 빠른 정리
       performanceMode: efs.PerformanceMode.GENERAL_PURPOSE,
-      enableBackups: true
+      enableBackups: false  // 학습용이므로 백업 비활성화
     });
 
     // Fargate Task Definition
@@ -170,20 +168,21 @@ export class BackendStack extends cdk.Stack {
       cpu: 256
     });
 
-    // EFS Volume
+    // EFS Volume (학습용 최적화 - 암호화 비활성화)
     taskDefinition.addVolume({
       name: 'conduit-efs-volume',
       efsVolumeConfiguration: {
         fileSystemId: fileSystem.fileSystemId,
-        transitEncryption: 'ENABLED'
+        transitEncryption: 'DISABLED'  // 성능 우선, 비용 절감
       }
     });
 
-    // Container
+    // Container (학습용 최적화)
     const container = taskDefinition.addContainer('conduit-backend', {
       image: ecs.ContainerImage.fromEcrRepository(repository),
       logging: ecs.LogDrivers.awsLogs({
-        streamPrefix: 'conduit-backend'
+        streamPrefix: 'conduit-backend',
+        logRetention: logs.RetentionDays.ONE_DAY  // 1일 보관으로 비용 절감
       }),
       environment: {
         PORT: '8080',
@@ -215,12 +214,12 @@ export class BackendStack extends cdk.Stack {
       loadBalancerName: 'conduit-alb'
     });
 
-    // Fargate Service with Spot
+    // Fargate Service with Spot (학습용 최적화 - 1개 태스크)
     const service = new ecs.FargateService(this, 'ConduitService', {
       cluster,
       taskDefinition,
       serviceName: 'conduit-backend',
-      desiredCount: 2,
+      desiredCount: 1,  // 비용 절감을 위해 1개로 축소
       assignPublicIp: true,
       capacityProviderStrategies: [{
         capacityProvider: 'FARGATE_SPOT',
@@ -240,10 +239,9 @@ export class BackendStack extends cdk.Stack {
       }
     });
 
-    // ALB Listener
+    // ALB Listener (학습용 - HTTP만 사용)
     alb.addListener('Listener', {
-      port: 443,
-      certificates: [/* SSL 인증서 */],
+      port: 80,  // HTTPS 대신 HTTP 사용 (학습 단계)
       defaultTargetGroups: [targetGroup]
     });
 
@@ -367,72 +365,39 @@ jobs:
         uses: actions/deploy-pages@v4
 ```
 
-#### 2.2.2 E2E 테스트 구성
-```yaml
-# .github/workflows/e2e-tests.yml
-name: E2E Tests
-on:
-  workflow_run:
-    workflows: ["Deploy Backend to ECS", "Deploy Frontend to GitHub Pages"]
-    types:
-      - completed
+#### 2.2.2 기본 동작 확인 (E2E는 확장 단계에서)
+학습 초기 단계에서는 복잡한 E2E 테스트 대신 간단한 동작 확인:
+- 프론트엔드 빌드 성공 확인
+- 백엔드 API 응답 확인 (`curl` 테스트)
+- 기본 페이지 렌더링 확인
 
-jobs:
-  e2e-tests:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Playwright
-        run: |
-          cd frontend
-          npm ci
-          npx playwright install --with-deps
-      
-      - name: Run E2E tests
-        env:
-          BASE_URL: ${{ vars.FRONTEND_URL }}
-          API_URL: ${{ vars.BACKEND_API_URL }}
-        run: |
-          cd frontend
-          npm run test:e2e
-      
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: frontend/playwright-report/
-```
+**확장 단계에서 추가할 E2E 테스트:**
+- Playwright 기반 자동화 테스트
+- 복잡한 사용자 플로우 검증
 
-### 2.3 Phase 1 구현 작업 목록
+### 2.3 Phase 1 학습용 작업 목록 (2일 목표)
 
-#### 2.3.1 인프라 설정
-- [ ] AWS 계정 및 IAM 설정
-- [ ] GitHub OIDC Provider 구성
+#### 🎯 Day 1: 기본 배포 (4-6시간)
+- [ ] AWS 계정 및 기본 IAM 설정 (AdministratorAccess)
 - [ ] AWS CDK 프로젝트 초기화
-- [ ] ECS/Fargate 스택 구현
-- [ ] ECR 리포지토리 생성
-
-#### 2.3.2 백엔드 배포
-- [ ] Dockerfile 최적화
+- [ ] 기본 Dockerfile 작성
+- [ ] ECR 리포지토리 생성 및 이미지 푸시
+- [ ] ECS/Fargate 스택 배포 (1개 태스크)
 - [ ] 헬스체크 엔드포인트 추가
-- [ ] 환경변수 기반 설정
-- [ ] GitHub Actions 워크플로우 구성
-- [ ] API 테스트 스위트 구축
+- [ ] 기본 동작 확인 (curl 테스트)
 
-#### 2.3.3 프론트엔드 배포
-- [ ] 빌드 최적화 설정
-- [ ] 환경변수 주입 구성
+#### 🎯 Day 2: 프론트엔드 연동 (2-4시간)
 - [ ] GitHub Pages 설정
-- [ ] Playwright E2E 테스트 작성
+- [ ] 환경변수 설정 (API URL)
+- [ ] 프론트엔드 빌드 및 배포
+- [ ] 기본 통합 테스트 (수동)
+- [ ] 비용 모니터링 설정
+
+#### 🔧 확장 단계 (선택사항)
+- [ ] GitHub Actions CI/CD 자동화
+- [ ] HTTPS 설정
+- [ ] E2E 테스트 추가
+- [ ] 모니터링 대시보드
 
 ## 3. Phase 2: 서버리스 마이크로서비스 마이그레이션
 
@@ -486,7 +451,7 @@ graph LR
 
 ### 3.2 서버리스 아키텍처
 
-#### 3.2.1 AWS 서비스 구성
+#### 3.2.1 학습용 간소화된 서버리스 구성
 ```mermaid
 graph TB
     subgraph "Frontend"
@@ -495,44 +460,32 @@ graph TB
     
     subgraph "API Layer"
         AG[API Gateway]
-        WAF[AWS WAF]
     end
     
-    subgraph "Compute Layer"
+    subgraph "Compute Layer (학습용 최소)"
         L1[Lambda - Auth]
         L2[Lambda - Articles]
         L3[Lambda - Comments]
-        L4[Lambda - Profiles]
     end
     
     subgraph "Data Layer"
         DDB[DynamoDB]
-        S3D[S3 - Media Storage]
-    end
-    
-    subgraph "Supporting Services"
-        CG[Cognito]
-        SQS[SQS]
-        SNS[SNS]
-        ES[EventBridge]
     end
     
     GHP --> AG
-    WAF --> AG
     AG --> L1
     AG --> L2
     AG --> L3
-    AG --> L4
-    L1 --> CG
     L1 --> DDB
     L2 --> DDB
-    L2 --> S3D
     L3 --> DDB
-    L4 --> DDB
-    L2 --> ES
-    ES --> SQS
-    ES --> SNS
 ```
+
+**학습 단계에서 제외된 복잡한 서비스들:**
+- AWS WAF (보안은 확장 단계에서)
+- S3 미디어 스토리지 (파일 업로드 복잡성 제거)
+- Cognito (자체 JWT 유지가 더 간단)
+- EventBridge, SQS, SNS (이벤트 아키텍처는 고급 주제)
 
 #### 3.2.2 DynamoDB 테이블 설계
 ```yaml
@@ -642,14 +595,14 @@ Dashboards:
 
 ## 4. 리스크 및 완화 전략
 
-### 4.1 기술적 리스크
-| 리스크 | 영향도 | 완화 전략 |
+### 4.1 학습용 기술적 리스크 (허용 범위 확대)
+| 리스크 | 영향도 | 학습용 완화 전략 |
 |--------|--------|-----------|
-| 데이터 마이그레이션 실패 | 높음 | 듀얼 라이트 전략, 롤백 계획 |
-| **Fargate Spot 인터럽션** | **중간** | **최소 2개 태스크 유지, ALB 헬스체크로 자동 복구** |
-| 성능 저하 | 중간 | 점진적 트래픽 전환, 로드 테스트 |
-| 비용 초과 | 낮음 | Spot 사용으로 기본 비용 70% 절감, 예산 알람 |
-| 보안 취약점 | 높음 | AWS Security Hub, 정기 감사 |
+| **Fargate Spot 인터럽션** | **낮음** | **1개 태스크로 비용 절감, 중단 허용 (학습 목적)** |
+| 데이터 손실 | 낮음 | EFS 백업 비활성화, 학습용 데이터 손실 허용 |
+| 성능 저하 | 낮음 | 학습 우선, 성능 최적화는 확장 단계 |
+| 비용 초과 | 중간 | $25/월 예산 알람, 일일 비용 확인 |
+| 보안 취약점 | 낮음 | HTTP 사용, 기본 보안만 적용 |
 
 ### 4.2 일정 리스크
 - MVP 범위 엄격 관리
@@ -658,17 +611,18 @@ Dashboards:
 
 ## 5. 성공 지표
 
-### 5.1 Phase 1 성공 기준
-- [ ] 백엔드 API 99% 가용성
-- [ ] 배포 시간 < 10분
-- [ ] 모든 RealWorld API 테스트 통과
-- [ ] E2E 테스트 성공률 > 95%
+### 5.1 Phase 1 학습용 성공 기준 (현실적 목표)
+- [ ] 백엔드 API 기본 동작 확인 (가용성보다 학습 우선)
+- [ ] 프론트엔드-백엔드 연동 성공
+- [ ] 기본 CRUD 작업 동작 (로그인, 게시글 작성/조회)
+- [ ] 월 운영 비용 $25 이하 달성
+- [ ] 2일 내 구현 완료
 
-### 5.2 Phase 2 성공 기준
-- [ ] 서버리스 전환 완료
-- [ ] 응답 시간 < 200ms (p99)
-- [ ] 운영 비용 50% 절감 (Phase 1 Spot 절약 + Phase 2 서버리스 효율)
-- [ ] 무중단 마이그레이션 달성
+### 5.2 Phase 2 학습용 성공 기준
+- [ ] 간소화된 서버리스 전환 완료 (3개 Lambda 함수)
+- [ ] 기본 응답 시간 < 2초 (학습용 관대한 기준)
+- [ ] 추가 비용 절감 (DynamoDB On-Demand 활용)
+- [ ] 기본 기능 동작 확인
 
 ## 6. Fargate Spot 학습 가이드
 
@@ -684,11 +638,11 @@ Dashboards:
 - **복구 시간**: ALB 헬스체크 + ECS 자동 재시작 (1-2분)
 - **데이터 보존**: 컨테이너 재시작 시 로컬 데이터 손실
 
-### 6.3 운영 베스트 프랙티스
-- **다중 AZ 배포**: 인터럽션 리스크 분산
-- **최소 태스크 수**: 2개 이상 유지 권장
-- **헬스체크 강화**: 빠른 장애 감지 및 복구
-- **모니터링 설정**: Spot 인터럽션 알람 구성
+### 6.3 학습용 운영 방식 (단순화)
+- **단일 AZ 배포**: 비용 절감 우선
+- **1개 태스크**: 최소 비용으로 운영
+- **기본 헬스체크**: 복잡한 설정 없이 기본값 사용
+- **간단한 모니터링**: CloudWatch 기본 메트릭만 확인
 
 ## 6.4 EFS + SQLite 아키텍처 가이드
 
@@ -738,4 +692,12 @@ Dashboards:
 
 ---
 
-이 PRD는 바이브 코딩 방법론에 따라 빠른 MVP 구현과 점진적 개선에 중점을 두고 작성되었습니다. **학습 프로젝트의 특성을 고려하여 Fargate Spot 인스턴스를 100% 활용**하여 비용을 최대 70% 절감하면서도 실전 운영 경험을 습득할 수 있도록 설계되었습니다. Phase 1에서 비용 효율적인 배포 파이프라인을 구축하고, Phase 2에서 백엔드만 서버리스로 전환하여 확장성과 추가 비용 최적화를 달성하는 것을 목표로 합니다. 프론트엔드는 전체 마이그레이션 과정에서 GitHub Pages를 계속 사용하며, 백엔드 API 엔드포인트 변경만 수행합니다.
+이 PRD는 **학습용 프로젝트 최적화**를 위해 바이브 코딩 방법론을 적용하여 작성되었습니다. **2일 내 구현 완료**와 **월 $25 이하 운영**을 목표로 하며, 복잡한 기능은 과감히 제거하고 핵심 학습 요소에만 집중합니다. 
+
+**핵심 특징:**
+- **극단적 비용 최적화**: Fargate Spot 1개 태스크 + EFS + HTTP만 사용
+- **복잡도 최소화**: SSL, 고급 모니터링, E2E 테스트 등 제거
+- **빠른 성취감**: 완벽함보다 동작하는 시스템 우선
+- **점진적 확장**: 기본 동작 확인 후 필요한 기능만 추가
+
+**학습 목표**: AWS 핵심 서비스 실전 경험 + 비용 최적화 노하우 습득
