@@ -16,17 +16,6 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      - VITE_API_URL=/api
-    restart: unless-stopped
-
 volumes:
   data:
     driver: local
