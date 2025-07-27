@@ -33,50 +33,74 @@ Core entities: `users`, `articles`, `comments`, `follows`, `favorites`, `tags`
 
 ## Development Commands
 
-### Initial Setup (when backend/frontend exist)
+### Initial Setup
 ```bash
-# Backend setup
-cd backend
-go mod tidy
-go run cmd/server/main.go
+# Install dependencies
+make deps                          # Install all dependencies
+make check-deps                    # Verify required tools are available
 
-# Frontend setup  
-cd frontend
-npm install
-npm run dev
-
-# Database migration
-cd backend
-go run cmd/migrate/main.go
+# Database setup
+make migrate                       # Run database migrations
 ```
 
 ### Development Workflow
 ```bash
-# Start development environment
-make dev  # or docker-compose up if available
+# Primary development (Docker-based)
+make dev                           # Start full development environment
+make dev-detach                    # Start in background
+make dev-stop                      # Stop development environment
 
-# Backend development
+# Backend development (standalone)
 cd backend
-go run cmd/server/main.go          # Start server
+go run cmd/server/main.go          # Start server (port 8080)
 go test ./...                      # Run all tests
 go test ./internal/handlers        # Run specific package tests
-golangci-lint run                  # Lint code
+make test-backend                  # Test via Makefile
+golangci-lint run                  # Lint code (install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
 
-# Frontend development
+# Frontend development (standalone)
 cd frontend
-npm run dev                        # Start dev server
-npm test                           # Run tests
+npm run dev                        # Start dev server (port 3000)
+npm test                           # Run tests interactively
+npm run test:run                   # Run tests once
 npm run build                      # Production build
 npm run lint                       # Lint code
+
+# Database operations
+make migrate                       # Run migrations
+make db-reset                      # Reset database
+make db-backup                     # Backup database
+
+# Code quality
+make lint                          # Lint all code
+make fmt                           # Format all code
+make test                          # Run all tests
+
+# Utilities
+make health                        # Check service health
+make logs                          # View all logs
+make clean                         # Clean containers and images
 ```
 
 ## Implementation Status
 
-Currently in **planning phase** with comprehensive documentation:
+**Backend**: Core infrastructure implemented with JWT auth, SQLite database, and Clean Architecture
+**Frontend**: React TypeScript app with Tailwind CSS, routing, and component structure
+
+**Completed:**
+- Project structure and Docker setup
+- Authentication system (JWT, bcrypt, handlers, tests)
+- Database models and repositories for users, articles, comments
+- Basic handlers for user operations
+- Frontend components: Auth pages, article components, layout
+- React Query integration and auth context
+
+**Key Files:**
 - `docs/PRD.md` - Product Requirements Document
 - `docs/design.md` - System design with Mermaid diagrams
 - `docs/tasks.md` - MVP implementation checklist
-- GitHub Issues #4-#9 track implementation phases
+- Backend: `internal/` contains handlers, models, db repositories, auth
+- Frontend: `src/` contains components, pages, hooks, contexts
 
 ## API Design
 
@@ -151,27 +175,42 @@ All responses follow standard RealWorld JSON format with consistent error handli
 - API integration tests with MSW (Mock Service Worker)
 - Basic E2E for critical user flows
 
-## File Structure Expectations
+## Architecture Implementation
 
+### Backend Structure (Go + SQLite)
 ```
 backend/
   cmd/
-    server/     # Main application entry
-    migrate/    # Database migration utility
+    server/main.go      # HTTP server entry point
+    migrate/main.go     # Database migration runner
   internal/
-    handlers/   # HTTP handlers
-    models/     # Data models
-    auth/       # Authentication logic
-    db/         # Database connection and queries
-
-frontend/
-  src/
-    components/ # Reusable UI components
-    pages/      # Route-level components  
-    hooks/      # Custom React hooks
-    services/   # API client and utilities
-    types/      # TypeScript type definitions
+    handlers/           # HTTP handlers (user, article, comment)
+    models/             # Domain models (User, Article, Comment)
+    auth/               # JWT authentication and middleware
+    db/                 # Repository pattern database access
+    utils/              # Utilities (slug generation, etc.)
+  migrations/           # SQL migration files
 ```
+
+### Frontend Structure (React + TypeScript)
+```
+frontend/src/
+  components/
+    article/            # ArticleCard, CommentForm, CommentList
+    layout/             # Header, Layout
+    ui/                 # Reusable UI components (button, card, etc.)
+  contexts/             # AuthContext for authentication state
+  hooks/                # Custom hooks (useAuth, useArticles, useComments)
+  lib/                  # API client, query config, utilities
+  pages/                # Route components (HomePage, LoginPage, etc.)
+  types/                # TypeScript definitions
+```
+
+### Key Architecture Patterns
+- **Clean Architecture**: Domain models separate from infrastructure
+- **Repository Pattern**: Database access abstraction
+- **Middleware Chain**: CORS → Logging → Auth → Business Logic
+- **Context + React Query**: Frontend state management
 
 ## Common Development Patterns
 
@@ -188,11 +227,26 @@ frontend/
 - Transaction wrapping for multi-table operations
 - Prepared statements for all dynamic queries
 
-## Dependencies Philosophy
+## Tech Stack & Dependencies
 
+### Backend (Go)
+- **Core**: Standard `net/http`, no web frameworks
+- **Database**: `github.com/mattn/go-sqlite3`
+- **Authentication**: `github.com/golang-jwt/jwt/v5`, `golang.org/x/crypto/bcrypt`
+- **Testing**: Standard `testing` package
+
+### Frontend (React + TypeScript)
+- **Core**: React 19, TypeScript, Vite
+- **Styling**: Tailwind CSS 4, `class-variance-authority`, `clsx`
+- **Routing**: React Router v7
+- **HTTP**: Axios
+- **Testing**: Vitest, Testing Library, jsdom
+- **Dev Tools**: ESLint, Prettier integration
+
+### Dependencies Philosophy
 Following Armin Ronacher's approach:
 - Minimize external dependencies
-- Prefer standard library solutions
+- Prefer standard library solutions (Go `net/http` vs frameworks)
 - Only add dependencies that provide significant value
 - Avoid framework lock-in where possible
 
