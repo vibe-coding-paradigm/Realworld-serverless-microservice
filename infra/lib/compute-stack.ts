@@ -30,13 +30,13 @@ export class ComputeStack extends Construct {
     // ECS Cluster (학습용 최적화 - Container Insights 비활성화)
     this.cluster = new ecs.Cluster(this, 'ConduitCluster', {
       vpc: props.vpc,
-      clusterName: 'conduit-cluster',
+      // clusterName 제거 - CDK가 자동으로 고유한 이름 생성
       containerInsights: false, // 비용 절감
     });
 
     // ECS Task Execution Role
     const taskExecutionRole = new iam.Role(this, 'TaskExecutionRole', {
-      roleName: 'ecsTaskExecutionRole',
+      // roleName 제거 - CDK가 자동으로 고유한 이름 생성
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
@@ -45,7 +45,7 @@ export class ComputeStack extends Construct {
 
     // ECS Task Role (for EFS access)
     const taskRole = new iam.Role(this, 'TaskRole', {
-      roleName: 'ecsTaskRole',
+      // roleName 제거 - CDK가 자동으로 고유한 이름 생성
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       inlinePolicies: {
         EFSAccess: new iam.PolicyDocument({
