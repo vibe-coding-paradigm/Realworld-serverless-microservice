@@ -1,11 +1,9 @@
-name: Deploy Backend to ECS
+# DEPRECATED: Use backend-deploy-cdk.yml instead
+# This workflow has been replaced by CDK-based deployment
+name: Deploy Backend to ECS (DEPRECATED)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-deploy.yml'
+  # Disabled - use backend-deploy-cdk.yml instead
   workflow_dispatch:
 
 jobs:

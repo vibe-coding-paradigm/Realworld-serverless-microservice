@@ -1,0 +1,126 @@
+name: Deploy Backend with CDK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'infra/**'
+      - '.github/workflows/backend-deploy-cdk.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js for CDK
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: infra/package-lock.json
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd backend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      
+      - name: Install CDK dependencies
+        run: |
+          cd infra
+          npm ci
+      
+      - name: CDK Bootstrap (if needed)
+        run: |
+          cd infra
+          npx cdk bootstrap --require-approval never
+      
+      - name: CDK Deploy Infrastructure
+        run: |
+          cd infra
+          npx cdk deploy --require-approval never
+      
+      - name: Force ECS service update with new image
+        run: |
+          aws ecs update-service \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --service ${{ vars.ECS_SERVICE }} \
+            --force-new-deployment
+      
+      - name: Wait for service to be stable
+        run: |
+          echo "Waiting for ECS service to be stable..."
+          aws ecs wait services-stable \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --services ${{ vars.ECS_SERVICE }}
+          echo "ECS service is stable"
+      
+      - name: Get service status and outputs
+        run: |
+          echo "=== ECS Service Status ==="
+          aws ecs describe-services \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --services ${{ vars.ECS_SERVICE }} \
+            --query 'services[0].{Status:status,RunningCount:runningCount,DesiredCount:desiredCount}' \
+            --output table
+          
+          echo "=== CDK Stack Outputs ==="
+          aws cloudformation describe-stacks \
+            --stack-name ConduitStack \
+            --query 'Stacks[0].Outputs' \
+            --output table
+      
+      - name: Test health endpoint
+        run: |
+          # Get the first running task's public IP
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --service-name ${{ vars.ECS_SERVICE }} \
+            --desired-status RUNNING \
+            --query 'taskArns[0]' \
+            --output text)
+          
+          if [ "$TASK_ARN" != "None" ] && [ "$TASK_ARN" != "" ]; then
+            PUBLIC_IP=$(aws ecs describe-tasks \
+              --cluster ${{ vars.ECS_CLUSTER }} \
+              --tasks $TASK_ARN \
+              --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
+              --output text | xargs -I {} aws ec2 describe-network-interfaces \
+              --network-interface-ids {} \
+              --query 'NetworkInterfaces[0].Association.PublicIp' \
+              --output text)
+            
+            if [ "$PUBLIC_IP" != "None" ] && [ "$PUBLIC_IP" != "" ]; then
+              echo "Testing health endpoint at: http://$PUBLIC_IP:8080/health"
+              sleep 30  # Wait for service to be ready
+              curl -f "http://$PUBLIC_IP:8080/health" || echo "Health check failed"
+            else
+              echo "Could not get public IP for health check"
+            fi
+          else
+            echo "No running tasks found"
+          fi
