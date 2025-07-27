@@ -18,6 +18,7 @@
 - MVP 수준의 최소한의 구현으로 빠른 가치 창출
 - 속도와 품질의 균형 유지
 - 실무에서 활용 가능한 배포 파이프라인 구축
+- **학습 목적의 비용 최적화**: Fargate Spot 인스턴스 100% 활용으로 비용 절감
 
 ## 2. Phase 1: AWS와 GitHub Pages 배포
 
@@ -54,10 +55,11 @@ graph TB
 
 #### 2.1.2 기술 스택
 - **컨테이너화**: Docker 기반 Go 애플리케이션
-- **오케스트레이션**: AWS ECS with Fargate
+- **오케스트레이션**: AWS ECS with Fargate Spot (100% 스팟 인스턴스)
 - **IaC**: AWS CDK (TypeScript)
 - **데이터베이스**: RDS Aurora Serverless v2 (SQLite 호환 모드) 또는 EFS 마운트 SQLite
 - **로드 밸런싱**: Application Load Balancer (ALB)
+- **비용 최적화**: Fargate Spot으로 최대 70% 비용 절감
 
 #### 2.1.3 배포 파이프라인
 ```yaml
@@ -182,13 +184,17 @@ export class BackendStack extends cdk.Stack {
       loadBalancerName: 'conduit-alb'
     });
 
-    // Fargate Service
+    // Fargate Service with Spot
     const service = new ecs.FargateService(this, 'ConduitService', {
       cluster,
       taskDefinition,
       serviceName: 'conduit-backend',
       desiredCount: 2,
-      assignPublicIp: true
+      assignPublicIp: true,
+      capacityProviderStrategies: [{
+        capacityProvider: 'FARGATE_SPOT',
+        weight: 100  // 100% Spot 인스턴스 사용
+      }]
     });
 
     // ALB Target Group
@@ -601,6 +607,7 @@ Dashboards:
 - DynamoDB On-Demand → Provisioned 전환
 - S3 라이프사이클 정책
 - GitHub Pages는 무료 호스팅 계속 활용
+- **Phase 1 Fargate Spot**: 최대 70% 컴퓨팅 비용 절감 달성
 
 ## 4. 리스크 및 완화 전략
 
@@ -608,8 +615,9 @@ Dashboards:
 | 리스크 | 영향도 | 완화 전략 |
 |--------|--------|-----------|
 | 데이터 마이그레이션 실패 | 높음 | 듀얼 라이트 전략, 롤백 계획 |
+| **Fargate Spot 인터럽션** | **중간** | **최소 2개 태스크 유지, ALB 헬스체크로 자동 복구** |
 | 성능 저하 | 중간 | 점진적 트래픽 전환, 로드 테스트 |
-| 비용 초과 | 중간 | 일일 비용 모니터링, 예산 알람 |
+| 비용 초과 | 낮음 | Spot 사용으로 기본 비용 70% 절감, 예산 알람 |
 | 보안 취약점 | 높음 | AWS Security Hub, 정기 감사 |
 
 ### 4.2 일정 리스크
@@ -628,12 +636,32 @@ Dashboards:
 ### 5.2 Phase 2 성공 기준
 - [ ] 서버리스 전환 완료
 - [ ] 응답 시간 < 200ms (p99)
-- [ ] 운영 비용 30% 절감
+- [ ] 운영 비용 50% 절감 (Phase 1 Spot 절약 + Phase 2 서버리스 효율)
 - [ ] 무중단 마이그레이션 달성
 
-## 6. 질문 및 추가 확인 사항
+## 6. Fargate Spot 학습 가이드
 
-### 6.1 기술적 결정 사항
+### 6.1 Fargate Spot 장점 (학습 프로젝트용)
+- **비용 절감**: 정가 대비 최대 70% 할인
+- **학습 효과**: 스팟 인스턴스 운영 경험 습득
+- **실전 준비**: 프로덕션 환경 비용 최적화 역량
+- **탄력성 학습**: 장애 상황 대응 및 복구 메커니즘 이해
+
+### 6.2 Fargate Spot 고려사항
+- **인터럽션 가능성**: 2분 전 알림 후 태스크 종료
+- **가용성 영향**: 일시적 서비스 중단 가능 (학습용이므로 허용)
+- **복구 시간**: ALB 헬스체크 + ECS 자동 재시작 (1-2분)
+- **데이터 보존**: 컨테이너 재시작 시 로컬 데이터 손실
+
+### 6.3 운영 베스트 프랙티스
+- **다중 AZ 배포**: 인터럽션 리스크 분산
+- **최소 태스크 수**: 2개 이상 유지 권장
+- **헬스체크 강화**: 빠른 장애 감지 및 복구
+- **모니터링 설정**: Spot 인터럽션 알람 구성
+
+## 7. 질문 및 추가 확인 사항
+
+### 7.1 기술적 결정 사항
 1. **데이터베이스 선택**: Phase 1에서 RDS Aurora Serverless v2를 사용할지, EFS에 SQLite를 마운트할지 결정이 필요합니다. 각각의 장단점은:
    - RDS Aurora Serverless v2: 관리형 서비스, 자동 스케일링, 높은 비용
    - EFS + SQLite: 낮은 비용, 직접 관리 필요, 동시성 제한
@@ -642,16 +670,18 @@ Dashboards:
 
 3. **프론트엔드 호스팅**: GitHub Pages를 계속 사용하므로 추가 CDN은 불필요합니다. GitHub Pages는 이미 Fastly CDN을 통해 제공됩니다.
 
-### 6.2 운영 관련 사항
+### 7.2 운영 관련 사항
 1. **도메인**: 커스텀 도메인 사용 여부와 SSL 인증서 준비 상태
 2. **환경 분리**: 개발/스테이징/프로덕션 환경 분리 전략
 3. **백업 정책**: 데이터 백업 및 복구 전략
+4. **Spot 인터럽션 대응**: 학습 목적의 장애 상황 시뮬레이션 계획
 
-### 6.3 팀 구성 및 역할
+### 7.3 팀 구성 및 역할
 1. **AWS 계정 관리자**: IAM 권한 및 비용 관리 담당자
 2. **모니터링 담당**: 알람 및 대시보드 관리 담당자
 3. **보안 검토**: 보안 정책 및 컴플라이언스 담당자
+4. **비용 최적화 담당**: Spot 인스턴스 및 비용 모니터링 전담
 
 ---
 
-이 PRD는 바이브 코딩 방법론에 따라 빠른 MVP 구현과 점진적 개선에 중점을 두고 작성되었습니다. Phase 1에서 안정적인 배포 파이프라인을 구축하고, Phase 2에서 백엔드만 서버리스로 전환하여 확장성과 비용 효율성을 달성하는 것을 목표로 합니다. 프론트엔드는 전체 마이그레이션 과정에서 GitHub Pages를 계속 사용하며, 백엔드 API 엔드포인트 변경만 수행합니다.
+이 PRD는 바이브 코딩 방법론에 따라 빠른 MVP 구현과 점진적 개선에 중점을 두고 작성되었습니다. **학습 프로젝트의 특성을 고려하여 Fargate Spot 인스턴스를 100% 활용**하여 비용을 최대 70% 절감하면서도 실전 운영 경험을 습득할 수 있도록 설계되었습니다. Phase 1에서 비용 효율적인 배포 파이프라인을 구축하고, Phase 2에서 백엔드만 서버리스로 전환하여 확장성과 추가 비용 최적화를 달성하는 것을 목표로 합니다. 프론트엔드는 전체 마이그레이션 과정에서 GitHub Pages를 계속 사용하며, 백엔드 API 엔드포인트 변경만 수행합니다.
