@@ -27,25 +27,25 @@ export class ComputeStack extends Construct {
       'conduit-backend'
     );
 
-    // ECS Cluster (학습용 최적화 - Container Insights 비활성화)
+    // ECS Cluster - 고정된 이름으로 생성 (기존 리소스 재사용)
     this.cluster = new ecs.Cluster(this, 'ConduitCluster', {
       vpc: props.vpc,
-      // clusterName 제거 - CDK가 자동으로 고유한 이름 생성
+      clusterName: 'conduit-cluster',
       containerInsights: false, // 비용 절감
     });
 
-    // ECS Task Execution Role
+    // ECS Task Execution Role - 고정된 이름으로 생성 (기존 리소스 재사용)
     const taskExecutionRole = new iam.Role(this, 'TaskExecutionRole', {
-      // roleName 제거 - CDK가 자동으로 고유한 이름 생성
+      roleName: 'ecsTaskExecutionRole',
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
       ]
     });
 
-    // ECS Task Role (for EFS access)
+    // ECS Task Role (for EFS access) - 고정된 이름으로 생성 (기존 리소스 재사용)
     const taskRole = new iam.Role(this, 'TaskRole', {
-      // roleName 제거 - CDK가 자동으로 고유한 이름 생성
+      roleName: 'ecsTaskRole',
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       inlinePolicies: {
         EFSAccess: new iam.PolicyDocument({
