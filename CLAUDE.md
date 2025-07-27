@@ -161,6 +161,48 @@ All responses follow standard RealWorld JSON format with consistent error handli
   - Use `gh issue close` only when all acceptance criteria are met AND code is committed
   - If work is complete but not yet committed, add a completion comment but keep issue open
 
+### Issue Closing Evidence Requirements
+When closing GitHub issues, **ALWAYS** include evidence that acceptance criteria have been met:
+
+#### Required Evidence Types
+- **Logs**: Command output, test results, deployment logs, error resolution logs
+- **Functional Demo**: Screenshots, API responses, working URLs, feature demonstrations
+- **Verification Steps**: Clear instructions for users to reproduce and verify the completion
+- **Configuration Evidence**: Settings, environment variables, deployed resources
+
+#### Evidence Format Template
+```markdown
+## ✅ Issue Completion Evidence
+
+### Acceptance Criteria Verification
+- [x] Criterion 1: [Evidence/Proof]
+- [x] Criterion 2: [Evidence/Proof]
+- [x] Criterion 3: [Evidence/Proof]
+
+### Functional Evidence
+**Working Demo**: [URL/Screenshot/Command output]
+**Logs**: 
+```
+[Include relevant logs]
+```
+
+### Verification Instructions
+**Steps to verify**:
+1. Command/URL to test
+2. Expected result
+3. How to reproduce
+
+**Commit Reference**: [commit hash]
+```
+
+#### Examples of Good Evidence
+- `curl` command showing API endpoint works
+- AWS CLI command showing resource exists
+- GitHub Actions workflow run URL and status
+- Screenshot of working frontend
+- Environment variable values (non-sensitive)
+- Test execution results
+
 ## Testing Strategy
 
 ### Backend Testing
