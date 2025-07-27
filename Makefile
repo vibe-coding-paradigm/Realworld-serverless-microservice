@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-debug cdk-deploy cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status
 
 # 기본 타겟
 help:
@@ -12,6 +12,14 @@ help:
 	@echo "  clean          - 컨테이너와 이미지 정리"
 	@echo "  deps           - 의존성 설치"
 	@echo "  check-deps     - 필요한 도구 설치 확인"
+	@echo ""
+	@echo "배포 및 디버깅:"
+	@echo "  deploy-check   - 배포 상태 확인"
+	@echo "  deploy-logs    - 배포 로그 확인"
+	@echo "  deploy-debug   - 배포 디버깅 정보"
+	@echo "  cdk-deploy     - CDK로 인프라 배포"
+	@echo "  cdk-destroy    - CDK 인프라 삭제"
+	@echo "  cdk-diff       - CDK 변경사항 확인"
 
 # 개발 명령어
 dev: check-deps
@@ -165,3 +173,76 @@ shell-backend:
 shell-frontend:
 	@echo "🐚 프론트엔드 쉘을 여는 중..."
 	docker-compose exec frontend sh
+
+# 배포 및 디버깅 명령어
+deploy-check:
+	@echo "🔍 배포 상태를 확인하는 중..."
+	@command -v gh >/dev/null 2>&1 || (echo "❌ GitHub CLI를 찾을 수 없습니다. 설치하세요: https://cli.github.com/"; exit 1)
+	@echo "📊 프론트엔드 배포 상태:"
+	@gh run list --workflow="frontend-deploy.yml" --limit 3
+	@echo ""
+	@echo "📊 백엔드 배포 상태:"
+	@gh run list --workflow="backend-deploy-cdk.yml" --limit 3
+
+deploy-logs:
+	@echo "📋 최근 배포 로그를 확인하는 중..."
+	@command -v gh >/dev/null 2>&1 || (echo "❌ GitHub CLI를 찾을 수 없습니다"; exit 1)
+	@echo "프론트엔드 최근 배포 로그:"
+	@gh run list --workflow="frontend-deploy.yml" --limit 1 --json url,conclusion,status | \
+		jq -r '.[0] | if .conclusion == "failure" then .url else "성공적으로 배포됨" end' | \
+		xargs -I {} sh -c 'if [ "{}" != "성공적으로 배포됨" ]; then echo "실패한 배포 로그: {}"; else echo "{}"; fi'
+	@echo ""
+	@echo "백엔드 최근 배포 로그:"
+	@gh run list --workflow="backend-deploy-cdk.yml" --limit 1 --json url,conclusion,status | \
+		jq -r '.[0] | if .conclusion == "failure" then .url else "성공적으로 배포됨" end' | \
+		xargs -I {} sh -c 'if [ "{}" != "성공적으로 배포됨" ]; then echo "실패한 배포 로그: {}"; else echo "{}"; fi'
+
+deploy-debug:
+	@echo "🐛 배포 디버깅 정보를 수집하는 중..."
+	@echo "📍 현재 브랜치: $$(git branch --show-current)"
+	@echo "📍 마지막 커밋: $$(git log --oneline -1)"
+	@echo "📍 워킹 디렉터리 상태:"
+	@git status --porcelain | head -10
+	@echo ""
+	@echo "🔧 CDK 상태 확인:"
+	@cd infra && npx cdk list 2>/dev/null || echo "CDK 스택 목록을 가져올 수 없습니다"
+	@echo ""
+	@echo "🌐 GitHub Pages 설정:"
+	@gh api repos/vibe-coding-paradigm/Realworld-serverless-microservice/pages 2>/dev/null | \
+		jq -r '.html_url // "GitHub Pages가 설정되지 않음"' || echo "GitHub Pages 정보를 가져올 수 없습니다"
+
+# CDK 관련 명령어
+cdk-deploy:
+	@echo "🚀 CDK로 인프라를 배포하는 중..."
+	@command -v npm >/dev/null 2>&1 || (echo "❌ npm을 찾을 수 없습니다"; exit 1)
+	cd infra && npm install && npx cdk deploy --require-approval never
+
+cdk-destroy:
+	@echo "🗑️  CDK 인프라를 삭제하는 중..."
+	cd infra && npx cdk destroy --force
+
+cdk-diff:
+	@echo "📋 CDK 변경사항을 확인하는 중..."
+	cd infra && npx cdk diff
+
+cdk-synth:
+	@echo "📄 CDK 템플릿을 생성하는 중..."
+	cd infra && npx cdk synth
+
+# GitHub Actions 디버깅
+gh-login-check:
+	@echo "🔐 GitHub CLI 로그인 상태 확인:"
+	@gh auth status || echo "❌ GitHub CLI에 로그인하지 않았습니다. 'gh auth login' 명령어를 실행하세요"
+
+gh-workflow-run:
+	@echo "▶️  수동으로 워크플로우 실행:"
+	@echo "프론트엔드 배포 실행하려면: gh workflow run frontend-deploy.yml"
+	@echo "백엔드 배포 실행하려면: gh workflow run backend-deploy-cdk.yml"
+
+# 통합 디버깅 명령어
+debug: deploy-debug gh-login-check
+	@echo "🔍 전체 디버깅 정보 수집 완료"
+
+# 빠른 배포 상태 확인
+status: deploy-check health
+	@echo "✅ 전체 시스템 상태 확인 완료"

@@ -140,6 +140,7 @@
 
 ### 주요 명령어
 
+#### 개발 및 테스트
 ```bash
 # 개발 서버 시작
 make dev
@@ -158,6 +159,36 @@ make fmt
 
 # 린터 실행
 make lint
+```
+
+#### 배포 및 디버깅
+```bash
+# 배포 상태 확인
+make deploy-check
+
+# 배포 로그 확인
+make deploy-logs
+
+# 전체 디버깅 정보
+make debug
+
+# CDK 인프라 배포
+make cdk-deploy
+
+# CDK 인프라 삭제
+make cdk-destroy
+
+# 시스템 상태 종합 확인
+make status
+```
+
+#### GitHub Actions 관련
+```bash
+# GitHub CLI 로그인 확인
+make gh-login-check
+
+# 워크플로우 수동 실행 안내
+make gh-workflow-run
 ```
 
 ## 📚 학습 리소스

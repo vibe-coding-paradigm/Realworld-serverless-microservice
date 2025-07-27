@@ -81,6 +81,30 @@ docker-compose down             # Stop all services
 docker-compose logs backend     # View backend logs
 ```
 
+### Deployment and Debugging (Makefile Scripts)
+```bash
+# Deployment Status and Monitoring
+make deploy-check               # Check deployment status of both frontend and backend
+make deploy-logs               # View recent deployment logs
+make status                    # Quick health check for entire system
+
+# Debugging and Troubleshooting
+make debug                     # Collect comprehensive debugging information
+make deploy-debug              # Deployment-specific debugging info
+make gh-login-check            # Verify GitHub CLI authentication
+
+# CDK Infrastructure Management
+make cdk-deploy               # Deploy infrastructure with CDK
+make cdk-destroy              # Delete CDK infrastructure
+make cdk-diff                 # Show CDK changes before deployment
+make cdk-synth                # Generate CloudFormation templates
+
+# GitHub Actions Integration
+make gh-workflow-run          # Manual workflow execution guide
+```
+
+These Makefile scripts automate repetitive deployment and debugging tasks, making it easier to manage the migration process.
+
 ## Architecture Implementation
 
 ### Backend Structure (Clean Architecture)
