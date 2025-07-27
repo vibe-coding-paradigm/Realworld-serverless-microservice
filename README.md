@@ -13,22 +13,23 @@
 
 ### 📈 마이그레이션 단계
 
-1. **Phase 1: 모노리식 애플리케이션** (현재)
-   - Go 백엔드 + React 프론트엔드
+1. **Phase 1: 모노리식 애플리케이션** ✅ **완료**
+   - Go 백엔드 + React 프론트엔드 구현
    - SQLite 데이터베이스
-   - Docker 컨테이너 기반
+   - Docker 컨테이너 기반 개발 환경
+   - GitHub Pages 프론트엔드 배포
 
-2. **Phase 2: 클라우드 전환**
+2. **Phase 2: 클라우드 전환** 🔄 **진행 중**
    - AWS ECS/Fargate로 컨테이너 마이그레이션
-   - GitHub Pages로 프론트엔드 배포
-   - CloudFormation/CDK 인프라 코드
+   - AWS CDK 인프라 코드 작성
+   - CI/CD 파이프라인 구축
 
-3. **Phase 3: 마이크로서비스 분해**
+3. **Phase 3: 마이크로서비스 분해** 📋 **계획됨**
    - 도메인별 서비스 분리 (Auth, Articles, Comments)
    - API Gateway + Lambda 함수
    - DynamoDB/RDS 데이터 분산
 
-4. **Phase 4: 서버리스 최적화**
+4. **Phase 4: 서버리스 최적화** 📋 **계획됨**
    - 완전한 서버리스 아키텍처
    - 이벤트 기반 아키텍처
    - 모니터링 및 관찰성 구현
@@ -48,7 +49,7 @@
 
 ### 배포된 애플리케이션
 - **[현재 프론트엔드 데모](https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/)** - GitHub Pages 배포된 React 앱
-- **[백엔드 API](http://localhost:8080)** - 로컬 개발 서버 (배포 예정)
+- **백엔드 API** - AWS ECS/Fargate 배포 (Phase 2 진행 중)
 
 ### 참고 자료
 - **[RealWorld 공식 데모](https://demo.realworld.io/)** - 완성된 애플리케이션 미리보기
@@ -76,8 +77,13 @@
 - **상태 관리**: Context API + React Query
 - **빌드 도구**: Vite
 
-### 개발 도구
+### 배포 및 인프라
 - **컨테이너**: Docker & Docker Compose
+- **클라우드**: AWS (ECS/Fargate, ECR, EFS, VPC)
+- **인프라 코드**: AWS CDK (TypeScript)
+- **CI/CD**: GitHub Actions
+
+### 개발 도구
 - **AI 도구**: Claude Code
 - **테스트**: Go 표준 테스트 + Vitest
 - **린터**: golangci-lint, ESLint
@@ -99,16 +105,23 @@
 .
 ├── backend/                 # Go 백엔드 애플리케이션
 │   ├── cmd/                # 실행 가능한 애플리케이션
-│   ├── internal/           # 내부 패키지
-│   └── migrations/         # 데이터베이스 마이그레이션
+│   ├── internal/           # 내부 패키지 (Clean Architecture)
+│   ├── migrations/         # 데이터베이스 마이그레이션
+│   └── Dockerfile          # 백엔드 컨테이너 이미지
 ├── frontend/               # React 프론트엔드 애플리케이션
 │   ├── src/               # 소스 코드
-│   └── public/            # 정적 파일
+│   ├── public/            # 정적 파일
+│   └── dist/              # 빌드 결과물
+├── infra/                  # AWS CDK 인프라 코드
+│   ├── lib/               # CDK 스택 정의
+│   └── bin/               # CDK 앱 진입점
 ├── docs/                  # 프로젝트 문서
+│   ├── migration/         # 마이그레이션 관련 문서
 │   ├── PRD.md            # 제품 요구사항 문서
 │   └── tasks.md          # 구현 작업 목록
-├── docker-compose.yml     # 로컬 개발 환경
-├── Makefile              # 빌드 및 개발 명령어
+├── .github/workflows/      # GitHub Actions CI/CD
+├── docker-compose*.yml     # 로컬 개발 환경
+├── Makefile              # 빌드, 개발, 배포 명령어
 └── README.md             # 프로젝트 개요 (이 파일)
 ```
 
@@ -116,17 +129,23 @@
 
 ### 사전 요구사항
 
+#### 로컬 개발
 - **Go 1.21+**
 - **Node.js 18+**
 - **Docker & Docker Compose**
 - **Make**
 
+#### AWS 배포 (선택사항)
+- **AWS CLI**
+- **GitHub CLI (gh)**
+- **AWS 계정 및 IAM 권한**
+
 ### 로컬 개발 환경 설정
 
 1. **저장소 클론**
    ```bash
-   git clone https://github.com/vibe-coding-paradigm/Realworld-build-from-prd.git
-   cd Realworld-build-from-prd
+   git clone https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice.git
+   cd Realworld-serverless-microservice
    ```
 
 2. **개발 환경 시작**
