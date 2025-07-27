@@ -1,6 +1,37 @@
 # RealWorld 앱 구현 - 바이브 코딩 & 아르민 로나허 기술 스택
 
+[![Frontend Deploy](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml)
+[![Backend Deploy](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/deploy-backend.yml)
+[![Issues](https://img.shields.io/github/issues/vibe-coding-paradigm/Realworld-serverless-microservice)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/issues)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 > **"The mother of all demo apps"** — 실제 운영 가능한 수준의 Medium.com 클론 구축
+
+## 🔄 모노리식에서 서버리스 마이크로서비스로의 마이그레이션
+
+이 프로젝트는 **단일 애플리케이션(모노리식)에서 서버리스 마이크로서비스 아키텍처로의 실전 마이그레이션 과정**을 보여줍니다. Fast Campus의 "바이브 코딩 패러다임" 강의를 위한 실습 프로젝트로, 점진적 마이그레이션 전략과 현대적인 클라우드 아키텍처 구현 방법을 학습할 수 있습니다.
+
+### 📈 마이그레이션 단계
+
+1. **Phase 1: 모노리식 애플리케이션** (현재)
+   - Go 백엔드 + React 프론트엔드
+   - SQLite 데이터베이스
+   - Docker 컨테이너 기반
+
+2. **Phase 2: 클라우드 전환**
+   - AWS ECS/Fargate로 컨테이너 마이그레이션
+   - GitHub Pages로 프론트엔드 배포
+   - CloudFormation/CDK 인프라 코드
+
+3. **Phase 3: 마이크로서비스 분해**
+   - 도메인별 서비스 분리 (Auth, Articles, Comments)
+   - API Gateway + Lambda 함수
+   - DynamoDB/RDS 데이터 분산
+
+4. **Phase 4: 서버리스 최적화**
+   - 완전한 서버리스 아키텍처
+   - 이벤트 기반 아키텍처
+   - 모니터링 및 관찰성 구현
 
 ## 📋 프로젝트 개요
 
@@ -15,9 +46,19 @@
 
 ## 🚀 데모 및 참고 자료
 
-- **[라이브 데모](https://demo.realworld.io/)** - 완성된 애플리케이션 미리보기
+### 배포된 애플리케이션
+- **[현재 프론트엔드 데모](https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/)** - GitHub Pages 배포된 React 앱
+- **[백엔드 API](http://localhost:8080)** - 로컬 개발 서버 (배포 예정)
+
+### 참고 자료
+- **[RealWorld 공식 데모](https://demo.realworld.io/)** - 완성된 애플리케이션 미리보기
 - **[RealWorld 프로젝트](https://github.com/gothinkster/realworld)** - 공식 사양 및 다양한 구현체들
 - **[API 문서](https://realworld-docs.netlify.app/)** - 구현해야 할 API 명세
+
+### 마이그레이션 문서
+- **[마이그레이션 PRD](docs/migration/PRD.md)** - 마이그레이션 제품 요구사항 문서
+- **[GitHub 이슈 관리 가이드](docs/migration/github-issue-guidelines.md)** - 프로젝트 이슈 관리 방법론
+- **[작업 진행 상황](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/issues)** - GitHub Issues로 추적되는 실시간 진행 상황
 
 ## 🛠️ 기술 스택
 
@@ -141,11 +182,19 @@ make lint
 
 ## 🤝 기여하기
 
-이 프로젝트는 학습 목적으로 만들어졌습니다. 기여를 원하시는 분은:
+이 프로젝트는 학습 목적으로 만들어졌으며, **체계적인 이슈 관리**를 통해 진행됩니다. 기여를 원하시는 분은:
 
-1. 이슈를 통해 논의해주세요
-2. 포크 후 기능 브랜치를 생성해주세요
-3. 풀 리퀘스트를 제출해주세요
+1. **[GitHub Issues](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/issues)**를 통해 논의해주세요
+2. **[이슈 관리 가이드라인](docs/migration/github-issue-guidelines.md)**을 숙지해주세요
+3. 포크 후 기능 브랜치를 생성해주세요
+4. 변경사항은 증거와 함께 이슈에 업데이트해주세요
+5. 풀 리퀘스트를 제출해주세요
+
+### 📊 프로젝트 추적
+
+- **[GitHub Issues](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/issues)** - 모든 작업이 이슈로 추적됩니다
+- **[GitHub Actions](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions)** - CI/CD 파이프라인 상태 확인
+- **[GitHub Pages 배포](https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/)** - 자동 배포된 프론트엔드
 
 ## 📄 라이선스
 
