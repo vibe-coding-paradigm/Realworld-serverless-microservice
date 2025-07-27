@@ -1,0 +1,238 @@
+name: Deploy Backend to ECS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd backend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      
+      - name: Check if ECS cluster exists
+        id: check-cluster
+        run: |
+          if aws ecs describe-clusters --clusters ${{ vars.ECS_CLUSTER }} --query 'clusters[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create ECS cluster if not exists
+        if: steps.check-cluster.outputs.exists == 'false'
+        run: |
+          aws ecs create-cluster --cluster-name ${{ vars.ECS_CLUSTER }}
+          echo "ECS cluster ${{ vars.ECS_CLUSTER }} created"
+      
+      - name: Create ECS task execution role if not exists
+        run: |
+          if ! aws iam get-role --role-name ecsTaskExecutionRole 2>/dev/null; then
+            cat > trust-policy.json << 'EOF'
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs-tasks.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+          EOF
+            aws iam create-role --role-name ecsTaskExecutionRole --assume-role-policy-document file://trust-policy.json
+            aws iam attach-role-policy --role-name ecsTaskExecutionRole --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+            echo "ECS task execution role created"
+          else
+            echo "ECS task execution role already exists"
+          fi
+      
+      - name: Create EFS file system if not exists
+        id: create-efs
+        run: |
+          # Check if EFS with conduit tag exists
+          EFS_ID=$(aws efs describe-file-systems --query 'FileSystems[?Tags[?Key==`Name` && Value==`conduit-efs`]].FileSystemId' --output text)
+          
+          if [ -z "$EFS_ID" ] || [ "$EFS_ID" = "None" ]; then
+            # Create EFS file system
+            EFS_ID=$(aws efs create-file-system \
+              --creation-token conduit-efs-$(date +%s) \
+              --performance-mode generalPurpose \
+              --lifecycle-policies TransitionToIA=AFTER_7_DAYS \
+              --query 'FileSystemId' --output text)
+            
+            # Tag the EFS
+            aws efs create-tags --file-system-id $EFS_ID --tags Key=Name,Value=conduit-efs
+            
+            # Wait for EFS to be available
+            aws efs wait file-system-available --file-system-id $EFS_ID
+            
+            # Create mount targets for all subnets
+            VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text)
+            SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[].SubnetId' --output text)
+            
+            # Get default security group
+            SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=default" "Name=vpc-id,Values=$VPC_ID" --query 'SecurityGroups[0].GroupId' --output text)
+            
+            # Add NFS rule to security group if not exists
+            aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 2049 --source-group $SG_ID 2>/dev/null || echo "NFS rule already exists"
+            
+            # Create mount targets
+            for SUBNET_ID in $SUBNET_IDS; do
+              aws efs create-mount-target --file-system-id $EFS_ID --subnet-id $SUBNET_ID --security-groups $SG_ID 2>/dev/null || echo "Mount target may already exist"
+            done
+            
+            echo "EFS file system created: $EFS_ID"
+          else
+            echo "EFS file system already exists: $EFS_ID"
+          fi
+          
+          echo "efs_id=$EFS_ID" >> $GITHUB_OUTPUT
+      
+      - name: Register ECS task definition
+        id: task-def
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+          EFS_ID: ${{ steps.create-efs.outputs.efs_id }}
+        run: |
+          cat > task-definition.json << EOF
+          {
+            "family": "conduit-backend",
+            "networkMode": "awsvpc",
+            "requiresCompatibilities": ["FARGATE"],
+            "cpu": "256",
+            "memory": "512",
+            "executionRoleArn": "arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/ecsTaskExecutionRole",
+            "volumes": [
+              {
+                "name": "conduit-efs-volume",
+                "efsVolumeConfiguration": {
+                  "fileSystemId": "$EFS_ID"
+                }
+              }
+            ],
+            "containerDefinitions": [
+              {
+                "name": "conduit-backend",
+                "image": "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
+                "portMappings": [
+                  {
+                    "containerPort": 8080,
+                    "protocol": "tcp"
+                  }
+                ],
+                "environment": [
+                  {
+                    "name": "PORT",
+                    "value": "8080"
+                  },
+                  {
+                    "name": "DATABASE_URL",
+                    "value": "/mnt/efs/conduit.db"
+                  }
+                ],
+                "mountPoints": [
+                  {
+                    "sourceVolume": "conduit-efs-volume",
+                    "containerPath": "/mnt/efs",
+                    "readOnly": false
+                  }
+                ],
+                "logConfiguration": {
+                  "logDriver": "awslogs",
+                  "options": {
+                    "awslogs-group": "/ecs/conduit-backend",
+                    "awslogs-region": "${{ vars.AWS_REGION }}",
+                    "awslogs-stream-prefix": "ecs",
+                    "awslogs-create-group": "true"
+                  }
+                },
+                "essential": true
+              }
+            ]
+          }
+          EOF
+          
+          # Get AWS account ID
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          sed -i "s/\${{ env.AWS_ACCOUNT_ID }}/$AWS_ACCOUNT_ID/g" task-definition.json
+          
+          TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://task-definition.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
+      
+      - name: Create or update ECS service
+        env:
+          TASK_DEF_ARN: ${{ steps.task-def.outputs.task_def_arn }}
+        run: |
+          # Check if service exists
+          if aws ecs describe-services --cluster ${{ vars.ECS_CLUSTER }} --services ${{ vars.ECS_SERVICE }} --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            # Update existing service
+            aws ecs update-service \
+              --cluster ${{ vars.ECS_CLUSTER }} \
+              --service ${{ vars.ECS_SERVICE }} \
+              --task-definition $TASK_DEF_ARN \
+              --force-new-deployment
+            echo "ECS service updated"
+          else
+            # Get VPC and subnet information
+            VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text)
+            SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[].SubnetId' --output text | tr ' ' ',')
+            SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=default" "Name=vpc-id,Values=$VPC_ID" --query 'SecurityGroups[0].GroupId' --output text)
+            
+            # Create new service
+            aws ecs create-service \
+              --cluster ${{ vars.ECS_CLUSTER }} \
+              --service-name ${{ vars.ECS_SERVICE }} \
+              --task-definition $TASK_DEF_ARN \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --capacity-provider-strategy capacityProvider=FARGATE_SPOT,weight=1 \
+              --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SG_ID],assignPublicIp=ENABLED}" \
+              --enable-execute-command
+            echo "ECS service created"
+          fi
+      
+      - name: Wait for service to be stable
+        run: |
+          echo "Waiting for ECS service to be stable..."
+          aws ecs wait services-stable --cluster ${{ vars.ECS_CLUSTER }} --services ${{ vars.ECS_SERVICE }}
+          echo "ECS service is stable"
+      
+      - name: Get service status
+        run: |
+          aws ecs describe-services --cluster ${{ vars.ECS_CLUSTER }} --services ${{ vars.ECS_SERVICE }} --query 'services[0].{Status:status,RunningCount:runningCount,DesiredCount:desiredCount}'
