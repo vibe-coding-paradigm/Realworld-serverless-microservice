@@ -1,16 +1,15 @@
-name: Deploy Backend with CDK
+name: Update Backend Service
 
 on:
   push:
     branches: [main]
     paths:
       - 'backend/**'
-      - 'infra/**'
       - '.github/workflows/backend-deploy-cdk.yml'
   workflow_dispatch:
 
 jobs:
-  deploy:
+  update:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -44,25 +43,23 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd backend
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
       
-      - name: Install CDK dependencies
+      - name: Check infrastructure exists
         run: |
-          cd infra
-          npm ci
-      
-      - name: CDK Bootstrap (if needed)
-        run: |
-          cd infra
-          npx cdk bootstrap --require-approval never
-      
-      - name: CDK Deploy Infrastructure
-        run: |
-          cd infra
-          npx cdk deploy --require-approval never
+          # Check if CDK stack exists - if not, fail with helpful message
+          if ! aws cloudformation describe-stacks --stack-name ConduitStack &>/dev/null; then
+            echo "❌ Error: Infrastructure not found!"
+            echo "Please run initial deployment locally first:"
+            echo "  make cdk-deploy"
+            echo ""
+            echo "This workflow only handles service updates after initial infrastructure deployment."
+            exit 1
+          fi
+          echo "✅ Infrastructure exists, proceeding with service update..."
       
       - name: Force ECS service update with new image
         run: |
@@ -88,11 +85,6 @@ jobs:
             --query 'services[0].{Status:status,RunningCount:runningCount,DesiredCount:desiredCount}' \
             --output table
           
-          echo "=== CDK Stack Outputs ==="
-          aws cloudformation describe-stacks \
-            --stack-name ConduitStack \
-            --query 'Stacks[0].Outputs' \
-            --output table
       
       - name: Test health endpoint
         run: |

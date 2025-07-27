@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-debug cdk-deploy cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status
 
 # 기본 타겟
 help:
@@ -14,6 +14,7 @@ help:
 	@echo "  check-deps     - 필요한 도구 설치 확인"
 	@echo ""
 	@echo "배포 및 디버깅:"
+	@echo "  deploy-initial - 초기 인프라 전체 배포 (로컬 전용)"
 	@echo "  deploy-check   - 배포 상태 확인"
 	@echo "  deploy-logs    - 배포 로그 확인"
 	@echo "  deploy-debug   - 배포 디버깅 정보"
@@ -216,6 +217,22 @@ cdk-deploy:
 	@echo "🚀 CDK로 인프라를 배포하는 중..."
 	@command -v npm >/dev/null 2>&1 || (echo "❌ npm을 찾을 수 없습니다"; exit 1)
 	cd infra && npm install && npx cdk deploy --require-approval never
+
+# 초기 배포 (로컬에서만 실행)
+deploy-initial:
+	@echo "🏗️  초기 인프라 배포를 시작합니다..."
+	@echo "1️⃣  ECR 리포지토리 확인/생성 중..."
+	@aws ecr describe-repositories --repository-names conduit-backend --region ap-northeast-2 >/dev/null 2>&1 || \
+		aws ecr create-repository --repository-name conduit-backend --region ap-northeast-2
+	@echo "2️⃣  ECR 로그인 중..."
+	@aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $$(aws sts get-caller-identity --query Account --output text).dkr.ecr.ap-northeast-2.amazonaws.com
+	@echo "3️⃣  Docker 이미지 빌드 중 (AMD64)..."
+	@cd backend && docker build --platform linux/amd64 -t $$(aws sts get-caller-identity --query Account --output text).dkr.ecr.ap-northeast-2.amazonaws.com/conduit-backend:latest .
+	@echo "4️⃣  Docker 이미지 푸시 중..."
+	@docker push $$(aws sts get-caller-identity --query Account --output text).dkr.ecr.ap-northeast-2.amazonaws.com/conduit-backend:latest
+	@echo "5️⃣  CDK 인프라 배포 중..."
+	@cd infra && npm install && npx cdk bootstrap --require-approval never && npx cdk deploy --require-approval never
+	@echo "✅ 초기 배포가 완료되었습니다!"
 
 cdk-destroy:
 	@echo "🗑️  CDK 인프라를 삭제하는 중..."

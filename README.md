@@ -157,6 +157,36 @@
    - 프론트엔드: http://localhost:3000
    - 백엔드 API: http://localhost:8080
 
+### AWS 클라우드 배포
+
+#### 초기 배포 (최초 1회만 실행)
+
+⚠️ **중요**: 초기 배포는 **반드시 로컬**에서 실행해야 합니다. GitHub Actions 토큰 만료 문제로 인해 클라우드에서 초기 배포가 실패할 수 있습니다.
+
+1. **AWS 계정 설정**
+   ```bash
+   # AWS CLI 설정
+   aws configure
+   
+   # 또는 환경변수로 설정
+   export AWS_ACCESS_KEY_ID=your-access-key
+   export AWS_SECRET_ACCESS_KEY=your-secret-key
+   export AWS_DEFAULT_REGION=ap-northeast-2
+   ```
+
+2. **초기 인프라 배포**
+   ```bash
+   # 전체 초기 배포 (ECR + Docker 빌드 + CDK 배포)
+   make deploy-initial
+   ```
+
+#### 이후 업데이트 (GitHub Actions 자동 배포)
+
+초기 배포 완료 후에는 GitHub Actions가 자동으로 처리합니다:
+
+- **백엔드 코드 변경**: `backend/` 디렉터리 변경 시 자동 배포
+- **수동 배포**: GitHub Actions에서 "Update Backend Service" 워크플로우 실행
+
 ### 주요 명령어
 
 #### 개발 및 테스트
@@ -182,6 +212,9 @@ make lint
 
 #### 배포 및 디버깅
 ```bash
+# 🏗️ 초기 인프라 배포 (최초 1회, 로컬에서만)
+make deploy-initial
+
 # 배포 상태 확인
 make deploy-check
 
@@ -191,7 +224,7 @@ make deploy-logs
 # 전체 디버깅 정보
 make debug
 
-# CDK 인프라 배포
+# CDK 인프라 배포 (개별)
 make cdk-deploy
 
 # CDK 인프라 삭제

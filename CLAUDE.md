@@ -31,8 +31,12 @@ This is a **RealWorld application implementation** demonstrating **monolithic to
 - **Frontend**: Automatically deployed to GitHub Pages via GitHub Actions
   - URL: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
   - Triggered on changes to `frontend/**` directory
-- **Backend**: Docker container (localhost:8080 for development)
-- **CI/CD**: GitHub Actions workflows for both frontend and backend
+- **Backend**: AWS ECS/Fargate with Docker containers
+  - **Phase 2**: Cloud deployment in progress
+  - **Initial Deployment**: Must be done locally (`make deploy-initial`)
+  - **Updates**: Automated via GitHub Actions after initial deployment
+- **Infrastructure**: AWS CDK (TypeScript) - ECS, ECR, EFS, VPC
+- **CI/CD**: GitHub Actions workflows optimized for updates only
 
 ## Development Commands
 
@@ -81,7 +85,20 @@ docker-compose down             # Stop all services
 docker-compose logs backend     # View backend logs
 ```
 
-### Deployment and Debugging (Makefile Scripts)
+### AWS Deployment (Makefile Scripts)
+```bash
+# ⚠️ INITIAL DEPLOYMENT (Local Only - Required First!)
+make deploy-initial              # Complete initial infrastructure setup
+
+# After initial deployment, GitHub Actions handles updates automatically
+# For manual operations:
+make deploy-check               # Check deployment status
+make deploy-logs               # View deployment logs
+make cdk-deploy               # Deploy infrastructure only
+make cdk-destroy              # Delete infrastructure
+```
+
+### Development and Debugging (Makefile Scripts)
 ```bash
 # Deployment Status and Monitoring
 make deploy-check               # Check deployment status of both frontend and backend
