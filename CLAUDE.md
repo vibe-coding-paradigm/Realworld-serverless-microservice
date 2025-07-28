@@ -20,23 +20,27 @@ This is a **RealWorld application implementation** demonstrating **monolithic to
 
 ## Architecture
 
-### Current State (Phase 1)
+### Current State (Phase 2 Complete)
 - **Backend**: Go with standard `net/http` library, Clean Architecture pattern
 - **Frontend**: React 19 + TypeScript, deployed to GitHub Pages
 - **Database**: SQLite with raw SQL queries (no ORM)
-- **Authentication**: JWT token-based stateless authentication
-- **Deployment**: Frontend via GitHub Actions to Pages, Backend containerized
+- **Authentication**: JWT token-based stateless authentication (fully functional)  
+- **Infrastructure**: AWS ECS/Fargate + Application Load Balancer (ALB)
+- **Deployment**: Full CI/CD via GitHub Actions with automatic E2E testing
+- **Testing**: Comprehensive E2E (Playwright) + Load Testing (k6) infrastructure
 
 ### Deployment Architecture
 - **Frontend**: Automatically deployed to GitHub Pages via GitHub Actions
   - URL: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
   - Triggered on changes to `frontend/**` directory
 - **Backend**: AWS ECS/Fargate with Docker containers
-  - **Phase 2**: Cloud deployment in progress
+  - **Phase 2**: Cloud deployment completed ✅
+  - **ALB**: conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com 
   - **Initial Deployment**: Must be done locally (`make deploy-initial`)
   - **Updates**: Automated via GitHub Actions after initial deployment
-- **Infrastructure**: AWS CDK (TypeScript) - ECS, ECR, EFS, VPC
-- **CI/CD**: GitHub Actions workflows optimized for updates only
+- **Infrastructure**: AWS CDK (TypeScript) - ECS, ECR, ALB, VPC
+- **CI/CD**: GitHub Actions workflows with automatic E2E testing
+- **Testing**: E2E tests run on all deployments, load tests manual trigger
 
 ## Development Commands
 
@@ -96,6 +100,23 @@ make deploy-check               # Check deployment status
 make deploy-logs               # View deployment logs
 make cdk-deploy               # Deploy infrastructure only
 make cdk-destroy              # Delete infrastructure
+```
+
+### Testing Commands
+```bash
+# End-to-End Testing (Playwright)
+cd frontend && npm run test:e2e           # Run all E2E tests
+cd frontend && npx playwright test --ui   # Run E2E tests with UI mode
+cd frontend && npx playwright test --project=chromium  # Test specific browser
+
+# Load Testing (k6)
+cd load-tests && k6 run basic-load-test.js     # Basic load test
+cd load-tests && k6 run performance-baseline.js  # Performance baseline
+cd load-tests && k6 run auth-load-test.js      # Authentication load test
+
+# Unit Tests
+cd backend && go test ./...               # Run all Go unit tests
+cd frontend && npm run test:run           # Run all frontend unit tests
 ```
 
 ### Development and Debugging (Makefile Scripts)
@@ -240,6 +261,30 @@ When closing issues, include:
 - **API Integration**: Mock Service Worker (MSW)
 - **Type Safety**: TypeScript strict mode enabled
 
+### End-to-End Testing (Playwright)
+- **Framework**: Playwright with TypeScript configuration
+- **Browser Coverage**: Chrome, Firefox, Safari (WebKit)
+- **Test Scenarios**: 35+ comprehensive E2E test cases
+- **Authentication Flow**: Complete signup/login/JWT validation
+- **CRUD Operations**: Articles and comments full lifecycle testing
+- **Cross-browser**: Parallel execution across all supported browsers
+- **CI Integration**: Automatic execution on every deployment
+
+### Load Testing (k6)
+- **Tool**: k6 performance testing framework
+- **Test Types**: Performance baseline, basic load, authentication load, spike tests
+- **Performance Thresholds**: 95% requests < 2s, error rate < 1%
+- **Scenarios**: Single user, 5-20 concurrent users, sustained load patterns
+- **Execution**: Manual trigger via GitHub Actions, comprehensive reporting
+- **Metrics**: Response times, throughput, error rates, resource utilization
+
+### CI/CD Testing Integration
+- **Automatic E2E**: Runs on all frontend/backend deployments
+- **Manual Load Testing**: Triggered manually via GitHub Actions workflow_dispatch
+- **Dynamic URL Management**: Automatic detection of deployed backend/frontend URLs
+- **Test Evidence**: Comprehensive reporting with artifacts and HTML reports
+- **Failure Handling**: Clear error messages and debugging information
+
 ## Tech Stack
 
 ### Backend
@@ -258,17 +303,26 @@ When closing issues, include:
 - **State**: Context API + React Query (@tanstack/react-query)
 
 ### Deployment
-- **Frontend**: GitHub Actions → GitHub Pages
-- **Backend**: Docker → AWS ECS (planned)
-- **Database**: SQLite → RDS/DynamoDB (planned)
-- **Infrastructure**: AWS CDK for cloud resources
+- **Frontend**: GitHub Actions → GitHub Pages ✅
+- **Backend**: Docker → AWS ECS/Fargate with ALB ✅
+- **Database**: SQLite file storage (local, MVP approach)
+- **Infrastructure**: AWS CDK for cloud resources ✅
+- **Testing**: Playwright E2E + k6 Load Testing ✅
 
 ## Migration Planning
 
-Current focus is Phase 1 completion before moving to Phase 2 cloud migration. Key files for migration planning:
+**Phase 2 Complete** ✅ - Cloud migration successfully completed. Current focus is Phase 3 preparation. Key files for migration planning:
 - `docs/migration/PRD.md` - Migration requirements
 - `docs/migration/github-issue-guidelines.md` - Issue management process
+- `docs/github-variables.md` - CI/CD environment configuration guide
 - GitHub Issues track all migration progress with evidence-based completion
+
+### Completed Infrastructure:
+- **ECS/Fargate**: Container orchestration with Auto Scaling
+- **Application Load Balancer**: conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com
+- **JWT Authentication**: Fully functional with proper secret management
+- **CI/CD Pipeline**: Automated deployments with E2E testing
+- **Monitoring**: Comprehensive testing and verification infrastructure
 
 ## Workflow Management
 Do not manually trigger workflows; only start workflows through PR merges to avoid duplicate executions and failures.
