@@ -1,0 +1,193 @@
+name: Load Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend API URL for load testing (leave empty to use repository variable)'
+        required: false
+        type: string
+        default: ''
+      test_duration:
+        description: 'Test duration override (e.g., 30s for quick tests)'
+        required: false
+        type: string
+        default: ''
+  workflow_call:
+    inputs:
+      backend_url:
+        description: 'Backend API URL for load testing'
+        required: true
+        type: string
+      test_duration:
+        description: 'Test duration override (e.g., 30s for quick tests)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  load-tests:
+    name: Run Load Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Determine backend URL
+      id: backend-url
+      run: |
+        if [ -n "${{ inputs.backend_url }}" ]; then
+          echo "backend_url=${{ inputs.backend_url }}" >> $GITHUB_OUTPUT
+          echo "✅ Using input backend URL: ${{ inputs.backend_url }}"
+        elif [ -n "${{ vars.BACKEND_URL }}" ]; then
+          echo "backend_url=${{ vars.BACKEND_URL }}" >> $GITHUB_OUTPUT
+          echo "✅ Using repository variable BACKEND_URL: ${{ vars.BACKEND_URL }}"
+        else
+          echo "❌ Error: No backend URL provided. Either provide backend_url input or set BACKEND_URL repository variable"
+          exit 1
+        fi
+
+    - name: Install k6
+      run: |
+        sudo gpg -k
+        sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: Wait for backend to be ready
+      run: |
+        API_URL="${{ steps.backend-url.outputs.backend_url }}"
+        echo "Waiting for backend at $API_URL to be ready..."
+        for i in {1..30}; do
+          if curl -s "$API_URL/health" | grep -q "ok"; then
+            echo "Backend is ready!"
+            break
+          fi
+          echo "Attempt $i: Backend not ready, waiting..."
+          sleep 10
+        done
+
+    - name: Run Performance Baseline Test
+      working-directory: load-tests
+      env:
+        API_URL: ${{ steps.backend-url.outputs.backend_url }}
+      run: |
+        # Override duration for CI if specified
+        if [ -n "${{ inputs.test_duration }}" ]; then
+          k6 run --duration ${{ inputs.test_duration }} --vus 1 performance-baseline.js
+        else
+          k6 run performance-baseline.js
+        fi
+
+    - name: Run Basic Load Test (Short Duration for CI)
+      working-directory: load-tests
+      env:
+        API_URL: ${{ steps.backend-url.outputs.backend_url }}
+      run: |
+        # Use shorter duration for CI
+        k6 run --duration 1m --vus 5 basic-load-test.js
+
+    - name: Run Authentication Load Test
+      working-directory: load-tests
+      env:
+        API_URL: ${{ steps.backend-url.outputs.backend_url }}
+      run: k6 run auth-load-test.js
+
+    - name: Upload load test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: load-test-results
+        path: |
+          load-tests/*.json
+          load-tests/*.html
+          load-tests/results/
+        retention-days: 30
+
+    - name: Parse load test results
+      id: load-test-results
+      if: always()
+      run: |
+        cd load-tests
+        
+        # Check if HTML reports exist and extract key metrics
+        if [ -f "performance-baseline-report.html" ]; then
+          echo "baseline_report_exists=true" >> $GITHUB_OUTPUT
+        fi
+        
+        if [ -f "load-test-summary.html" ]; then
+          echo "load_report_exists=true" >> $GITHUB_OUTPUT
+        fi
+        
+        if [ -f "auth-load-test-summary.html" ]; then
+          echo "auth_report_exists=true" >> $GITHUB_OUTPUT
+        fi
+        
+        # Simple success indicator based on file existence
+        echo "load_tests_completed=true" >> $GITHUB_OUTPUT
+
+    - name: Comment load test results on PR
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request' && always()
+      with:
+        script: |
+          const body = `
+          ## ⚡ Load Test Results
+          
+          ### Tests Executed
+          - **Performance Baseline**: ${{ steps.load-test-results.outputs.baseline_report_exists == 'true' && '✅ Completed' || '❌ Failed' }}
+          - **Basic Load Test**: ${{ steps.load-test-results.outputs.load_report_exists == 'true' && '✅ Completed' || '❌ Failed' }}
+          - **Authentication Load Test**: ${{ steps.load-test-results.outputs.auth_report_exists == 'true' && '✅ Completed' || '❌ Failed' }}
+          
+          ### Known Issues (Expected)
+          - ⚠️ JWT_SECRET not configured - authentication tests document this limitation
+          - ⚠️ ALB not deployed - using direct ECS task IP
+          
+          ### Performance Targets
+          - Health endpoint: < 100ms (95th percentile)
+          - Articles endpoint: < 500ms (95th percentile)
+          - Error rate: < 10% (excluding JWT errors)
+          
+          **Detailed Reports**: Check workflow artifacts for HTML reports and metrics
+          
+          💡 These tests validate current system performance and document known configuration issues.
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: load-tests
+    if: always() && needs.load-tests.result == 'success'
+    
+    steps:
+    - name: Download load test results
+      uses: actions/download-artifact@v4
+      with:
+        name: load-test-results
+        path: load-test-results/
+
+    - name: Performance Analysis
+      run: |
+        echo "📊 Performance Analysis Summary"
+        echo "================================"
+        
+        echo "📁 Available Reports:"
+        find load-test-results -name "*.html" -o -name "*.json" | head -10
+        
+        echo ""
+        echo "📈 Next Steps:"
+        echo "1. Review HTML reports for detailed metrics"
+        echo "2. Compare against performance baselines"
+        echo "3. Fix JWT_SECRET configuration issue"
+        echo "4. Deploy ALB for proper load balancing"
+        echo "5. Re-run tests after infrastructure fixes"

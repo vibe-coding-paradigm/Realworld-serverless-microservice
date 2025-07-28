@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Performance Baseline Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .metric { margin: 20px 0; padding: 15px; border-left: 4px solid #ccc; }
+        .excellent { border-color: green; }
+        .good { border-color: yellow; }
+        .poor { border-color: red; }
+        .score { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Performance Baseline Report</h1>
+    
+    <div class="metric poor">
+        <h3>Overall Performance Score</h3>
+        <div class="score">60/100</div>
+    </div>
+    
+    <div class="metric">
+        <h3>Health Endpoint Performance</h3>
+        <p>Average Response Time: 9.73ms</p>
+        <p>95th Percentile: 20.00ms</p>
+        <p>Target: &lt;100ms (✅ PASS)</p>
+    </div>
+    
+    <div class="metric">
+        <h3>Articles Endpoint Performance</h3>
+        <p>Average Response Time: 11.00ms</p>
+        <p>95th Percentile: 17.00ms</p>
+        <p>Target: &lt;500ms (✅ PASS)</p>
+    </div>
+    
+    <div class="metric">
+        <h3>Reliability Metrics</h3>
+        <p>Success Rate: 66.67%</p>
+        <p>Total Requests: 90</p>
+        <p>Failed Requests: 0</p>
+    </div>
+    
+    <div class="metric">
+        <h3>System Information</h3>
+        <p>Test Duration: 30s</p>
+        <p>Target URL: http://3.39.187.72:8080</p>
+        <p>Generated: 2025-07-28T20:55:28.221Z</p>
+    </div>
+</body>
+</html>
+    

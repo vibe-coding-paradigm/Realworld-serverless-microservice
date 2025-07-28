@@ -22,6 +22,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
+      - name: Check required variables
+        run: |
+          if [ -z "${{ vars.AWS_REGION }}" ]; then
+            echo "❌ Error: AWS_REGION variable is not set"
+            exit 1
+          fi
+          if [ -z "${{ vars.ECS_CLUSTER }}" ]; then
+            echo "❌ Error: ECS_CLUSTER variable is not set" 
+            exit 1
+          fi
+          if [ -z "${{ vars.ECS_SERVICE }}" ]; then
+            echo "❌ Error: ECS_SERVICE variable is not set"
+            exit 1
+          fi
+          if [ -z "${{ vars.ECR_REPOSITORY }}" ]; then
+            echo "❌ Error: ECR_REPOSITORY variable is not set"
+            exit 1
+          fi
+          if [ -z "${{ vars.BACKEND_URL }}" ]; then
+            echo "❌ Error: BACKEND_URL variable is not set"
+            exit 1
+          fi
+          echo "✅ All required variables are set"
       
       - name: Setup Node.js for CDK
         uses: actions/setup-node@v4
@@ -227,3 +251,13 @@ jobs:
             echo "⚠️  No running tasks found for health check"
             echo "Service verification was successful, skipping direct health check"
           fi
+
+  e2e-tests:
+    name: Run E2E Tests After Backend Deployment
+    needs: [deploy, verify]
+    uses: ./.github/workflows/e2e-tests.yml
+    with:
+      backend_url: ${{ vars.BACKEND_URL }}
+      frontend_url: ${{ vars.FRONTEND_URL }}
+    secrets: inherit
+

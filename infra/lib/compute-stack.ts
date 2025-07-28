@@ -110,7 +110,9 @@ export class ComputeStack extends Construct {
         'elasticfilesystem:CreateFileSystem',
         'elasticfilesystem:CreateMountTarget',
         'elasticfilesystem:DescribeFileSystems',
-        'elasticfilesystem:DescribeMountTargets'
+        'elasticfilesystem:DescribeMountTargets',
+        'elasticfilesystem:ClientMount',
+        'elasticfilesystem:ClientWrite'
       ],
       resources: ['*']
     }));
@@ -124,17 +126,17 @@ export class ComputeStack extends Construct {
       taskRole: taskRole
     });
 
-    // EFS 볼륨 추가
-    taskDefinition.addVolume({
-      name: 'efs-volume',
-      efsVolumeConfiguration: {
-        fileSystemId: this.fileSystem.fileSystemId,
-        transitEncryption: 'ENABLED',
-        authorizationConfig: {
-          iam: 'DISABLED' // POSIX 권한 사용
-        }
-      }
-    });
+    // EFS 볼륨 추가 (temporarily disabled for JWT_SECRET testing)
+    // taskDefinition.addVolume({
+    //   name: 'efs-volume',
+    //   efsVolumeConfiguration: {
+    //     fileSystemId: this.fileSystem.fileSystemId,
+    //     transitEncryption: 'ENABLED',
+    //     authorizationConfig: {
+    //       iam: 'DISABLED' // POSIX 권한 사용
+    //     }
+    //   }
+    // });
 
 
     // Container Definition
@@ -150,17 +152,18 @@ export class ComputeStack extends Construct {
       }),
       environment: {
         PORT: '8080',
-        DATABASE_URL: '/mnt/efs/conduit.db'
+        DATABASE_URL: '/tmp/conduit.db', // Temporary: use local storage instead of EFS
+        JWT_SECRET: 'your-super-secure-jwt-secret-key-for-conduit-app-2025'
       },
       essential: true
     });
 
-    // EFS 마운트 포인트 추가
-    container.addMountPoints({
-      sourceVolume: 'efs-volume',
-      containerPath: '/mnt/efs',
-      readOnly: false
-    });
+    // EFS 마운트 포인트 추가 (temporarily disabled for JWT_SECRET testing)
+    // container.addMountPoints({
+    //   sourceVolume: 'efs-volume',
+    //   containerPath: '/mnt/efs',
+    //   readOnly: false
+    // });
 
     // Container Port Mapping
     container.addPortMappings({

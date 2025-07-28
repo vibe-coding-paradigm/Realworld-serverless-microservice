@@ -32,10 +32,19 @@ jobs:
       - name: Install dependencies
         run: cd frontend && npm ci
 
+      - name: Check required variables
+        run: |
+          if [ -z "${{ vars.BACKEND_URL }}" ]; then
+            echo "❌ Error: BACKEND_URL variable is not set"
+            echo "Please set BACKEND_URL in repository variables"
+            exit 1
+          fi
+          echo "✅ Using BACKEND_URL: ${{ vars.BACKEND_URL }}"
+
       - name: Build
         run: cd frontend && npm run build
         env:
-          VITE_API_URL: https://api.conduit.example.com
+          VITE_API_URL: ${{ vars.BACKEND_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -55,3 +64,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  e2e-tests:
+    name: Run E2E Tests After Frontend Deployment
+    needs: deploy
+    uses: ./.github/workflows/e2e-tests.yml
+    with:
+      backend_url: ${{ vars.BACKEND_URL }}
+      frontend_url: ${{ vars.FRONTEND_URL }}
+    secrets: inherit
