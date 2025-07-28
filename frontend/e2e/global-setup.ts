@@ -8,8 +8,8 @@ import { FullConfig } from '@playwright/test';
 async function globalSetup(config: FullConfig) {
   console.log('🚀 Setting up E2E test environment...');
   
-  // Get API URL from environment variables
-  const apiUrl = process.env.API_URL || 'http://3.39.187.72:8080';
+  // Get API URL from environment variables (set by workflow)
+  const apiUrl = process.env.API_URL || 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com';
   
   console.log(`Frontend URL: ${config.use?.baseURL}`);
   console.log(`Backend API URL: ${apiUrl}`);
