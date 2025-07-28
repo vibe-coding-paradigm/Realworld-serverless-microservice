@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all
 
 # 기본 타겟
 help:
@@ -21,6 +21,8 @@ help:
 	@echo "  cdk-deploy     - CDK로 인프라 배포"
 	@echo "  cdk-destroy    - CDK 인프라 삭제"
 	@echo "  cdk-diff       - CDK 변경사항 확인"
+	@echo "  verify-deployment - AWS 배포 상태 검증"
+	@echo "  verify-all     - 완전한 배포 검증"
 
 # 개발 명령어
 dev: check-deps
@@ -260,6 +262,25 @@ gh-workflow-run:
 debug: deploy-debug gh-login-check
 	@echo "🔍 전체 디버깅 정보 수집 완료"
 
+# AWS 배포 검증
+verify-deployment:
+	@echo "🔍 AWS 배포 상태를 검증하는 중..."
+	@command -v node >/dev/null 2>&1 || (echo "❌ Node.js를 찾을 수 없습니다"; exit 1)
+	@if [ ! -d "scripts/node_modules" ]; then \
+		echo "📦 검증 스크립트 의존성 설치 중..."; \
+		cd scripts && npm install; \
+	fi
+	@cd scripts && node verify-deployment.js
+
+verify-deployment-install:
+	@echo "📦 검증 스크립트 의존성을 설치하는 중..."
+	@command -v npm >/dev/null 2>&1 || (echo "❌ npm을 찾을 수 없습니다"; exit 1)
+	cd scripts && npm install
+
 # 빠른 배포 상태 확인
 status: deploy-check health
 	@echo "✅ 전체 시스템 상태 확인 완료"
+
+# 완전한 검증 (배포 상태 + AWS 리소스 검증)
+verify-all: deploy-check verify-deployment
+	@echo "🎯 전체 배포 검증 완료"

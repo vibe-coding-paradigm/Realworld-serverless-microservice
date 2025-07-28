@@ -2,14 +2,12 @@ import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as efs from 'aws-cdk-lib/aws-efs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
 export interface ComputeStackProps {
   vpc: ec2.IVpc;
-  fileSystem: efs.FileSystem;
 }
 
 export class ComputeStack extends Construct {
@@ -43,26 +41,10 @@ export class ComputeStack extends Construct {
       ]
     });
 
-    // ECS Task Role (for EFS access) - 고정된 이름으로 생성 (기존 리소스 재사용)
+    // ECS Task Role - 고정된 이름으로 생성 (기존 리소스 재사용)
     const taskRole = new iam.Role(this, 'TaskRole', {
       roleName: 'ecsTaskRole',
-      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-      inlinePolicies: {
-        EFSAccess: new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              actions: [
-                'elasticfilesystem:CreateAccessPoint',
-                'elasticfilesystem:DeleteAccessPoint',
-                'elasticfilesystem:DescribeAccessPoints',
-                'elasticfilesystem:DescribeFileSystems'
-              ],
-              resources: [props.fileSystem.fileSystemArn]
-            })
-          ]
-        })
-      }
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com')
     });
 
     // Fargate Task Definition
@@ -74,15 +56,6 @@ export class ComputeStack extends Construct {
       taskRole: taskRole
     });
 
-    // EFS Volume
-    const efsVolume: ecs.Volume = {
-      name: 'conduit-efs-volume',
-      efsVolumeConfiguration: {
-        fileSystemId: props.fileSystem.fileSystemId,
-        transitEncryption: 'DISABLED' // 성능 우선, 비용 절감
-      }
-    };
-    taskDefinition.addVolume(efsVolume);
 
     // Container Definition
     const container = taskDefinition.addContainer('conduit-backend', {
@@ -97,7 +70,7 @@ export class ComputeStack extends Construct {
       }),
       environment: {
         PORT: '8080',
-        DATABASE_URL: '/mnt/efs/conduit.db'
+        DATABASE_URL: '/tmp/conduit.db'
       },
       essential: true
     });
@@ -108,12 +81,6 @@ export class ComputeStack extends Construct {
       protocol: ecs.Protocol.TCP
     });
 
-    // Mount EFS Volume
-    container.addMountPoints({
-      containerPath: '/mnt/efs',
-      sourceVolume: efsVolume.name!,
-      readOnly: false
-    });
 
     // Fargate Service with Spot (학습용 최적화 - 1개 태스크)
     this.service = new ecs.FargateService(this, 'ConduitService', {
@@ -130,10 +97,9 @@ export class ComputeStack extends Construct {
       ]
     });
 
-    // Allow EFS access from ECS tasks
-    props.fileSystem.connections.allowDefaultPortFrom(
-      this.service.connections
-    );
+    // Allow HTTP traffic on port 8080
+    this.service.connections.allowFromAnyIpv4(ec2.Port.tcp(8080), 'Allow HTTP traffic on port 8080');
+
 
     // Outputs
     new cdk.CfnOutput(scope, 'ECSClusterName', {

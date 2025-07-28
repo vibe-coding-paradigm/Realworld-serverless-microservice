@@ -1,0 +1,20 @@
+{
+  "name": "deployment-verification",
+  "version": "1.0.0",
+  "description": "AWS 배포 검증 스크립트",
+  "main": "verify-deployment.js",
+  "scripts": {
+    "verify": "node verify-deployment.js",
+    "verify-deployment": "node verify-deployment.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ecs": "^3.668.0",
+    "@aws-sdk/client-iam": "^3.668.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.668.0",
+    "@aws-sdk/client-ecr": "^3.668.0"
+  },
+  "devDependencies": {},
+  "keywords": ["aws", "ecs", "deployment", "verification"],
+  "author": "Realworld Serverless Microservice",
+  "license": "MIT"
+}

@@ -9,11 +9,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  update:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    outputs:
+      cluster-name: ${{ steps.deploy-outputs.outputs.cluster-name }}
+      service-name: ${{ steps.deploy-outputs.outputs.service-name }}
+      deployment-status: ${{ steps.deploy-outputs.outputs.deployment-status }}
     
     steps:
       - name: Checkout code
@@ -104,6 +108,7 @@ jobs:
           exit 1
       
       - name: Get service status and outputs
+        id: deploy-outputs
         run: |
           echo "=== ECS Service Status ==="
           aws ecs describe-services \
@@ -112,20 +117,73 @@ jobs:
             --query 'services[0].{Status:status,RunningCount:runningCount,DesiredCount:desiredCount}' \
             --output table
           
+          # Set outputs for verification job
+          echo "cluster-name=${{ vars.ECS_CLUSTER }}" >> $GITHUB_OUTPUT
+          echo "service-name=${{ vars.ECS_SERVICE }}" >> $GITHUB_OUTPUT  
+          echo "deployment-status=completed" >> $GITHUB_OUTPUT
+          
+          echo "✅ Deployment completed successfully"
+
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js for verification
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      
+      - name: Verify deployment with AWS SDK
+        env:
+          ECS_CLUSTER: ${{ needs.deploy.outputs.cluster-name }}
+          ECS_SERVICE: ${{ needs.deploy.outputs.service-name }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: |
+          echo "🔍 Starting comprehensive deployment verification..."
+          echo "Verifying deployment of:"
+          echo "  - Cluster: $ECS_CLUSTER"
+          echo "  - Service: $ECS_SERVICE"
+          echo "  - Region: $AWS_REGION"
+          echo "  - Repository: $ECR_REPOSITORY"
+          echo ""
+          
+          # Install verification script dependencies
+          cd scripts
+          npm install
+          
+          # Run comprehensive deployment verification
+          node verify-deployment.js
       
       - name: Test health endpoint
+        env:
+          ECS_CLUSTER: ${{ needs.deploy.outputs.cluster-name }}
+          ECS_SERVICE: ${{ needs.deploy.outputs.service-name }}
         run: |
           # Get the first running task's public IP
           TASK_ARN=$(aws ecs list-tasks \
-            --cluster ${{ vars.ECS_CLUSTER }} \
-            --service-name ${{ vars.ECS_SERVICE }} \
+            --cluster $ECS_CLUSTER \
+            --service-name $ECS_SERVICE \
             --desired-status RUNNING \
             --query 'taskArns[0]' \
             --output text)
           
           if [ "$TASK_ARN" != "None" ] && [ "$TASK_ARN" != "" ]; then
             PUBLIC_IP=$(aws ecs describe-tasks \
-              --cluster ${{ vars.ECS_CLUSTER }} \
+              --cluster $ECS_CLUSTER \
               --tasks $TASK_ARN \
               --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
               --output text | xargs -I {} aws ec2 describe-network-interfaces \
@@ -153,12 +211,15 @@ jobs:
                     sleep 30
                   else
                     echo "❌ Health check failed after $max_health_attempts attempts"
+                    exit 1
                   fi
                 fi
               done
             else
-              echo "Could not get public IP for health check"
+              echo "⚠️  Could not get public IP for health check (this is expected for private networks)"
+              echo "Skipping health check as service verification was successful"
             fi
           else
-            echo "No running tasks found"
+            echo "⚠️  No running tasks found for health check"
+            echo "Service verification was successful, skipping direct health check"
           fi
