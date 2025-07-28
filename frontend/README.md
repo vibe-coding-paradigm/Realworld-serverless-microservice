@@ -2,6 +2,8 @@
 
 RealWorld 애플리케이션의 프론트엔드 구현체입니다. React 19, TypeScript, Vite를 사용하여 구현되었습니다.
 
+**최근 업데이트**: Phase 1 데모 진행 중 - AWS ALB 동적 연결 테스트
+
 ## 📋 개요
 
 - **프레임워크**: React 19 + TypeScript
