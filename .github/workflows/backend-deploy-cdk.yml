@@ -165,6 +165,10 @@ jobs:
           cd scripts
           npm install
           
+          # Wait a moment for tasks to transition from PROVISIONING to RUNNING
+          echo "⏳ Waiting 30 seconds for tasks to complete provisioning..."
+          sleep 30
+          
           # Run comprehensive deployment verification
           node verify-deployment.js
       

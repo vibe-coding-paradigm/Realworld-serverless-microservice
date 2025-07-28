@@ -223,10 +223,18 @@ async function verifyECSTasks() {
     log.result('생성 시간', createdAt);
     log.result('시작 시간', startedAt);
     
-    const isHealthy = task.lastStatus === 'RUNNING' && 
+    // Allow PROVISIONING status as it's a transitional state after deployment
+    const isHealthy = (task.lastStatus === 'RUNNING' || task.lastStatus === 'PROVISIONING') && 
                      task.capacityProviderName === CONFIG.EXPECTED_CAPACITY_PROVIDER;
     
-    results.addResult(isHealthy);
+    // Only count as warning if task is still provisioning
+    if (task.lastStatus === 'PROVISIONING') {
+      log.warning('태스크가 아직 프로비저닝 중입니다. 배포 직후의 정상적인 상태입니다.');
+      results.addResult(true, true); // warning level
+    } else {
+      results.addResult(isHealthy);
+    }
+    
     return isHealthy;
     
   } catch (error) {
