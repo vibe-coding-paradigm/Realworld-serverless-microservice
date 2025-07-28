@@ -272,3 +272,32 @@ Current focus is Phase 1 completion before moving to Phase 2 cloud migration. Ke
 
 ## Workflow Management
 Do not manually trigger workflows; only start workflows through PR merges to avoid duplicate executions and failures.
+
+## Deployment Policy (CRITICAL)
+
+### 🚨 MANDATORY GitHub Actions Only Deployment
+**ALL deployments MUST be performed exclusively through GitHub Actions workflows. Manual deployment commands are STRICTLY PROHIBITED.**
+
+#### Prohibited Commands:
+```bash
+# ❌ NEVER use these commands directly
+npx cdk deploy
+make cdk-deploy
+aws cloudformation deploy
+```
+
+#### Required Deployment Process:
+1. **Code Changes**: Make infrastructure or application changes
+2. **Commit & Push**: Commit changes and push to main branch
+3. **GitHub Actions**: Let workflows handle deployment automatically
+4. **Verification**: Use workflow verification scripts to confirm deployment
+
+#### Rationale:
+- **Consistency**: Ensures all deployments follow the same process
+- **Auditability**: Complete deployment history in GitHub Actions
+- **Security**: Prevents unauthorized or inconsistent deployments
+- **Reliability**: Standardized deployment environment and dependencies
+- **Team Collaboration**: All team members follow same deployment process
+
+#### Emergency Override:
+Only in extreme emergencies where GitHub Actions is unavailable, manual deployment may be considered with explicit approval and documentation.
