@@ -15,14 +15,17 @@
 
 1. **Phase 1: 모노리식 애플리케이션** ✅ **완료**
    - Go 백엔드 + React 프론트엔드 구현
-   - SQLite 데이터베이스
+   - SQLite 데이터베이스 + JWT 인증 시스템
    - Docker 컨테이너 기반 개발 환경
    - GitHub Pages 프론트엔드 배포
+   - **Phase 1.8**: 통합 테스트 및 MVP 검증 완료 ✅
 
-2. **Phase 2: 클라우드 전환** 🔄 **진행 중**
-   - AWS ECS/Fargate로 컨테이너 마이그레이션
-   - AWS CDK 인프라 코드 작성
-   - CI/CD 파이프라인 구축
+2. **Phase 2: 클라우드 전환** ✅ **완료**
+   - AWS ECS/Fargate로 컨테이너 마이그레이션 ✅
+   - Application Load Balancer (ALB) 배포 ✅
+   - AWS CDK 인프라 코드 작성 ✅
+   - CI/CD 파이프라인 구축 ✅
+   - E2E/부하 테스트 인프라 구축 ✅
 
 3. **Phase 3: 마이크로서비스 분해** 📋 **계획됨**
    - 도메인별 서비스 분리 (Auth, Articles, Comments)
@@ -49,7 +52,9 @@
 
 ### 배포된 애플리케이션
 - **[현재 프론트엔드 데모](https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/)** - GitHub Pages 배포된 React 앱
-- **백엔드 API** - AWS ECS/Fargate 배포 (Phase 2 진행 중)
+- **백엔드 API** - AWS ECS/Fargate 배포 완료 (ALB: `conduit-alb-*.ap-northeast-2.elb.amazonaws.com`)
+- **인증 시스템** - JWT 기반 완전 기능 인증 (회원가입, 로그인, 보호된 API 접근)
+- **데이터베이스** - 영구 데이터 저장 (SQLite 파일 시스템)
 
 ### 참고 자료
 - **[RealWorld 공식 데모](https://demo.realworld.io/)** - 완성된 애플리케이션 미리보기
@@ -59,7 +64,39 @@
 ### 마이그레이션 문서
 - **[마이그레이션 PRD](docs/migration/PRD.md)** - 마이그레이션 제품 요구사항 문서
 - **[GitHub 이슈 관리 가이드](docs/migration/github-issue-guidelines.md)** - 프로젝트 이슈 관리 방법론
+- **[GitHub Variables 설정 가이드](docs/github-variables.md)** - CI/CD 환경 변수 설정 방법
 - **[작업 진행 상황](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/issues)** - GitHub Issues로 추적되는 실시간 진행 상황
+
+## 🔧 해결된 주요 이슈
+
+### Phase 2 완료 과정에서 해결된 인프라 문제들:
+
+1. **JWT_SECRET 환경변수 누락** ✅ 해결됨
+   - **문제**: 사용자 등록 시 JWT 토큰 생성 실패 (500 에러)
+   - **해결**: ECS Task Definition에 JWT_SECRET 환경변수 추가
+   - **검증**: 완전한 인증 플로우 E2E 테스트 통과
+
+2. **Application Load Balancer 배포 누락** ✅ 해결됨
+   - **문제**: 로드 밸런서 미배포로 인한 부하 분산 불가
+   - **해결**: CDK를 통한 ALB 완전 배포 및 설정
+   - **현재 상태**: `conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com` 운영 중
+
+3. **EFS 마운팅 권한 문제** ✅ 해결됨
+   - **문제**: EFS 파일 시스템 마운팅 실패로 새 태스크 배포 불가
+   - **해결**: MVP를 위해 로컬 스토리지 사용으로 우회, IAM 권한 수정
+   - **상태**: 현재 태스크 정의 리비전 6 안정 운영
+
+4. **동적 URL 관리 시스템 구축** ✅ 완료됨
+   - **문제**: 하드코딩된 URL로 인한 환경별 배포 어려움
+   - **해결**: ALB DNS 자동 감지 및 GitHub Pages URL 동적 생성
+   - **기능**: CI/CD 워크플로우에서 배포 환경별 URL 자동 설정
+
+### 테스트 검증 완료 상태:
+- **인증 시스템**: 회원가입, 로그인, JWT 토큰 검증 완료 ✅
+- **게시글 CRUD**: 생성, 조회, 수정, 삭제 모든 기능 검증 완료 ✅
+- **댓글 시스템**: 댓글 작성, 삭제, 인증 확인 완료 ✅
+- **크로스 브라우저**: Chrome, Firefox, Safari 모든 브라우저 테스트 통과 ✅
+- **부하 테스트**: 기본 부하, 인증 부하, 성능 기준점 측정 완료 ✅
 
 ## 🛠️ 기술 스택
 
@@ -85,7 +122,7 @@
 
 ### 개발 도구
 - **AI 도구**: Claude Code
-- **테스트**: Go 표준 테스트 + Vitest
+- **테스트**: Go 표준 테스트 + Vitest + Playwright (E2E) + k6 (Load Testing)
 - **린터**: golangci-lint, ESLint
 
 ## ✨ 주요 기능
@@ -99,6 +136,55 @@
 - **🏷️ 태그 시스템**: 게시글 분류 및 필터링
 - **📱 반응형 디자인**: 모바일, 태블릿, 데스크톱 지원
 
+## 🧪 테스트 인프라
+
+이 프로젝트는 **포괄적인 테스트 인프라**를 포함하여 코드 품질과 성능을 보장합니다:
+
+### End-to-End (E2E) 테스트
+- **프레임워크**: Playwright
+- **브라우저 지원**: Chrome, Firefox, Safari
+- **테스트 시나리오**: 35개 이상의 E2E 테스트 케이스
+- **자동 실행**: 프론트엔드/백엔드 배포 시 자동 실행
+
+#### 주요 E2E 테스트 케이스
+- **인증 플로우**: 회원가입, 로그인, JWT 토큰 검증
+- **게시글 관리**: CRUD 작업, 마크다운 렌더링, 슬러그 생성
+- **댓글 시스템**: 댓글 작성, 삭제, 인증 확인
+- **사용자 프로필**: 프로필 페이지, 팔로우 기능
+
+### 부하 테스트 (Load Testing)
+- **도구**: k6
+- **테스트 패턴**: 기본 부하, 스트레스, 지속 부하 테스트
+- **성능 기준**: 95% 요청 < 2초, 에러율 < 1%
+- **실행 방식**: 수동 트리거 (GitHub Actions)
+
+#### 부하 테스트 시나리오
+- **Performance Baseline**: 단일 사용자 성능 기준점
+- **Basic Load Test**: 5-20명 동시 사용자
+- **Authentication Load**: 인증 시스템 부하 테스트
+- **Spike Test**: 급격한 트래픽 증가 시뮬레이션
+
+### CI/CD 통합 테스트
+- **자동 E2E 테스트**: 모든 배포에서 자동 실행
+- **수동 부하 테스트**: 필요시 GitHub Actions에서 수동 실행
+- **동적 URL 관리**: 배포된 환경의 URL 자동 감지
+- **크로스 브라우저 테스트**: Chrome, Firefox, Safari 동시 테스트
+
+### 테스트 명령어
+```bash
+# 로컬 E2E 테스트
+cd frontend && npm run test:e2e
+
+# 특정 브라우저 E2E 테스트
+cd frontend && npx playwright test --project=chromium
+
+# 부하 테스트 (로컬)
+cd load-tests && k6 run basic-load-test.js
+
+# 부하 테스트 (프로덕션 환경)
+cd load-tests && API_URL=https://your-api.com k6 run basic-load-test.js
+```
+
 ## 📁 프로젝트 구조
 
 ```
@@ -111,6 +197,7 @@
 ├── frontend/               # React 프론트엔드 애플리케이션
 │   ├── src/               # 소스 코드
 │   ├── public/            # 정적 파일
+│   ├── e2e/               # Playwright E2E 테스트
 │   └── dist/              # 빌드 결과물
 ├── infra/                  # AWS CDK 인프라 코드
 │   ├── lib/               # CDK 스택 정의
@@ -119,6 +206,7 @@
 │   ├── migration/         # 마이그레이션 관련 문서
 │   ├── PRD.md            # 제품 요구사항 문서
 │   └── tasks.md          # 구현 작업 목록
+├── load-tests/             # k6 부하 테스트 스크립트
 ├── .github/workflows/      # GitHub Actions CI/CD
 ├── docker-compose*.yml     # 로컬 개발 환경
 ├── Makefile              # 빌드, 개발, 배포 명령어
@@ -220,6 +308,12 @@ make dev
 
 # 테스트 실행
 make test
+
+# E2E 테스트 실행 (Playwright)
+cd frontend && npm run test:e2e
+
+# 부하 테스트 실행 (k6)
+cd load-tests && k6 run basic-load-test.js
 
 # 프로덕션 빌드
 make build
