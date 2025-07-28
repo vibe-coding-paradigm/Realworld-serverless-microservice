@@ -18,6 +18,7 @@ jobs:
       cluster-name: ${{ steps.deploy-outputs.outputs.cluster-name }}
       service-name: ${{ steps.deploy-outputs.outputs.service-name }}
       deployment-status: ${{ steps.deploy-outputs.outputs.deployment-status }}
+      backend-url: ${{ steps.deploy-outputs.outputs.backend-url }}
     
     steps:
       - name: Checkout code
@@ -39,10 +40,6 @@ jobs:
           fi
           if [ -z "${{ vars.ECR_REPOSITORY }}" ]; then
             echo "❌ Error: ECR_REPOSITORY variable is not set"
-            exit 1
-          fi
-          if [ -z "${{ vars.BACKEND_URL }}" ]; then
-            echo "❌ Error: BACKEND_URL variable is not set"
             exit 1
           fi
           echo "✅ All required variables are set"
@@ -141,10 +138,26 @@ jobs:
             --query 'services[0].{Status:status,RunningCount:runningCount,DesiredCount:desiredCount}' \
             --output table
           
-          # Set outputs for verification job
+          # Get ALB DNS name dynamically
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names conduit-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text \
+            --region ${{ vars.AWS_REGION }})
+          
+          if [ "$ALB_DNS" = "None" ] || [ -z "$ALB_DNS" ]; then
+            echo "❌ Error: Could not retrieve ALB DNS name"
+            exit 1
+          fi
+          
+          BACKEND_URL="http://$ALB_DNS"
+          echo "✅ Backend URL: $BACKEND_URL"
+          
+          # Set outputs
           echo "cluster-name=${{ vars.ECS_CLUSTER }}" >> $GITHUB_OUTPUT
           echo "service-name=${{ vars.ECS_SERVICE }}" >> $GITHUB_OUTPUT  
           echo "deployment-status=completed" >> $GITHUB_OUTPUT
+          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
           
           echo "✅ Deployment completed successfully"
 
@@ -257,7 +270,7 @@ jobs:
     needs: [deploy, verify]
     uses: ./.github/workflows/e2e-tests.yml
     with:
-      backend_url: ${{ vars.BACKEND_URL }}
-      frontend_url: ${{ vars.FRONTEND_URL }}
+      backend_url: ${{ needs.deploy.outputs.backend-url }}
+      frontend_url: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
     secrets: inherit
 

@@ -18,6 +18,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      backend-url: ${{ steps.get-backend-url.outputs.backend-url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,19 +34,36 @@ jobs:
       - name: Install dependencies
         run: cd frontend && npm ci
 
-      - name: Check required variables
+      - name: Get backend URL dynamically
+        id: get-backend-url
         run: |
-          if [ -z "${{ vars.BACKEND_URL }}" ]; then
-            echo "❌ Error: BACKEND_URL variable is not set"
-            echo "Please set BACKEND_URL in repository variables"
+          # Get ALB DNS name dynamically
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names conduit-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text \
+            --region ${{ vars.AWS_REGION }})
+          
+          if [ "$ALB_DNS" = "None" ] || [ -z "$ALB_DNS" ]; then
+            echo "❌ Error: Could not retrieve ALB DNS name"
+            echo "Make sure the backend infrastructure is deployed first"
             exit 1
           fi
-          echo "✅ Using BACKEND_URL: ${{ vars.BACKEND_URL }}"
+          
+          BACKEND_URL="http://$ALB_DNS"
+          echo "✅ Using Backend URL: $BACKEND_URL"
+          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Build
         run: cd frontend && npm run build
         env:
-          VITE_API_URL: ${{ vars.BACKEND_URL }}
+          VITE_API_URL: ${{ steps.get-backend-url.outputs.backend-url }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -60,6 +79,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      frontend-url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
@@ -67,9 +88,9 @@ jobs:
 
   e2e-tests:
     name: Run E2E Tests After Frontend Deployment
-    needs: deploy
+    needs: [build, deploy]
     uses: ./.github/workflows/e2e-tests.yml
     with:
-      backend_url: ${{ vars.BACKEND_URL }}
-      frontend_url: ${{ vars.FRONTEND_URL }}
+      backend_url: ${{ needs.build.outputs.backend-url }}
+      frontend_url: ${{ needs.deploy.outputs.frontend-url }}
     secrets: inherit

@@ -35,18 +35,36 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Configure AWS credentials (if needed for dynamic URL)
+      if: ${{ inputs.backend_url == '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
     - name: Determine backend URL
       id: backend-url
       run: |
         if [ -n "${{ inputs.backend_url }}" ]; then
           echo "backend_url=${{ inputs.backend_url }}" >> $GITHUB_OUTPUT
           echo "✅ Using input backend URL: ${{ inputs.backend_url }}"
-        elif [ -n "${{ vars.BACKEND_URL }}" ]; then
-          echo "backend_url=${{ vars.BACKEND_URL }}" >> $GITHUB_OUTPUT
-          echo "✅ Using repository variable BACKEND_URL: ${{ vars.BACKEND_URL }}"
         else
-          echo "❌ Error: No backend URL provided. Either provide backend_url input or set BACKEND_URL repository variable"
-          exit 1
+          # Get ALB DNS name dynamically
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names conduit-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text \
+            --region ${{ vars.AWS_REGION }})
+          
+          if [ "$ALB_DNS" = "None" ] || [ -z "$ALB_DNS" ]; then
+            echo "❌ Error: Could not retrieve ALB DNS name and no backend_url provided"
+            echo "Please provide backend_url input or ensure backend infrastructure is deployed"
+            exit 1
+          fi
+          
+          BACKEND_URL="http://$ALB_DNS"
+          echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "✅ Using dynamically discovered backend URL: $BACKEND_URL"
         fi
 
     - name: Install k6
