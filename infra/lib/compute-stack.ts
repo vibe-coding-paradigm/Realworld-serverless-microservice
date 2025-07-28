@@ -3,6 +3,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as efs from 'aws-cdk-lib/aws-efs';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
@@ -16,6 +17,8 @@ export class ComputeStack extends Construct {
   public readonly service: ecs.FargateService;
   public readonly repository: ecr.IRepository;
   public readonly fileSystem: efs.FileSystem;
+  public readonly loadBalancer: elbv2.ApplicationLoadBalancer;
+  public readonly targetGroup: elbv2.ApplicationTargetGroup;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
     super(scope, id);
@@ -59,6 +62,30 @@ export class ComputeStack extends Construct {
       lifecyclePolicy: efs.LifecyclePolicy.AFTER_7_DAYS, // 7일 후 IA 클래스 전환
       removalPolicy: cdk.RemovalPolicy.DESTROY, // 학습용 - 스택 삭제 시 EFS도 삭제
       securityGroup: efsSecurityGroup
+    });
+
+    // ALB Security Group - HTTP 트래픽 허용
+    const albSecurityGroup = new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
+      vpc: props.vpc,
+      securityGroupName: 'conduit-alb-sg',
+      description: 'Security group for Application Load Balancer',
+      allowAllOutbound: true
+    });
+
+    // 인터넷에서 ALB로의 HTTP 트래픽 허용 (포트 80)
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      'Allow HTTP traffic from internet'
+    );
+
+    // Application Load Balancer 생성
+    this.loadBalancer = new elbv2.ApplicationLoadBalancer(this, 'ConduitALB', {
+      vpc: props.vpc,
+      loadBalancerName: 'conduit-alb',
+      internetFacing: true, // 인터넷 페이싱 설정
+      securityGroup: albSecurityGroup,
+      deletionProtection: false // 학습용 - 삭제 보호 비활성화
     });
 
     // ECS Task Execution Role - 고정된 이름으로 생성 (기존 리소스 재사용)
@@ -141,6 +168,25 @@ export class ComputeStack extends Construct {
       protocol: ecs.Protocol.TCP
     });
 
+    // 타겟 그룹 생성 (ECS 서비스 생성 전에 미리 생성)
+    this.targetGroup = new elbv2.ApplicationTargetGroup(this, 'ConduitTargetGroup', {
+      targetGroupName: 'conduit-tg',
+      port: 8080,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      vpc: props.vpc,
+      targetType: elbv2.TargetType.IP, // Fargate는 IP 타겟 타입 사용
+      healthCheck: {
+        enabled: true,
+        path: '/health', // 헬스체크 경로
+        protocol: elbv2.Protocol.HTTP,
+        port: '8080',
+        healthyThresholdCount: 2,
+        unhealthyThresholdCount: 3,
+        timeout: cdk.Duration.seconds(10),
+        interval: cdk.Duration.seconds(30)
+      }
+    });
+
 
     // Fargate Service with Spot (학습용 최적화 - 1개 태스크)
     this.service = new ecs.FargateService(this, 'ConduitService', {
@@ -154,11 +200,26 @@ export class ComputeStack extends Construct {
           capacityProvider: 'FARGATE_SPOT',
           weight: 100 // 100% Spot 인스턴스 사용
         }
-      ]
+      ],
+      healthCheckGracePeriod: cdk.Duration.seconds(60) // ALB 헬스체크를 위한 grace period
     });
 
-    // Allow HTTP traffic on port 8080
-    this.service.connections.allowFromAnyIpv4(ec2.Port.tcp(8080), 'Allow HTTP traffic on port 8080');
+    // Allow HTTP traffic from ALB to ECS tasks on port 8080
+    this.service.connections.allowFrom(
+      albSecurityGroup,
+      ec2.Port.tcp(8080),
+      'Allow HTTP traffic from ALB'
+    );
+
+    // ECS 서비스를 타겟 그룹에 연결
+    this.service.attachToApplicationTargetGroup(this.targetGroup);
+
+    // HTTP 리스너 생성 및 타겟 그룹 연결
+    const listener = this.loadBalancer.addListener('HttpListener', {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      defaultTargetGroups: [this.targetGroup]
+    });
 
 
     // Outputs
@@ -190,6 +251,24 @@ export class ComputeStack extends Construct {
       value: this.fileSystem.fileSystemArn,
       description: 'EFS File System ARN',
       exportName: 'ConduitEFSFileSystemArn'
+    });
+
+    new cdk.CfnOutput(scope, 'LoadBalancerDNS', {
+      value: this.loadBalancer.loadBalancerDnsName,
+      description: 'Application Load Balancer DNS Name',
+      exportName: 'ConduitALBDNSName'
+    });
+
+    new cdk.CfnOutput(scope, 'LoadBalancerArn', {
+      value: this.loadBalancer.loadBalancerArn,
+      description: 'Application Load Balancer ARN',
+      exportName: 'ConduitALBArn'
+    });
+
+    new cdk.CfnOutput(scope, 'TargetGroupArn', {
+      value: this.targetGroup.targetGroupArn,
+      description: 'Target Group ARN',
+      exportName: 'ConduitTargetGroupArn'
     });
   }
 }
