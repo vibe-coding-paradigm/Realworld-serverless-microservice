@@ -187,6 +187,30 @@
 - **백엔드 코드 변경**: `backend/` 디렉터리 변경 시 자동 배포
 - **수동 배포**: GitHub Actions에서 "Update Backend Service" 워크플로우 실행
 
+## 🚨 배포 정책 (중요)
+
+### GitHub Actions 전용 배포
+**모든 배포는 반드시 GitHub Actions를 통해서만 진행됩니다. 수동 배포 명령어 사용은 금지됩니다.**
+
+#### ❌ 금지된 명령어:
+```bash
+npx cdk deploy          # CDK 직접 배포 금지
+make cdk-deploy         # Makefile CDK 배포 금지  
+aws cloudformation deploy  # CloudFormation 직접 배포 금지
+```
+
+#### ✅ 올바른 배포 프로세스:
+1. **코드 변경** → 로컬에서 개발 및 테스트
+2. **커밋 & 푸시** → `git commit` 후 `git push origin main`
+3. **GitHub Actions** → 워크플로우가 자동으로 배포 처리
+4. **검증** → 워크플로우 검증 스크립트로 배포 확인
+
+#### 배포 규칙을 지키는 이유:
+- **일관성**: 모든 배포가 동일한 프로세스를 따름
+- **안전성**: 표준화된 환경에서 검증된 배포
+- **추적성**: 모든 배포 이력이 GitHub Actions에 기록
+- **팀 협업**: 모든 팀원이 동일한 방식으로 배포
+
 ### 주요 명령어
 
 #### 개발 및 테스트
