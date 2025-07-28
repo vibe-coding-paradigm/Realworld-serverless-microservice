@@ -95,7 +95,7 @@ func main() {
 	// Default API route
 	mux.HandleFunc("/api/", apiHandler)
 
-	fmt.Printf("Server starting on port %s\n", port)
+	fmt.Printf("Server starting on port %s - Workflow Test\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, handlers.CORSMiddleware(mux)))
 }
 
