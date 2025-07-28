@@ -1,4 +1,4 @@
-name: Update Backend Service
+name: Deploy Backend to AWS
 
 on:
   push:
