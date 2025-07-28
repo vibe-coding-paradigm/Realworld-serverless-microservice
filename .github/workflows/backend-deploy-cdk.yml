@@ -71,10 +71,37 @@ jobs:
       - name: Wait for service to be stable
         run: |
           echo "Waiting for ECS service to be stable..."
-          aws ecs wait services-stable \
-            --cluster ${{ vars.ECS_CLUSTER }} \
-            --services ${{ vars.ECS_SERVICE }}
-          echo "ECS service is stable"
+          
+          # Wait with timeout and retry logic
+          max_attempts=15
+          attempt=0
+          
+          while [ $attempt -lt $max_attempts ]; do
+            status=$(aws ecs describe-services \
+              --cluster ${{ vars.ECS_CLUSTER }} \
+              --services ${{ vars.ECS_SERVICE }} \
+              --query 'services[0].{RunningCount:runningCount,DesiredCount:desiredCount}' \
+              --output text)
+            
+            running=$(echo $status | cut -d' ' -f1)
+            desired=$(echo $status | cut -d' ' -f2)
+            
+            echo "Attempt $((attempt + 1))/$max_attempts: Running=$running, Desired=$desired"
+            
+            if [ "$running" = "$desired" ] && [ "$running" != "0" ]; then
+              echo "✅ ECS service is stable with $running/$desired tasks running"
+              exit 0
+            fi
+            
+            attempt=$((attempt + 1))
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Waiting 30 seconds before next check..."
+              sleep 30
+            fi
+          done
+          
+          echo "❌ Service did not stabilize within expected time"
+          exit 1
       
       - name: Get service status and outputs
         run: |
@@ -108,8 +135,27 @@ jobs:
             
             if [ "$PUBLIC_IP" != "None" ] && [ "$PUBLIC_IP" != "" ]; then
               echo "Testing health endpoint at: http://$PUBLIC_IP:8080/health"
-              sleep 30  # Wait for service to be ready
-              curl -f "http://$PUBLIC_IP:8080/health" || echo "Health check failed"
+              
+              # Wait for service to be ready with retry logic
+              max_health_attempts=10
+              health_attempt=0
+              
+              while [ $health_attempt -lt $max_health_attempts ]; do
+                echo "Health check attempt $((health_attempt + 1))/$max_health_attempts"
+                
+                if curl -f --connect-timeout 10 --max-time 30 "http://$PUBLIC_IP:8080/health"; then
+                  echo "✅ Health check passed!"
+                  break
+                else
+                  health_attempt=$((health_attempt + 1))
+                  if [ $health_attempt -lt $max_health_attempts ]; then
+                    echo "Health check failed, waiting 30 seconds..."
+                    sleep 30
+                  else
+                    echo "❌ Health check failed after $max_health_attempts attempts"
+                  fi
+                fi
+              done
             else
               echo "Could not get public IP for health check"
             fi
