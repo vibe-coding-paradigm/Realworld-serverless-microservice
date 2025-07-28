@@ -3,8 +3,9 @@
 /**
  * AWS 배포 검증 스크립트
  * 
- * 이 스크립트는 ECS 클러스터, 서비스, 태스크, IAM 역할, CloudWatch 로그 그룹 등
- * AWS 리소스들이 의도한 대로 생성/업데이트되었는지 검증합니다.
+ * 이 스크립트는 ECS 클러스터, 서비스, 태스크, IAM 역할, CloudWatch 로그 그룹,
+ * Application Load Balancer(ALB), 타겟 그룹 등 AWS 리소스들이 의도한 대로 
+ * 생성/업데이트되었는지 검증합니다.
  * 
  * 사용법:
  *   node scripts/verify-deployment.js
@@ -39,6 +40,14 @@ const {
   DescribeImagesCommand,
 } = require('@aws-sdk/client-ecr');
 
+const {
+  ElasticLoadBalancingV2Client,
+  DescribeLoadBalancersCommand,
+  DescribeTargetGroupsCommand,
+  DescribeTargetHealthCommand,
+  DescribeListenersCommand,
+} = require('@aws-sdk/client-elastic-load-balancing-v2');
+
 // 설정값들
 const CONFIG = {
   AWS_REGION: process.env.AWS_REGION || 'ap-northeast-2',
@@ -52,6 +61,9 @@ const CONFIG = {
   EXPECTED_MEMORY: '512',
   EXPECTED_CAPACITY_PROVIDER: 'FARGATE_SPOT',
   EXPECTED_LOG_RETENTION: 1, // days
+  ALB_NAME: 'conduit-alb',
+  TARGET_GROUP_NAME: 'conduit-tg',
+  ALB_HEALTH_CHECK_PATH: '/health',
 };
 
 // AWS 클라이언트 초기화
@@ -59,6 +71,7 @@ const ecsClient = new ECSClient({ region: CONFIG.AWS_REGION });
 const iamClient = new IAMClient({ region: CONFIG.AWS_REGION });
 const logsClient = new CloudWatchLogsClient({ region: CONFIG.AWS_REGION });
 const ecrClient = new ECRClient({ region: CONFIG.AWS_REGION });
+const elbv2Client = new ElasticLoadBalancingV2Client({ region: CONFIG.AWS_REGION });
 
 // 유틸리티 함수들
 const log = {
@@ -432,27 +445,129 @@ async function verifyECRRepository() {
 }
 
 /**
+ * Application Load Balancer 검증
+ */
+async function verifyALB() {
+  log.header('Application Load Balancer 검증');
+  
+  try {
+    // ALB 존재 확인
+    const albCommand = new DescribeLoadBalancersCommand({
+      Names: [CONFIG.ALB_NAME]
+    });
+    
+    const albResponse = await elbv2Client.send(albCommand);
+    
+    if (!albResponse.LoadBalancers || albResponse.LoadBalancers.length === 0) {
+      log.error(`로드밸런서 '${CONFIG.ALB_NAME}'를 찾을 수 없습니다`);
+      results.addResult(false);
+      return false;
+    }
+    
+    const alb = albResponse.LoadBalancers[0];
+    
+    log.result('ALB 이름', alb.LoadBalancerName);
+    log.result('상태', alb.State.Code, 'active');
+    log.result('타입', alb.Type, 'application');
+    log.result('스킴', alb.Scheme, 'internet-facing');
+    log.result('DNS 이름', alb.DNSName);
+    log.result('생성일', new Date(alb.CreatedTime).toLocaleDateString());
+    
+    // 리스너 확인
+    const listenersCommand = new DescribeListenersCommand({
+      LoadBalancerArn: alb.LoadBalancerArn
+    });
+    
+    const listenersResponse = await elbv2Client.send(listenersCommand);
+    
+    if (listenersResponse.Listeners && listenersResponse.Listeners.length > 0) {
+      const listener = listenersResponse.Listeners[0];
+      log.result('리스너 포트', listener.Port, 80);
+      log.result('리스너 프로토콜', listener.Protocol, 'HTTP');
+      
+      // 타겟 그룹 확인
+      if (listener.DefaultActions && listener.DefaultActions.length > 0) {
+        const action = listener.DefaultActions[0];
+        if (action.TargetGroupArn) {
+          log.result('연결된 타겟 그룹', '✅ 확인됨');
+          
+          // 타겟 그룹 상세 정보
+          const tgCommand = new DescribeTargetGroupsCommand({
+            TargetGroupArns: [action.TargetGroupArn]
+          });
+          
+          const tgResponse = await elbv2Client.send(tgCommand);
+          if (tgResponse.TargetGroups && tgResponse.TargetGroups.length > 0) {
+            const tg = tgResponse.TargetGroups[0];
+            log.result('타겟 그룹 이름', tg.TargetGroupName);
+            log.result('타겟 그룹 포트', tg.Port, 8080);
+            log.result('헬스체크 경로', tg.HealthCheckPath, CONFIG.ALB_HEALTH_CHECK_PATH);
+            log.result('헬스체크 프로토콜', tg.HealthCheckProtocol, 'HTTP');
+            
+            // 타겟 헬스 상태 확인
+            const healthCommand = new DescribeTargetHealthCommand({
+              TargetGroupArn: action.TargetGroupArn
+            });
+            
+            const healthResponse = await elbv2Client.send(healthCommand);
+            if (healthResponse.TargetHealthDescriptions) {
+              const targets = healthResponse.TargetHealthDescriptions;
+              log.result('등록된 타겟 수', targets.length);
+              
+              const healthyTargets = targets.filter(t => t.TargetHealth.State === 'healthy').length;
+              const unhealthyTargets = targets.filter(t => t.TargetHealth.State === 'unhealthy').length;
+              const drainingTargets = targets.filter(t => t.TargetHealth.State === 'draining').length;
+              
+              log.result('건강한 타겟', healthyTargets);
+              if (unhealthyTargets > 0) {
+                log.result('비정상 타겟', unhealthyTargets);
+              }
+              if (drainingTargets > 0) {
+                log.result('드레이닝 타겟', drainingTargets);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    const isHealthy = alb.State.Code === 'active' && 
+                     alb.Type === 'application' && 
+                     alb.Scheme === 'internet-facing';
+    
+    results.addResult(isHealthy);
+    return isHealthy;
+    
+  } catch (error) {
+    log.error(`ALB 검증 실패: ${error.message}`);
+    results.addResult(false);
+    return false;
+  }
+}
+
+/**
  * 헬스 체크 (옵션)
  */
 async function performHealthCheck() {
   log.header('헬스 체크 (선택사항)');
   
   try {
-    // 공개 IP를 가진 태스크 찾기
-    const listCommand = new ListTasksCommand({
-      cluster: CONFIG.ECS_CLUSTER,
-      serviceName: CONFIG.ECS_SERVICE,
-      desiredStatus: 'RUNNING'
+    // ALB DNS 이름을 통한 헬스 체크
+    const albCommand = new DescribeLoadBalancersCommand({
+      Names: [CONFIG.ALB_NAME]
     });
     
-    const listResponse = await ecsClient.send(listCommand);
+    const albResponse = await elbv2Client.send(albCommand);
     
-    if (listResponse.taskArns && listResponse.taskArns.length > 0) {
-      log.info('헬스 체크는 네트워크 설정에 따라 다를 수 있습니다');
-      log.info('수동으로 태스크의 공개 IP를 확인하여 http://PUBLIC_IP:8080/health 를 테스트해보세요');
+    if (albResponse.LoadBalancers && albResponse.LoadBalancers.length > 0) {
+      const alb = albResponse.LoadBalancers[0];
+      const albUrl = `http://${alb.DNSName}/health`;
+      
+      log.info(`ALB를 통한 헬스체크 URL: ${albUrl}`);
+      log.info('수동으로 위 URL을 확인하여 백엔드 서비스 상태를 테스트해보세요');
       results.addResult(true, true); // warning level
     } else {
-      log.warning('실행 중인 태스크를 찾을 수 없어 헬스 체크를 건너뜁니다');
+      log.warning('ALB를 찾을 수 없어 헬스 체크를 건너뜁니다');
       results.addResult(false, true);
     }
     
@@ -471,7 +586,9 @@ async function main() {
    - 클러스터: ${CONFIG.ECS_CLUSTER}
    - 서비스: ${CONFIG.ECS_SERVICE}
    - 리전: ${CONFIG.AWS_REGION}
-   - ECR 리포지토리: ${CONFIG.ECR_REPOSITORY}\n`);
+   - ECR 리포지토리: ${CONFIG.ECR_REPOSITORY}
+   - ALB: ${CONFIG.ALB_NAME}
+   - 타겟 그룹: ${CONFIG.TARGET_GROUP_NAME}\n`);
   
   // 각 검증 단계 실행
   await verifyECSCluster();
@@ -481,6 +598,7 @@ async function main() {
   await verifyIAMRoles();
   await verifyCloudWatchLogs();
   await verifyECRRepository();
+  await verifyALB();
   await performHealthCheck();
   
   // 결과 요약
@@ -525,6 +643,7 @@ module.exports = {
   verifyIAMRoles,
   verifyCloudWatchLogs,
   verifyECRRepository,
+  verifyALB,
   performHealthCheck,
   CONFIG
 };
