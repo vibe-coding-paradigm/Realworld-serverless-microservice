@@ -58,5 +58,11 @@ coverage/
 *.cover
 *.coverprofile
 
+# Testing artifacts
+/frontend/playwright-report/
+/frontend/test-results/
+debug-playwright*
+*screenshot*.png
+
 # Claude specific
 .claude/
