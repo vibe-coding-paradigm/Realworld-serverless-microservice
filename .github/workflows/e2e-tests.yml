@@ -11,6 +11,18 @@ on:
         description: 'Frontend URL for testing'
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend API URL for testing'
+        required: true
+        type: string
+        default: 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com/api'
+      frontend_url:
+        description: 'Frontend URL for testing'
+        required: true
+        type: string
+        default: 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice'
 
 jobs:
   e2e-tests:
