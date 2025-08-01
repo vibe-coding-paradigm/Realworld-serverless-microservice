@@ -80,7 +80,7 @@ jobs:
         FRONTEND_URL="${{ inputs.frontend_url }}"
         echo "Waiting for frontend at $FRONTEND_URL to be ready..."
         for i in {1..30}; do
-          RESPONSE=$(curl -s -H "User-Agent: Mozilla/5.0 (compatible; E2E-Test/1.0)" "$FRONTEND_URL" || echo "")
+          RESPONSE=$(curl -sL -H "User-Agent: Mozilla/5.0 (compatible; E2E-Test/1.0)" "$FRONTEND_URL" || echo "")
           if echo "$RESPONSE" | grep -q "Vite + React\|RealWorld\|<div id=\"root\">"; then
             echo "Frontend is ready and serving React app!"
             break
