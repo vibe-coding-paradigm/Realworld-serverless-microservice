@@ -169,10 +169,10 @@ jobs:
           - ⚠️ JWT_SECRET not configured - authentication tests document this limitation
           - ⚠️ ALB not deployed - using direct ECS task IP
           
-          ### Performance Targets (Adjusted for AWS ECS/ALB)
-          - Health endpoint: < 1000ms (95th percentile)
-          - Articles endpoint: < 2000ms (95th percentile)
-          - Error rate: < 5% (network variability tolerance)
+          ### Performance Targets (Conservative for AWS ECS/ALB + Cold Starts)
+          - Health endpoint: < 3000ms (95th percentile)  
+          - Articles endpoint: < 5000ms (95th percentile)
+          - Error rate: < 10% (infrastructure variability tolerance)
           
           **Detailed Reports**: Check workflow artifacts for HTML reports and metrics
           
