@@ -13,8 +13,9 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## 🛠️ 기술 스택
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.23.6-00ADD8?logo=go&logoColor=white)](https://golang.org/)
 [![React Version](https://img.shields.io/badge/React-19+-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
+[![Vite Version](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![AWS](https://img.shields.io/badge/AWS-ECS/Fargate-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
 
 > **"The mother of all demo apps"** — 실제 운영 가능한 수준의 Medium.com 클론 구축
@@ -113,18 +114,18 @@
 ## 🛠️ 기술 스택
 
 ### 백엔드 (아르민 로나허 추천 스택)
-- **언어**: Go 1.21+
+- **언어**: Go 1.23.6
 - **웹 프레임워크**: net/http 표준 라이브러리 + 커스텀 미들웨어
 - **데이터베이스**: SQLite (순수 SQL 사용, ORM 없음)
 - **인증**: JWT 토큰 기반
 - **빌드 도구**: Makefile
 
 ### 프론트엔드
-- **프레임워크**: React 18+ with TypeScript
-- **스타일링**: Tailwind CSS + shadcn/ui
-- **라우팅**: React Router
-- **상태 관리**: Context API + React Query
-- **빌드 도구**: Vite
+- **프레임워크**: React 19 + TypeScript
+- **스타일링**: Tailwind CSS 4 + shadcn/ui
+- **라우팅**: React Router v7
+- **상태 관리**: Context API + React Query (@tanstack/react-query)
+- **빌드 도구**: Vite 7
 
 ### 배포 및 인프라
 - **컨테이너**: Docker & Docker Compose
@@ -134,8 +135,9 @@
 
 ### 개발 도구
 - **AI 도구**: Claude Code
-- **테스트**: Go 표준 테스트 + Vitest + Playwright (E2E) + k6 (Load Testing)
-- **린터**: golangci-lint, ESLint
+- **테스트**: Go 표준 테스트 + Vitest 3 + Playwright 1.54 (E2E) + k6 (Load Testing)
+- **린터**: golangci-lint, ESLint 9
+- **타입 체크**: TypeScript 5.8
 
 ## ✨ 주요 기능
 
@@ -187,14 +189,23 @@
 # 로컬 E2E 테스트
 cd frontend && npm run test:e2e
 
+# E2E 테스트 UI 모드
+cd frontend && npm run test:e2e:ui
+
 # 특정 브라우저 E2E 테스트
 cd frontend && npx playwright test --project=chromium
+
+# 백엔드 전용 E2E 테스트
+cd frontend && npm run test:e2e:backend
 
 # 부하 테스트 (로컬)
 cd load-tests && k6 run basic-load-test.js
 
-# 부하 테스트 (프로덕션 환경)
-cd load-tests && API_URL=https://your-api.com k6 run basic-load-test.js
+# 성능 기준점 테스트
+cd load-tests && k6 run performance-baseline.js
+
+# 인증 부하 테스트
+cd load-tests && k6 run auth-load-test.js
 ```
 
 ## 📁 프로젝트 구조
@@ -230,7 +241,7 @@ cd load-tests && API_URL=https://your-api.com k6 run basic-load-test.js
 ### 사전 요구사항
 
 #### 로컬 개발
-- **Go 1.21+**
+- **Go 1.23.6+**
 - **Node.js 18+**
 - **Docker & Docker Compose**
 - **Make**

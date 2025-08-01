@@ -288,7 +288,7 @@ When closing issues, include:
 ## Tech Stack
 
 ### Backend
-- **Language**: Go 1.21+
+- **Language**: Go 1.23.6
 - **HTTP**: Standard `net/http` library
 - **Database**: SQLite with `github.com/mattn/go-sqlite3`
 - **Auth**: JWT with `github.com/golang-jwt/jwt/v5`
@@ -296,7 +296,7 @@ When closing issues, include:
 
 ### Frontend
 - **Framework**: React 19 + TypeScript
-- **Build**: Vite with base path configuration
+- **Build**: Vite 7 with base path configuration
 - **Styling**: Tailwind CSS 4 + shadcn/ui components
 - **Routing**: React Router v7
 - **HTTP**: Axios with automatic JWT injection
