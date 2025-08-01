@@ -43,20 +43,21 @@ jobs:
       - name: Get backend URL dynamically
         id: get-backend-url
         run: |
-          # Get ALB DNS name dynamically
-          ALB_DNS=$(aws elbv2 describe-load-balancers \
-            --names conduit-alb \
-            --query 'LoadBalancers[0].DNSName' \
+          # Get CloudFront distribution domain name for HTTPS support
+          CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name ConduitStack \
+            --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
             --output text \
             --region ${{ vars.AWS_REGION }})
           
-          if [ "$ALB_DNS" = "None" ] || [ -z "$ALB_DNS" ]; then
-            echo "❌ Error: Could not retrieve ALB DNS name"
-            echo "Make sure the backend infrastructure is deployed first"
+          if [ "$CLOUDFRONT_DOMAIN" = "None" ] || [ -z "$CLOUDFRONT_DOMAIN" ]; then
+            echo "❌ Error: Could not retrieve CloudFront domain name"
+            echo "Make sure the backend infrastructure with CloudFront is deployed first"
             exit 1
           fi
           
-          BACKEND_URL="http://$ALB_DNS"
+          # CloudFront domain already includes https:// prefix from CDK output
+          BACKEND_URL="$CLOUDFRONT_DOMAIN/api"
           echo "✅ Using Backend URL: $BACKEND_URL"
           echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
 
