@@ -4,10 +4,19 @@ import { ApiHelper } from '../helpers/api';
 test.describe('Health and Basic Connectivity', () => {
   
   test('should load frontend application', async ({ page }) => {
-    await page.goto('/');
+    // Add a small delay before navigation to allow CDN stabilization
+    await page.waitForTimeout(2000);
     
-    // Wait for the page to load
-    await page.waitForLoadState('networkidle');
+    // Debug: Log the URL being accessed
+    const baseURL = page.context().route;
+    console.log('Accessing URL:', page.url());
+    
+    await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/', { waitUntil: 'networkidle' });
+    console.log('Final URL:', page.url());
+    console.log('Page title:', await page.title());
+    
+    // Additional wait for page to fully load
+    await page.waitForTimeout(2000);
     
     // Check if basic elements are present
     await expect(page).toHaveTitle(/Vite|RealWorld/);

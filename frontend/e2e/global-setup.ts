@@ -31,8 +31,11 @@ async function globalSetup(config: FullConfig) {
   }
 
   // Check if frontend is ready
-  const frontendUrl = config.use?.baseURL;
+  const frontendUrl = config.use?.baseURL || process.env.PLAYWRIGHT_BASE_URL;
   if (frontendUrl) {
+    // Simple sleep to allow GitHub Pages CDN to stabilize
+    console.log('⏳ Waiting 10 seconds for GitHub Pages CDN to stabilize...');
+    await new Promise(resolve => setTimeout(resolve, 10000));
     console.log(`⏳ Checking frontend at ${frontendUrl}...`);
     
     let frontendReady = false;

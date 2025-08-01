@@ -45,7 +45,7 @@ test.describe('Articles Management', () => {
 
   test.describe('Articles Frontend UI', () => {
     test('should display articles page', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/');
       
       try {
         // Look for articles-related elements
@@ -58,7 +58,7 @@ test.describe('Articles Management', () => {
     });
 
     test('should show empty state for articles', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/');
       
       // Since backend returns empty articles, frontend should handle this
       // This test will likely fail due to frontend deployment issues

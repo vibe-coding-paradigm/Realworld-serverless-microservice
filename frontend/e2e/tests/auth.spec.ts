@@ -5,36 +5,59 @@ import { generateTestUser, waitTimes } from '../helpers/test-data';
 test.describe('Authentication Flow', () => {
   
   test.describe('User Registration API @backend', () => {
-    test('should reject registration due to missing JWT_SECRET', async ({ request }) => {
+    test('should successfully register new user', async ({ request }) => {
       const api = new ApiHelper(request);
       const testUser = generateTestUser();
       
       const { response, data } = await api.createUser(testUser);
       
-      // Expect 500 error due to JWT_SECRET missing
-      expect(response.status()).toBe(500);
-      expect(data?.errors?.token).toContain('Failed to generate token');
+      // Backend is working correctly, expect successful registration
+      expect(response.status()).toBe(201);
+      expect(data.user).toBeDefined();
+      expect(data.user.email).toBe(testUser.email);
+      expect(data.user.username).toBe(testUser.username);
+      expect(data.user.token).toBeDefined();
     });
   });
 
   test.describe('Login API @backend', () => {
-    test('should reject login due to missing JWT_SECRET', async ({ request }) => {
+    test('should reject login with invalid credentials', async ({ request }) => {
       const api = new ApiHelper(request);
       
       const { response, data } = await api.loginUser({
-        email: 'test@example.com',
-        password: 'password123'
+        email: 'nonexistent@example.com',
+        password: 'wrongpassword'
       });
       
-      // Since user creation fails, login should fail too
-      // This test documents the current broken state
-      expect(response.status()).toBe(500);
+      // Backend is working correctly, expect 401 for invalid credentials
+      expect(response.status()).toBe(401);
+      // Error response structure may vary, just check status is sufficient
+    });
+
+    test('should login successfully with valid credentials', async ({ request }) => {
+      const api = new ApiHelper(request);
+      const testUser = generateTestUser();
+      
+      // First create a user
+      const { response: createResponse } = await api.createUser(testUser);
+      expect(createResponse.status()).toBe(201);
+      
+      // Then login with same credentials
+      const { response: loginResponse, data: loginData } = await api.loginUser({
+        email: testUser.email,
+        password: testUser.password
+      });
+      
+      expect(loginResponse.status()).toBe(200);
+      expect(loginData.user).toBeDefined();
+      expect(loginData.user.email).toBe(testUser.email);
+      expect(loginData.user.token).toBeDefined();
     });
   });
 
   test.describe('Frontend Authentication UI', () => {
     test('should display registration form', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/');
       
       // Look for registration/signup elements
       // This test will likely fail since frontend shows default Vite page
@@ -48,7 +71,7 @@ test.describe('Authentication Flow', () => {
     });
 
     test('should display login form', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/');
       
       try {
         await expect(page.locator('text=Sign in')).toBeVisible({ timeout: waitTimes.medium });
