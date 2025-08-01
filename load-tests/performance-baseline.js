@@ -2,9 +2,9 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Trend, Counter } from 'k6/metrics';
 
-// Performance baseline metrics
-const healthResponseTime = new Trend('health_response_time');
-const articlesResponseTime = new Trend('articles_response_time');
+// Performance baseline metrics (renamed to avoid k6 threshold conflicts)
+const healthResponseTime = new Trend('custom_health_time');
+const articlesResponseTime = new Trend('custom_articles_time');
 const successfulRequests = new Counter('successful_requests');
 
 export const options = {
@@ -91,8 +91,8 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  const healthP95 = data.metrics.health_response_time?.values['p(95)'] || 0;
-  const articlesP95 = data.metrics.articles_response_time?.values['p(95)'] || 0;
+  const healthP95 = data.metrics.custom_health_time?.values['p(95)'] || 0;
+  const articlesP95 = data.metrics.custom_articles_time?.values['p(95)'] || 0;
   const successRate = data.metrics.successful_requests?.values.count / 
                      (data.metrics.http_reqs?.values.count || 1);
   
@@ -128,14 +128,14 @@ export function handleSummary(data) {
     
     <div class="metric">
         <h3>Health Endpoint Performance</h3>
-        <p>Average Response Time: ${data.metrics.health_response_time?.values.avg?.toFixed(2) || 0}ms</p>
+        <p>Average Response Time: ${data.metrics.custom_health_time?.values.avg?.toFixed(2) || 0}ms</p>
         <p>95th Percentile: ${healthP95.toFixed(2)}ms</p>
         <p>Target: &lt;3000ms (${healthP95 < 3000 ? '✅ PASS' : '❌ FAIL'})</p>
     </div>
     
     <div class="metric">
         <h3>Articles Endpoint Performance</h3>
-        <p>Average Response Time: ${data.metrics.articles_response_time?.values.avg?.toFixed(2) || 0}ms</p>
+        <p>Average Response Time: ${data.metrics.custom_articles_time?.values.avg?.toFixed(2) || 0}ms</p>
         <p>95th Percentile: ${articlesP95.toFixed(2)}ms</p>
         <p>Target: &lt;5000ms (${articlesP95 < 5000 ? '✅ PASS' : '❌ FAIL'})</p>
     </div>
