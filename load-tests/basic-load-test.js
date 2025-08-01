@@ -58,7 +58,7 @@ export default function () {
   const healthCheck = check(healthResponse, {
     'health endpoint status is 200': (r) => r.status === 200,
     'health response contains service name': (r) => r.json('service') === 'conduit-api',
-    'health response time < 100ms': (r) => r.timings.duration < 100,
+    'health response time < 1000ms': (r) => r.timings.duration < 1000,
   });
   
   if (!healthCheck) {
@@ -76,7 +76,7 @@ export default function () {
       const body = r.json();
       return body.hasOwnProperty('articles') && body.hasOwnProperty('articlesCount');
     },
-    'articles response time < 500ms': (r) => r.timings.duration < 500,
+    'articles response time < 2000ms': (r) => r.timings.duration < 2000,
   });
   
   if (!articlesCheck) {

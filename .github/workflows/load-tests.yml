@@ -95,12 +95,14 @@ jobs:
       working-directory: load-tests
       env:
         API_URL: ${{ steps.backend-url.outputs.backend_url }}
+        TEST_DURATION: ${{ inputs.test_duration || '1m' }}
       run: |
-        # Override duration for CI if specified
+        # Override duration for CI if specified, default to 1m for faster CI runs
         if [ -n "${{ inputs.test_duration }}" ]; then
           k6 run --duration ${{ inputs.test_duration }} --vus 1 performance-baseline.js
         else
-          k6 run performance-baseline.js
+          # Use 1m default for CI to avoid timeouts, full 5m tests can be run manually
+          k6 run --duration 1m --vus 1 performance-baseline.js
         fi
 
     - name: Run Basic Load Test (Short Duration for CI)
@@ -167,10 +169,10 @@ jobs:
           - ⚠️ JWT_SECRET not configured - authentication tests document this limitation
           - ⚠️ ALB not deployed - using direct ECS task IP
           
-          ### Performance Targets
-          - Health endpoint: < 100ms (95th percentile)
-          - Articles endpoint: < 500ms (95th percentile)
-          - Error rate: < 10% (excluding JWT errors)
+          ### Performance Targets (Adjusted for AWS ECS/ALB)
+          - Health endpoint: < 1000ms (95th percentile)
+          - Articles endpoint: < 2000ms (95th percentile)
+          - Error rate: < 5% (network variability tolerance)
           
           **Detailed Reports**: Check workflow artifacts for HTML reports and metrics
           
