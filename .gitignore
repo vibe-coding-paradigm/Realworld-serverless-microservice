@@ -64,5 +64,10 @@ coverage/
 debug-playwright*
 *screenshot*.png
 
+# Load test results (k6)
+/load-tests/*.json
+/load-tests/*.html
+/load-tests/results/
+
 # Claude specific
 .claude/
