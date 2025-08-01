@@ -15,7 +15,7 @@ const Header: React.FC = () => {
     <nav className="navbar-light" style={{ backgroundColor: '#fff', borderBottom: '1px solid #e5e5e5' }}>
       <div className="realworld-container">
         <div className="flex items-center justify-between py-4">
-          {/* Logo - Workflow Test */}
+          {/* Logo - Deployment Test 2025-08-01 */}
           <Link to="/" className="navbar-brand logo-font" style={{ color: '#5cb85c', fontSize: '1.5rem', fontWeight: 700, textDecoration: 'none' }}>
             conduit
           </Link>
