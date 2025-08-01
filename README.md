@@ -384,6 +384,28 @@ make gh-login-check
 make gh-workflow-run
 ```
 
+## 📚 프로젝트 문서
+
+프로젝트의 상세한 설계, 요구사항, 마이그레이션 계획 등은 [`docs/`](./docs/) 폴더에서 확인할 수 있습니다.
+
+### 🎯 핵심 문서
+- **[📋 제품 요구사항 문서 (PRD)](./docs/PRD.md)** - RealWorld 애플리케이션의 핵심 기능 및 요구사항
+- **[🏗️ 시스템 설계 문서](./docs/design.md)** - 아키텍처, 데이터베이스, API 설계
+- **[🔄 마이그레이션 PRD](./docs/migration/PRD.md)** - 모노리식에서 서버리스로의 전환 계획
+
+### 🛠️ 개발 및 운영 가이드
+- **[📝 GitHub 이슈 관리 가이드](./docs/migration/github-issue-guidelines.md)** - 프로젝트 이슈 관리 방법론
+- **[⚙️ GitHub Actions 환경변수 가이드](./docs/github-variables.md)** - CI/CD 파이프라인 설정
+- **[🔧 트러블슈팅 가이드](./docs/troubleshooting.md)** - 실제 문제들과 해결책
+- **[📖 튜토리얼](./docs/tutorial.md)** - 프로젝트 시작하기 가이드
+
+### 📋 작업 계획
+- **[✅ 전체 작업 목록](./docs/tasks.md)** - 프로젝트 구현 계획
+- **[🎯 마이그레이션 작업](./docs/migration/tasks.md)** - 단계별 마이그레이션 체크리스트
+- **[🎬 Phase 1 데모 시나리오](./docs/phase1-demo-scenario.md)** - 주요 기능 사용 예시
+
+> 💡 **전체 문서 목록과 사용 가이드는 [docs/README.md](./docs/README.md)에서 확인하세요!**
+
 ## 📚 학습 리소스
 
 ### 바이브 코딩 관련
