@@ -4,22 +4,22 @@ on:
   workflow_call:
     inputs:
       backend_url:
-        description: 'Backend API URL for testing'
+        description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
         required: true
         type: string
       frontend_url:
-        description: 'Frontend URL for testing'
+        description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
         required: true
         type: string
   workflow_dispatch:
     inputs:
       backend_url:
-        description: 'Backend API URL for testing'
+        description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
         required: true
         type: string
-        default: 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com/api'
+        default: 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com'
       frontend_url:
-        description: 'Frontend URL for testing'
+        description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
         required: true
         type: string
         default: 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice'
@@ -100,7 +100,13 @@ jobs:
       env:
         API_URL: ${{ inputs.backend_url }}
         PLAYWRIGHT_BASE_URL: ${{ inputs.frontend_url }}
-      run: npm run test:e2e
+      run: |
+        echo "🔧 E2E Test Configuration:"
+        echo "Backend URL: $API_URL" 
+        echo "Frontend URL: $PLAYWRIGHT_BASE_URL"
+        echo "Health Check URL: $API_URL/health"
+        echo "Articles API URL: $API_URL/api/articles"
+        npm run test:e2e
 
     - name: Upload Playwright report
       uses: actions/upload-artifact@v4
