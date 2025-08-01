@@ -202,12 +202,21 @@ jobs:
           cd infra/verify-deployment
           npm install
           
+          # Verify the script file exists and is readable
+          if [ ! -f "verify-deployment.js" ]; then
+            echo "❌ Error: verify-deployment.js not found in $(pwd)"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Found verify-deployment.js at $(pwd)/verify-deployment.js"
+          
           # Wait a moment for tasks to transition from PROVISIONING to RUNNING
           echo "⏳ Waiting 30 seconds for tasks to complete provisioning..."
           sleep 30
           
-          # Run comprehensive deployment verification
-          node verify-deployment.js
+          # Run comprehensive deployment verification with explicit node path
+          echo "🚀 Running deployment verification..."
+          node ./verify-deployment.js
       
       - name: Test health endpoint
         env:
