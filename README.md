@@ -50,6 +50,22 @@
    - 이벤트 기반 아키텍처
    - 모니터링 및 관찰성 구현
 
+## 📚 목차
+
+- [📋 프로젝트 개요](#-프로젝트-개요)
+- [🚀 데모 및 참고 자료](#-데모-및-참고-자료)
+- [🛠️ 기술 스택](#️-기술-스택)
+- [✨ 주요 기능](#-주요-기능)
+- [🏃‍♂️ 빠른 시작](#️-빠른-시작)
+- [📖 개발 가이드](#-개발-가이드)
+  - [개발 및 테스트](#개발-및-테스트)
+  - [Git Hooks 설정 (품질 보장 시스템)](#git-hooks-설정-품질-보장-시스템)
+  - [배포 및 디버깅](#배포-및-디버깅)
+- [🧪 테스트](#-테스트)
+- [🌐 배포](#-배포)
+- [📚 프로젝트 문서](#-프로젝트-문서)
+- [📚 학습 리소스](#-학습-리소스)
+
 ## 📋 프로젝트 개요
 
 이 프로젝트는 [RealWorld](https://github.com/gothinkster/realworld) 사양을 사용하여 **바이브 코딩(Vibe Coding) 기법**과 **아르민 로나허(Armin Ronacher)의 추천 기술 스택**을 활용해 실제 운영 가능한 소셜 블로깅 플랫폼을 구현하는 것을 목표로 합니다.
@@ -322,6 +338,8 @@ aws cloudformation deploy  # CloudFormation 직접 배포 금지
 - **추적성**: 모든 배포 이력이 GitHub Actions에 기록
 - **팀 협업**: 모든 팀원이 동일한 방식으로 배포
 
+## 📖 개발 가이드
+
 ### 주요 명령어
 
 #### 개발 및 테스트
@@ -351,25 +369,186 @@ make fmt
 make lint
 ```
 
-#### Git Hooks 설정
-프로젝트에는 커밋 전 자동으로 E2E 테스트를 실행하는 pre-commit hook이 포함되어 있습니다.
+#### Git Hooks 설정 (품질 보장 시스템)
 
+이 프로젝트는 **자동화된 코드 품질 보장 시스템**을 통해 커밋 전 E2E 테스트를 자동 실행합니다.
+
+##### 🚀 빠른 설정 (팀원 필수)
 ```bash
-# Git hooks 설치 (최초 1회)
+# 저장소 클론 후 최초 1회 실행
 npm run install-hooks
 
-# 또는 직접 실행
-bash scripts/install-hooks.sh
-
-# 로컬 환경에서 E2E 테스트 실행
-npm run test:e2e:local
+# 확인: hook이 설치되었는지 검증
+ls -la .git/hooks/pre-commit
 ```
 
-**Git Hooks 기능:**
-- 🔍 커밋 전 자동으로 E2E 테스트 실행
-- 🚀 백엔드가 실행되지 않은 경우 자동으로 docker-compose 시작
-- ❌ 테스트 실패 시 커밋 차단
-- 💡 `git commit --no-verify`로 hook 임시 우회 가능
+##### 📋 제공되는 Git Hooks
+
+**1. Pre-commit Hook (`scripts/pre-commit-hook.sh`)**
+- **목적**: 커밋 전 자동 E2E 테스트 실행으로 버그 방지
+- **실행 조건**: `git commit` 명령어 실행 시 자동 트리거
+- **테스트 환경**: 로컬 개발 환경 (localhost:8080 + localhost:3000)
+
+**2. 자동화 기능**
+```bash
+# 백엔드 상태 체크 및 자동 시작
+if ! curl -s http://localhost:8080/health; then
+  docker-compose up -d backend  # 자동 백엔드 시작
+fi
+
+# 프론트엔드 개발 서버 자동 시작 (Vite)
+npm run dev  # port 3000에서 자동 실행
+
+# 전체 E2E 테스트 스위트 실행 (29개 테스트)
+npm run test:e2e  # Playwright 테스트 실행
+```
+
+##### 🔧 상세 사용법
+
+**정상적인 개발 워크플로우:**
+```bash
+# 1. 코드 변경 후 스테이징
+git add .
+
+# 2. 커밋 시도 (자동으로 E2E 테스트 실행됨)
+git commit -m "feat: 새로운 기능 추가"
+# 🔍 Running pre-commit E2E tests...
+# 🧪 Running E2E tests against local environment...
+# ✅ All E2E tests passed!
+# 💚 Commit allowed
+
+# 3. 테스트 통과 시 커밋 완료
+git push
+```
+
+**테스트 실패 시 워크플로우:**
+```bash
+git commit -m "fix: 버그 수정"
+# 🔍 Running pre-commit E2E tests...
+# ❌ E2E tests failed!
+# 🚫 Commit blocked - fix failing tests before committing
+
+# 실패한 테스트 확인
+npm run test:e2e:local
+
+# 문제 수정 후 다시 커밋
+git add .
+git commit -m "fix: 버그 수정 및 테스트 통과"
+```
+
+##### 🛠️ 고급 사용법
+
+**Hook 우회 (긴급상황용):**
+```bash
+# 테스트를 건너뛰고 강제 커밋 (주의해서 사용)
+git commit --no-verify -m "hotfix: 긴급 수정"
+```
+
+**수동 테스트 실행:**
+```bash
+# 로컬 환경 E2E 테스트만 실행
+npm run test:e2e:local
+
+# 특정 테스트 파일만 실행
+cd frontend && npx playwright test e2e/tests/auth.spec.ts
+
+# 디버그 모드로 테스트 실행
+cd frontend && npx playwright test --debug
+```
+
+**Hook 재설치/업데이트:**
+```bash
+# Hook 스크립트가 업데이트된 경우
+npm run install-hooks  # 기존 hook 덮어쓰기
+
+# 수동 설치
+bash scripts/install-hooks.sh
+```
+
+##### 📊 테스트 범위 및 환경
+
+**실행되는 테스트:**
+- **인증 시스템**: 회원가입, 로그인, JWT 검증 (5개 테스트)
+- **게시글 CRUD**: 생성, 조회, 수정, 삭제 (7개 테스트) 
+- **댓글 시스템**: 댓글 작성, 삭제 (4개 테스트)
+- **UI/UX**: 반응형, 네비게이션, 폼 검증 (13개 테스트)
+
+**테스트 환경 구성:**
+```yaml
+Frontend: http://localhost:3000 (Vite 개발 서버)
+Backend: http://localhost:8080 (Go API 서버)
+Database: SQLite (로컬 파일)
+Browser: Chromium (Playwright)
+```
+
+##### 🔍 문제 해결
+
+**일반적인 문제와 해결법:**
+
+1. **백엔드 포트 충돌**
+```bash
+# 8080 포트 사용 중인 프로세스 확인
+lsof -i :8080
+
+# 프로세스 종료 후 재시작
+pkill -f "port 8080"
+docker-compose up -d backend
+```
+
+2. **프론트엔드 포트 충돌**
+```bash
+# 3000 포트 사용 중인 프로세스 확인
+lsof -i :3000
+
+# Vite 개발 서버 재시작
+cd frontend && npm run dev
+```
+
+3. **의존성 문제**
+```bash
+# 프론트엔드 의존성 재설치
+cd frontend && rm -rf node_modules && npm ci
+
+# Playwright 브라우저 재설치
+cd frontend && npx playwright install
+```
+
+4. **데이터베이스 초기화**
+```bash
+# SQLite 데이터베이스 리셋
+rm -f backend/data/conduit.db
+cd backend && go run cmd/migrate/main.go
+```
+
+##### 📈 성능 및 시간
+
+**예상 실행 시간:**
+- 백엔드 시작: 5-10초
+- 프론트엔드 시작: 3-5초  
+- E2E 테스트 실행: 15-30초
+- **총 소요 시간: 약 30-45초**
+
+**성능 최적화 팁:**
+```bash
+# 백엔드를 미리 실행해 두면 테스트 시간 단축
+docker-compose up -d backend
+
+# 병렬 테스트 실행으로 시간 단축 (기본 설정됨)
+# playwright.config.ts에서 workers: 5 설정
+```
+
+##### 🎯 팀 협업 가이드
+
+**새 팀원 온보딩:**
+1. 저장소 클론: `git clone <repo>`
+2. 의존성 설치: `npm ci` (root) + `cd frontend && npm ci`
+3. **Hook 설치: `npm run install-hooks`** ⭐ 필수
+4. 테스트 실행: `npm run test:e2e:local`
+
+**코드 리뷰 시 확인사항:**
+- ✅ PR 작성자가 로컬에서 E2E 테스트를 통과했는지 확인
+- ✅ GitHub Actions E2E 테스트 통과 여부 확인
+- ✅ 새로운 기능에 대한 E2E 테스트 추가 여부 확인
 
 #### 배포 및 디버깅
 ```bash
