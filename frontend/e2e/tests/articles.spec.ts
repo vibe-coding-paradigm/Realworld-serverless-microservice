@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ApiHelper } from '../helpers/api';
-import { generateTestArticle, generateTestUser, waitTimes } from '../helpers/test-data';
+import { generateTestArticle, generateTestUser, waitTimes, navigateToPage } from '../helpers/test-data';
 
 test.describe('Articles Management', () => {
   
@@ -61,7 +61,7 @@ test.describe('Articles Management', () => {
 
   test.describe('Articles Frontend UI', () => {
     test('should display articles page', async ({ page }) => {
-      await page.goto('/');
+      await navigateToPage(page, '/');
       await page.waitForLoadState('networkidle');
       
       // Look for main page elements - should show the home page with articles section
@@ -74,7 +74,7 @@ test.describe('Articles Management', () => {
     });
 
     test('should show empty state for articles', async ({ page }) => {
-      await page.goto('/');
+      await navigateToPage(page, '/');
       await page.waitForLoadState('networkidle');
       
       // Wait a bit for any API calls to complete

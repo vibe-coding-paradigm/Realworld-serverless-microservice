@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ApiHelper } from '../helpers/api';
-import { generateTestUser, waitTimes } from '../helpers/test-data';
+import { generateTestUser, waitTimes, navigateToPage } from '../helpers/test-data';
 
 test.describe('Authentication Flow', () => {
   
@@ -57,7 +57,7 @@ test.describe('Authentication Flow', () => {
 
   test.describe('Frontend Authentication UI', () => {
     test('should display registration form', async ({ page }) => {
-      await page.goto('/');
+      await navigateToPage(page, '/');
       
       // Wait for page to load completely
       await page.waitForLoadState('networkidle');
@@ -71,7 +71,7 @@ test.describe('Authentication Flow', () => {
     });
 
     test('should display login form', async ({ page }) => {
-      await page.goto('/');
+      await navigateToPage(page, '/');
       
       // Wait for page to load completely
       await page.waitForLoadState('networkidle');
@@ -131,7 +131,7 @@ test.describe('Authentication Flow', () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // 2. Navigate to login page
-      await page.goto('/');
+      await navigateToPage(page, '/');
       await page.waitForLoadState('networkidle');
       
       // 3. Click sign in link - use navigation link specifically

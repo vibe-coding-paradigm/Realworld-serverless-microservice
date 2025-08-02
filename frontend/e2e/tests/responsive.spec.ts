@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitTimes } from '../helpers/test-data';
+import { waitTimes, navigateToPage } from '../helpers/test-data';
 
 test.describe('Responsive Design', () => {
   
@@ -17,7 +17,7 @@ test.describe('Responsive Design', () => {
       });
 
       test('should load and be responsive', async ({ page }) => {
-        await page.goto('/');
+        await navigateToPage(page, '/');
         await page.waitForLoadState('networkidle');
         
         // Take screenshot for visual comparison
@@ -39,7 +39,7 @@ test.describe('Responsive Design', () => {
 
       test('should handle touch interactions on mobile', async ({ page }) => {
         if (viewport.name === 'Mobile') {
-          await page.goto('/');
+          await navigateToPage(page, '/');
           
           // Test touch interactions
           try {
@@ -67,7 +67,7 @@ test.describe('Responsive Design', () => {
       });
 
       test('should display navigation appropriately', async ({ page }) => {
-        await page.goto('/');
+        await navigateToPage(page, '/');
         
         try {
           // Check for navigation elements
@@ -98,7 +98,7 @@ test.describe('Responsive Design', () => {
     ['chromium', 'firefox', 'webkit'].forEach(browserName => {
       test(`should be responsive in ${browserName}`, async ({ page }) => {
         // This test runs on different browsers automatically via playwright.config.ts projects
-        await page.goto('/');
+        await navigateToPage(page, '/');
         await page.waitForLoadState('networkidle');
         
         // Take browser-specific screenshot

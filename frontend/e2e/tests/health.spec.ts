@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ApiHelper } from '../helpers/api';
+import { navigateToPage } from '../helpers/test-data';
 
 test.describe('Health and Basic Connectivity', () => {
   
@@ -7,12 +8,8 @@ test.describe('Health and Basic Connectivity', () => {
     // Add a small delay before navigation to allow CDN stabilization
     await page.waitForTimeout(2000);
     
-    // Debug: Log the URL being accessed
-    const baseURL = page.context().route;
-    console.log('Accessing URL:', page.url());
-    
-    await page.goto('/', { waitUntil: 'networkidle' });
-    console.log('Final URL:', page.url());
+    // Use helper function to ensure correct URL navigation
+    await navigateToPage(page, '/');
     console.log('Page title:', await page.title());
     
     // Additional wait for page to fully load

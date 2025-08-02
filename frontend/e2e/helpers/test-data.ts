@@ -47,3 +47,26 @@ export const waitTimes = {
   long: 15000,
   api: 20000
 };
+
+/**
+ * Navigation helpers to ensure correct URL handling across environments
+ */
+export const getFullURL = (path: string = '/') => {
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/';
+  // Remove trailing slash from baseURL and leading slash from path to avoid double slashes
+  const cleanBaseURL = baseURL.replace(/\/$/, '');
+  const cleanPath = path.replace(/^\//, '');
+  
+  return cleanPath ? `${cleanBaseURL}/${cleanPath}` : cleanBaseURL;
+};
+
+/**
+ * Safe navigation function that ensures correct URL resolution
+ */
+export const navigateToPage = async (page: any, path: string = '/') => {
+  const fullURL = getFullURL(path);
+  console.log(`Navigating to: ${fullURL}`);
+  await page.goto(fullURL, { waitUntil: 'networkidle' });
+  console.log(`Final URL: ${page.url()}`);
+  return page.url();
+};
