@@ -57,7 +57,7 @@ const LoginPage: React.FC = () => {
     }
 
     try {
-      const result = await login(formData);
+      await login(formData);
       navigate('/');
     } catch (error) {
       console.error('🔴 [DEBUG] Login failed:', error);

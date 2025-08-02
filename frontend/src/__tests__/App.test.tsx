@@ -73,8 +73,8 @@ const AppTestWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// Test wrapper for individual page components (with Router)
-const ComponentTestWrapper = ({ children, initialEntries = ['/'] }: { 
+// Test wrapper for individual page components (with Router) - currently unused but kept for future use
+const _ComponentTestWrapper = ({ children, initialEntries = ['/'] }: { 
   children: React.ReactNode; 
   initialEntries?: string[] 
 }) => {

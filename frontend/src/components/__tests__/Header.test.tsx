@@ -49,7 +49,7 @@ describe('Header Component', () => {
   });
 
   describe('Guest Navigation', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const { useAuth } = await import('../../hooks/useAuth');
       vi.mocked(useAuth).mockReturnValue({
         user: null,
@@ -100,7 +100,7 @@ describe('Header Component', () => {
 
   describe('Authenticated User Navigation', () => {
     const mockUser = {
-      id: 1,
+      id: '1',
       username: 'testuser',
       email: 'test@example.com',
       bio: 'Test bio',
