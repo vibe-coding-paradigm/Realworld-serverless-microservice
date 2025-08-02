@@ -34,7 +34,14 @@ api.interceptors.response.use(
       // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Use window.location.pathname to get the correct base path
+      const currentOrigin = window.location.origin;
+      const currentPathname = window.location.pathname;
+      // Extract base path from current pathname
+      const basePath = currentPathname.startsWith('/Realworld-serverless-microservice') 
+        ? '/Realworld-serverless-microservice' 
+        : '';
+      window.location.href = `${currentOrigin}${basePath}/login`;
     }
     return Promise.reject(error);
   }
