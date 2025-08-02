@@ -11,7 +11,12 @@
 6. [네트워크 연결 문제](#6-네트워크-연결-문제)
 7. [Git 변경사항 감지 실패](#7-git-변경사항-감지-실패)
 8. [배포 전략 변경](#8-배포-전략-변경)
-9. [모범 사례 및 패턴](#9-모범-사례-및-패턴)
+9. [GitHub Pages 환경 인증 리다이렉트 문제](#9-github-pages-환경-인증-리다이렉트-문제)
+10. [UI 레이아웃 오버플로우 문제](#10-ui-레이아웃-오버플로우-문제)
+11. [React Router basename 설정 문제](#11-react-router-basename-설정-문제)
+12. [E2E 테스트 CloudFront URL 처리 문제](#12-e2e-테스트-cloudfront-url-처리-문제)
+13. [E2E 테스트 API URL 중복 처리 문제](#13-e2e-테스트-api-url-중복-처리-문제)
+14. [모범 사례 및 패턴](#14-모범-사례-및-패턴)
 
 ---
 
@@ -435,18 +440,310 @@ export default defineConfig({
 
 ---
 
-## 9. 모범 사례 및 패턴
+## 9. GitHub Pages 환경 인증 리다이렉트 문제
+
+### 문제: API 401 에러 시 basename을 고려하지 않은 로그인 페이지 리다이렉트
+
+**문제 설명**: API interceptor에서 401 에러 발생 시 하드코딩된 '/login' 경로로 리다이렉트하여 GitHub Pages 배포 환경의 basename과 호환되지 않음
+
+**에러 증상**:
+```javascript
+// 문제가 있던 코드 (추정)
+window.location.href = '/login'; // GitHub Pages에서 404 발생
+// 예상 경로: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/login
+// 실제 이동: https://vibe-coding-paradigm.github.io/login (404)
+```
+
+**사용된 프롬프트**:
+```
+"API 401 에러가 발생할 때 로그인 페이지로 제대로 리다이렉트가 안 되고 있어. GitHub Pages basename을 고려해서 수정해줘."
+```
+
+**해결 과정**:
+
+1. **API interceptor 분석**:
+```bash
+# API 에러 처리 로직 확인
+cat frontend/src/lib/api.ts | grep -A 10 -B 10 "401"
+```
+
+2. **동적 경로 생성 로직 구현**:
+```javascript
+// 개선된 코드
+const basePath = window.location.pathname.split('/').slice(0, -1).join('/');
+const loginUrl = basePath ? `${basePath}/login` : '/login';
+window.location.href = loginUrl;
+```
+
+3. **호환성 테스트**:
+```bash
+# 로컬 환경에서 테스트
+npm run dev
+# GitHub Pages 환경에서 테스트 (배포 후)
+```
+
+**결과**: GitHub Pages와 로컬 개발 환경 모두에서 401 에러 시 올바른 로그인 페이지로 리다이렉트 성공
+
+---
+
+## 10. UI 레이아웃 오버플로우 문제
+
+### 문제: 로그인/회원가입 페이지의 fieldset 중첩으로 인한 레이아웃 문제
+
+**문제 설명**: fieldset 중첩 구조로 인한 레이아웃 오버플로우 및 입력 필드가 컨테이너를 벗어나는 현상
+
+**에러 증상**:
+```html
+<!-- 문제가 있던 구조 -->
+<fieldset>
+  <fieldset>
+    <input class="form-control" style="width: 100%" />
+  </fieldset>
+</fieldset>
+<!-- 입력 필드가 부모 컨테이너 밖으로 넘침 -->
+```
+
+**사용된 프롬프트**:
+```
+"로그인/회원가입 페이지에서 입력 필드가 화면을 벗어나는 문제가 있어. fieldset 구조와 CSS를 정리해줘."
+```
+
+**해결 과정**:
+
+1. **구조 문제 분석**:
+```bash
+# 기존 컴포넌트 구조 확인
+wc -l frontend/src/pages/auth/LoginPage.tsx    # 43줄
+wc -l frontend/src/pages/auth/RegisterPage.tsx # 56줄
+```
+
+2. **HTML 구조 개선**:
+```html
+<!-- 개선된 구조 -->
+<div class="auth-page">
+  <div class="container page">
+    <div class="row">
+      <div class="col-md-6 offset-md-3 col-xs-12">
+        <form>
+          <input class="form-control" />
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+3. **CSS 개선**:
+```css
+/* frontend/src/index.css에 추가 */
+.auth-page .form-control {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+.auth-page .container {
+  padding: 0 15px;
+}
+```
+
+4. **코드 간소화 결과**:
+```bash
+# 개선 후 라인 수
+frontend/src/pages/auth/LoginPage.tsx    # 43줄 → ~25줄
+frontend/src/pages/auth/RegisterPage.tsx # 56줄 → ~32줄
+frontend/src/index.css                   # +37줄 (auth-page 전용 스타일)
+```
+
+**결과**: 로그인/회원가입 페이지의 안정적인 레이아웃 확보 및 코드 간소화
+
+---
+
+## 11. React Router basename 설정 문제
+
+### 문제: 사용자 인증 후 홈페이지 리다이렉트 경로 오류
+
+**문제 설명**: 사용자 등록/로그인 후 홈페이지 리다이렉트가 GitHub Pages의 base path와 일치하지 않아 잘못된 경로로 이동
+
+**에러 증상**:
+```
+예상 경로: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
+실제 이동: https://vibe-coding-paradigm.github.io/
+결과: GitHub Pages 404 페이지 표시
+```
+
+**사용된 프롬프트**:
+```
+"로그인 성공 후 홈페이지로 리다이렉트할 때 경로가 틀려. GitHub Pages base path가 고려되지 않고 있어."
+```
+
+**해결 과정**:
+
+1. **React Router 설정 확인**:
+```typescript
+// frontend/src/App.tsx 기존 설정
+<BrowserRouter>
+  <Routes>
+    <Route path="/" element={<HomePage />} />
+    {/* 기타 라우트들 */}
+  </Routes>
+</BrowserRouter>
+```
+
+2. **basename 설정 추가**:
+```typescript
+// 개선된 설정
+<BrowserRouter basename="/Realworld-serverless-microservice">
+  <Routes>
+    <Route path="/" element={<HomePage />} />
+    {/* 기타 라우트들 */}
+  </Routes>
+</BrowserRouter>
+```
+
+3. **Vite 설정과의 일관성 확인**:
+```typescript
+// vite.config.ts
+export default defineConfig({
+  base: '/Realworld-serverless-microservice/',
+  // ...
+})
+```
+
+**결과**: 사용자 인증 완료 후 올바른 홈페이지 경로로 리다이렉트 성공
+
+---
+
+## 12. E2E 테스트 CloudFront URL 처리 문제
+
+### 문제: E2E 테스트에서 CloudFront URL의 /api 경로 처리 및 타임아웃 발생
+
+**문제 설명**: E2E 테스트에서 CloudFront URL 처리 로직 부족으로 health check 실패 및 테스트 타임아웃 발생
+
+**에러 메시지**:
+```bash
+Timeout: Test timed out after 10 minutes
+Health check failed: URL not accessible
+Error: connect ECONNREFUSED [CloudFront IP]:443
+```
+
+**사용된 프롬프트**:
+```
+"E2E 테스트가 CloudFront 환경에서 계속 타임아웃되고 있어. URL 처리 로직과 타임아웃 설정을 확인해줘."
+```
+
+**해결 과정**:
+
+1. **URL 처리 로직 문제 분석**:
+```typescript
+// 문제가 있던 로직 (추정)
+const healthUrl = `${backendUrl}/health`; // /api가 포함된 URL에서 중복 문제
+```
+
+2. **Global setup 개선**:
+```typescript
+// frontend/e2e/global-setup.ts
+const healthUrl = backendUrl.includes('/api') 
+  ? backendUrl.replace('/api', '/health')
+  : `${backendUrl}/health`;
+```
+
+3. **타임아웃 설정 조정**:
+```yaml
+# .github/workflows/e2e-tests.yml
+timeout-minutes: 20  # 10분 → 20분으로 확장
+```
+
+4. **인프라 코드 보강**:
+```typescript
+// infra/lib/compute-stack.ts에 CloudFront 관련 로직 45줄 추가
+```
+
+**결과**: E2E 테스트에서 CloudFront 환경 정상 처리 및 안정적인 테스트 실행
+
+---
+
+## 13. E2E 테스트 API URL 중복 처리 문제
+
+### 문제: CloudFront URL에 이미 /api가 포함된 경우 중복 경로 생성
+
+**문제 설명**: API 헬퍼에서 동적 URL 처리 부족으로 CloudFront URL 형태에 따른 경로 중복 문제 발생
+
+**에러 패턴**:
+```
+올바른 URL: https://d1ct76fqx0s1b8.cloudfront.net/api/users
+잘못된 URL: https://d1ct76fqx0s1b8.cloudfront.net/api/api/users
+```
+
+**사용된 프롬프트**:
+```
+"E2E 테스트에서 API URL이 /api/api/users 이런 식으로 중복되고 있어. CloudFront URL 처리 로직을 개선해줘."
+```
+
+**해결 과정**:
+
+1. **워크플로우 URL 처리 강화**:
+```yaml
+# .github/workflows/e2e-tests.yml에 22줄 로직 추가
+- name: Process Backend URL
+  run: |
+    if [[ "${{ env.BACKEND_URL }}" == *"/api"* ]]; then
+      echo "API_BASE_URL=${{ env.BACKEND_URL }}" >> $GITHUB_ENV
+    else
+      echo "API_BASE_URL=${{ env.BACKEND_URL }}/api" >> $GITHUB_ENV
+    fi
+```
+
+2. **API 헬퍼 개선**:
+```typescript
+// frontend/e2e/helpers/api.ts에 24줄 수정
+const processApiUrl = (baseUrl: string, endpoint: string) => {
+  // /api가 이미 포함된 경우 처리
+  if (baseUrl.includes('/api')) {
+    return baseUrl.replace('/api', endpoint);
+  }
+  return `${baseUrl}${endpoint}`;
+};
+
+export const apiEndpoints = {
+  health: processApiUrl(backendUrl, '/health'),
+  users: processApiUrl(backendUrl, '/api/users'),
+  // ...
+};
+```
+
+3. **Health check와 API 엔드포인트 구분**:
+```typescript
+// Health check는 /api 경로 제외
+const healthEndpoint = backendUrl.replace('/api', '/health');
+// API 호출은 /api 경로 포함
+const apiEndpoint = backendUrl.includes('/api') ? backendUrl : `${backendUrl}/api`;
+```
+
+**결과**: E2E 테스트에서 다양한 백엔드 URL 형태(ALB 직접, CloudFront 경유)에 대한 안정적인 처리
+
+---
+
+## 14. 모범 사례 및 패턴
 
 ### 식별된 트러블슈팅 패턴
 
+**기존 패턴 (Phase 1-2)**:
 1. **사전 예방적 에러 처리**: 포괄적인 검증 스크립트로 문제 조기 발견
 2. **명확한 에러 메시지**: 해결 방법이 포함된 도움이 되는 에러 메시지
 3. **점진적 배포**: 인프라 설정과 서비스 업데이트 분리
 4. **워크플로우 의존성**: 전제 조건 확인을 통한 적절한 배포 순서
 5. **수동 오버라이드 옵션**: 자동화된 프로세스에 수동 트리거 추가
 
+**새로운 패턴 (GitHub Pages 환경)**:
+6. **환경별 동적 경로 처리**: 하드코딩 대신 현재 환경에 맞는 동적 URL 생성
+7. **프론트엔드-백엔드 URL 호환성**: 다양한 배포 환경(로컬, GitHub Pages, CloudFront)에서의 일관된 동작
+8. **중첩 구조 단순화**: 복잡한 HTML/CSS 구조를 단순하고 견고한 구조로 개선
+9. **E2E 테스트 환경 적응성**: 다양한 백엔드 URL 형태에 대한 유연한 처리
+
 ### 개발 모범 사례
 
+**기존 모범 사례**:
 1. **인프라 배포 전 항상 존재 여부 확인**
 2. **상세한 로깅을 포함한 포괄적 검증 스크립트 사용**
 3. **적절한 Docker 레이어 캐싱 전략 구현**
@@ -454,12 +751,26 @@ export default defineConfig({
 5. **배포 전략 변경을 위한 GitHub 이슈 사용**
 6. **다양한 배포 검증 방법 구현 (스크립트 + 수동 헬스체크)**
 
+**새로운 모범 사례 (GitHub Pages 환경)**:
+7. **배포 환경별 base path 설정**: React Router basename과 Vite base 설정 일관성 유지
+8. **동적 경로 생성**: 하드코딩된 절대 경로 대신 현재 환경 기반 경로 생성
+9. **UI 구조 단순화**: fieldset 중첩 등 복잡한 구조를 단순하고 견고한 구조로 개선
+10. **URL 형태별 처리 로직**: CloudFront, ALB 등 다양한 백엔드 URL 형태에 대한 유연한 처리
+11. **환경별 테스트 확장**: 로컬, 스테이징, 프로덕션 환경에서의 일관된 동작 검증
+
 ### 커뮤니케이션 패턴
 
 **효과적인 트러블슈팅 프롬프트 예시**:
+
+*기존 인프라 관련*:
 - ✅ "E2E 테스트 워크플로우에 manual trigger 기능을 추가해줘"
 - ✅ "배포 검증에서 ALB를 찾을 수 없다는 에러가 나와. 확인하고 수정해줘"
 - ✅ "Docker 빌드 캐시가 제대로 최적화되어 있는지 분석해줘"
+
+*새로운 GitHub Pages 환경 관련*:
+- ✅ "API 401 에러가 발생할 때 로그인 페이지로 제대로 리다이렉트가 안 되고 있어. GitHub Pages basename을 고려해서 수정해줘"
+- ✅ "로그인/회원가입 페이지에서 입력 필드가 화면을 벗어나는 문제가 있어. fieldset 구조와 CSS를 정리해줘"
+- ✅ "E2E 테스트에서 API URL이 /api/api/users 이런 식으로 중복되고 있어. CloudFront URL 처리 로직을 개선해줘"
 
 **비효과적인 프롬프트**:
 - ❌ "안 돼"
@@ -470,10 +781,23 @@ export default defineConfig({
 
 ## 결론
 
-이 트러블슈팅 가이드는 실제 개발 과정에서 마주친 문제들과 해결 방법을 체계적으로 정리한 것입니다. 각 케이스는 재현 가능한 해결책과 함께 향후 유사한 문제 발생 시 참조할 수 있는 실용적인 가이드를 제공합니다.
+이 트러블슈팅 가이드는 실제 개발 과정에서 마주친 문제들과 해결 방법을 체계적으로 정리한 것입니다. **2025-08-02 이후 추가된 5개의 새로운 트러블슈팅 케이스**는 특히 GitHub Pages 배포 환경에서 발생하는 현실적인 문제들과 그 해결 과정을 상세히 담고 있습니다.
 
-**주요 교훈**:
+### 주요 교훈
+
+**기존 교훈 (Phase 1-2)**:
 - 체계적인 문제 분석과 단계별 해결 접근
 - 명확한 에러 메시지와 가이드의 중요성
 - 사전 예방적 검증의 가치
 - 실제 사용한 프롬프트와 명령어의 문서화 중요성
+
+**새로운 교훈 (GitHub Pages 환경)**:
+- **배포 환경별 특성 고려**: 개발 단계부터 실제 배포 환경의 특성(base path, URL 구조 등) 반영 필요
+- **동적 경로 처리의 중요성**: 하드코딩된 절대 경로는 환경 변화에 취약함
+- **프론트엔드-백엔드 통합 복잡성**: 다양한 배포 환경에서의 URL 호환성 확보 필요
+- **점진적 문제 해결**: 연관된 문제들을 단계적으로 해결하여 시스템 안정성 확보
+- **E2E 테스트의 환경 적응성**: 다양한 백엔드 URL 형태에 대한 유연한 처리 로직 구현
+
+### 진화하는 트러블슈팅 접근법
+
+이 문서는 프로젝트의 진화와 함께 성장하는 **Living Document**입니다. Phase 1(모놀리식)에서 Phase 2(클라우드 전환)를 거쳐 현재 Phase 3(마이크로서비스 분해) 준비 단계에서 발생하는 문제들이 각기 다른 특성을 보여주고 있으며, 각 단계의 트러블슈팅 경험이 다음 단계의 예방적 설계에 기여하고 있습니다.
