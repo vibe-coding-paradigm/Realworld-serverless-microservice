@@ -73,28 +73,6 @@ const AppTestWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// Test wrapper for individual page components (with Router) - currently unused but kept for future use
-const _ComponentTestWrapper = ({ children, initialEntries = ['/'] }: { 
-  children: React.ReactNode; 
-  initialEntries?: string[] 
-}) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false }
-    }
-  });
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={initialEntries}>
-          {children}
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
-};
 
 describe('App Routing', () => {
   let originalLocation: Location;
