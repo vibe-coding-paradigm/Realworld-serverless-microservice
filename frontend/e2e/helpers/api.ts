@@ -75,11 +75,14 @@ export class ApiHelper {
   }
 
   async createArticle(articleData: any, token: string) {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Token ${token}`;
+    }
+    
     const response = await this.request.post(`${this.apiBaseURL}/articles`, {
       data: { article: articleData },
-      headers: {
-        'Authorization': `Token ${token}`
-      }
+      headers
     });
     
     return {

@@ -21,12 +21,10 @@ test.describe('Articles Management', () => {
       const api = new ApiHelper(request);
       const testArticle = generateTestArticle();
       
-      const apiUrl = process.env.API_URL || 'http://3.39.187.72:8080';
-      const response = await request.post(`${apiUrl}/api/articles`, {
-        data: { article: testArticle }
-      });
+      // Use ApiHelper to handle URL construction properly - no token means no auth
+      const { response } = await api.createArticle(testArticle, '');
       
-      // Should require authentication
+      // Should require authentication - backend returns 401 for missing auth
       expect(response.status()).toBe(401);
     });
 
