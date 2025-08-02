@@ -4,8 +4,8 @@
 echo "🚀 Running pre-push checks (E2E tests)..."
 
 # Run E2E tests using Makefile command
-echo "🔍 Running E2E tests..."
-if make e2e; then
+echo "🔍 Running E2E tests (local mode)..."
+if make e2e-local; then
     echo "✅ E2E tests passed!"
     echo ""
     echo "✅ All pre-push checks passed!"
