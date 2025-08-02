@@ -340,33 +340,153 @@ aws cloudformation deploy  # CloudFormation 직접 배포 금지
 
 ## 📖 개발 가이드
 
-### 주요 명령어
+### 🚀 주요 명령어 (Makefile 기반)
 
-#### 개발 및 테스트
+#### 🎯 빠른 시작 (신규 프로젝트 설정)
 ```bash
-# 개발 서버 시작
-make dev
+# ⭐ 프로젝트 전체 자동 설정 (권장)
+make quick-start              # 의존성 설치 + Git hooks + 마이그레이션 + 개발환경 시작
 
-# 테스트 실행
-make test
+# 또는 단계별 설정
+make setup-dev               # 개발 환경 초기 설정만
+make install-hooks           # Git hooks 설치
+make check-deps              # 필수 도구 확인
+```
 
-# E2E 테스트 실행 (Playwright)
-cd frontend && npm run test:e2e
+#### 🛠️ 개발 환경 관리
+```bash
+# 개발 서버 관리
+make dev                     # 개발 환경 시작 (Docker Compose)
+make dev-detach             # 백그라운드에서 시작 (권장)
+make dev-stop               # 개발 환경 중단
+make dev-logs               # 실시간 로그 보기
 
-# 부하 테스트 실행 (k6)
-cd load-tests && k6 run basic-load-test.js
+# 개별 서비스 실행
+make frontend-dev           # 프론트엔드만 개발 모드
+make backend-dev            # 백엔드만 개발 모드
+make watch                  # 파일 변경 감지 자동 재시작
 
-# 프로덕션 빌드
-make build
+# 간편 명령어
+make start                  # = make dev-detach
+make stop                   # = make dev-stop  
+make restart                # = make stop start
+```
 
-# 데이터베이스 마이그레이션
-make migrate
+#### 🧪 테스트 실행
+```bash
+# 기본 테스트
+make test                   # 모든 테스트 (backend + frontend)
+make test-watch             # 테스트 watch 모드
 
-# 코드 포맷팅
-make fmt
+# E2E 테스트 (Playwright)
+make e2e                    # E2E 테스트 실행
+make e2e-ui                 # E2E 테스트 UI 모드
+make e2e-debug              # E2E 테스트 디버그 모드
 
-# 린터 실행
-make lint
+# 성능 테스트
+make load-test-local        # 로컬 부하 테스트 (k6)
+make api-test               # API 엔드포인트 직접 테스트
+```
+
+#### 🔨 빌드 및 의존성
+```bash
+# 빌드
+make build                  # 프로덕션 이미지 빌드
+make frontend-build         # 프론트엔드만 빌드
+make backend-build          # 백엔드만 빌드
+
+# 의존성 관리
+make deps                   # 모든 의존성 설치
+make check-deps             # 필수 도구 설치 확인
+```
+
+#### 🔧 코드 품질 관리
+```bash
+# 코드 품질
+make lint                   # 린터 실행 (backend + frontend)
+make lint-fix               # 린터 자동 수정
+make fmt                    # 코드 포맷팅
+```
+
+#### 🗄️ 데이터베이스 관리
+```bash
+# 데이터베이스
+make migrate                # 마이그레이션 실행
+make db-reset               # 데이터베이스 초기화
+make db-backup              # 데이터베이스 백업
+make seed-db                # 테스트 데이터 삽입 (TODO)
+```
+
+#### ☁️ 배포 상태 모니터링
+```bash
+# 배포 상태 확인
+make deploy-check           # 배포 상태 종합 확인
+make deploy-logs            # 워크플로우 로그 보기
+make deploy-logs-failed     # 실패한 배포만 확인
+make deploy-logs-frontend   # 프론트엔드 배포 로그
+make deploy-logs-backend    # 백엔드 배포 로그
+
+# 시스템 검증
+make status                 # 전체 시스템 상태 체크
+make verify-all             # 완전한 배포 검증
+make health                 # 서비스 헬스 체크
+```
+
+#### 🐛 디버깅 및 문제 해결
+```bash
+# 디버깅 도구
+make debug                  # 종합 디버깅 정보 수집
+make deploy-debug           # 배포 관련 디버깅
+make dev-debug              # 개발 환경 디버깅
+make dev-status             # 개발 환경 상태 확인
+
+# GitHub 관련
+make gh-login-check         # GitHub CLI 인증 확인
+make gh-workflow-run        # 워크플로우 실행 가이드
+```
+
+#### 🧹 환경 정리
+```bash
+# 정리 작업
+make clean                  # Docker 컨테이너/이미지 정리
+make reset-env              # 전체 환경 초기화 (주의: 파괴적)
+```
+
+#### 💡 명령어 도움말
+```bash
+# 도움말
+make help                   # 모든 명령어 가이드 표시
+make                        # = make help
+```
+
+#### 📋 권장 워크플로우 패턴
+
+**🚀 신규 환경 설정:**
+```bash
+make quick-start            # 모든 것을 한 번에 설정
+```
+
+**🛠️ 일상적인 개발:**
+```bash
+make start                  # 개발 환경 시작
+make dev-logs              # 로그 확인
+make test-watch            # 테스트 watch 모드
+make lint-fix              # 코드 정리
+make stop                  # 개발 종료
+```
+
+**🧪 문제 발생 시:**
+```bash
+make deploy-logs-failed    # 실패한 배포 확인
+make debug                 # 전체 디버깅 정보
+make dev-debug             # 개발 환경 문제 진단
+```
+
+**🔄 환경 재설정:**
+```bash
+make clean                 # Docker 정리
+make reset-env             # 완전 초기화 (신중히)
+make quick-start           # 재설정
 ```
 
 #### Git Hooks 설정 (품질 보장 시스템)
@@ -550,38 +670,56 @@ docker-compose up -d backend
 - ✅ GitHub Actions E2E 테스트 통과 여부 확인
 - ✅ 새로운 기능에 대한 E2E 테스트 추가 여부 확인
 
-#### 배포 및 디버깅
+#### 🏗️ 배포 및 인프라 관리
 ```bash
-# 🏗️ 초기 인프라 배포 (최초 1회, 로컬에서만)
-make deploy-initial
+# 초기 배포 (최초 1회만, 로컬에서 실행)
+make deploy-initial         # ECR + Docker 빌드 + CDK 전체 배포
 
-# 배포 상태 확인
-make deploy-check
+# 배포 상태 모니터링
+make deploy-check           # 프론트엔드 + 백엔드 배포 상태 확인
+make deploy-logs            # 모든 워크플로우 로그 확인
+make deploy-logs-failed     # 실패한 배포만 확인
+make deploy-logs-frontend   # 프론트엔드 배포 로그
+make deploy-logs-backend    # 백엔드 배포 로그
+make deploy-logs-e2e        # E2E 테스트 로그
+make deploy-logs-load       # 부하 테스트 로그
 
-# 배포 로그 확인
-make deploy-logs
+# 인프라 관리 (⚠️ GitHub Actions 권장)
+make cdk-deploy             # CDK 인프라 배포
+make cdk-destroy            # CDK 인프라 완전 삭제
+make cdk-diff               # 인프라 변경사항 미리보기
+make cdk-synth              # CloudFormation 템플릿 생성
 
-# 전체 디버깅 정보
-make debug
-
-# CDK 인프라 배포 (개별)
-make cdk-deploy
-
-# CDK 인프라 삭제
-make cdk-destroy
-
-# 시스템 상태 종합 확인
-make status
+# 검증 및 확인
+make verify-deployment      # AWS 리소스 상태 검증
+make verify-all             # 전체 시스템 검증 (배포 + AWS)
+make status                 # 빠른 상태 체크
 ```
 
-#### GitHub Actions 관련
+#### 🔧 디버깅 및 문제 해결
 ```bash
-# GitHub CLI 로그인 확인
-make gh-login-check
+# 종합 디버깅
+make debug                  # 전체 시스템 디버깅 정보 수집
+make deploy-debug           # 배포 관련 디버깅 정보
+make dev-debug              # 로컬 개발 환경 디버깅
 
-# 워크플로우 수동 실행 안내
-make gh-workflow-run
+# GitHub CLI 관련
+make gh-login-check         # GitHub CLI 인증 상태 확인
+make gh-workflow-run        # 워크플로우 수동 실행 가이드 (조회 전용)
 ```
+
+#### ⚠️ 배포 정책 준수
+```bash
+# ❌ 사용 금지 (GitHub Actions 전용)
+# make cdk-deploy            # 직접 배포 금지
+# npx cdk deploy             # 수동 CDK 배포 금지
+
+# ✅ 권장 방법
+git add . && git commit -m "변경사항" && git push origin main
+# → GitHub Actions가 자동으로 배포 처리
+make deploy-logs            # 배포 결과 확인
+```
+
 
 ## 📚 프로젝트 문서
 

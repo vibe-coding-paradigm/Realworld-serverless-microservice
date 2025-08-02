@@ -1,34 +1,61 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-ui e2e-debug load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env
 
 # 기본 타겟
 help:
-	@echo "사용 가능한 명령어:"
-	@echo "  dev            - 개발 환경 시작"
-	@echo "  build          - 프로덕션 이미지 빌드"
-	@echo "  test           - 모든 테스트 실행"
-	@echo "  lint           - 린터 실행"
-	@echo "  fmt            - 코드 포맷팅"
-	@echo "  migrate        - 데이터베이스 마이그레이션 실행"
-	@echo "  clean          - 컨테이너와 이미지 정리"
-	@echo "  deps           - 의존성 설치"
-	@echo "  check-deps     - 필요한 도구 설치 확인"
+	@echo "🚀 RealWorld Serverless Microservice - Makefile 명령어 가이드"
 	@echo ""
-	@echo "배포 및 디버깅:"
-	@echo "  deploy-initial - 초기 인프라 전체 배포 (로컬 전용)"
+	@echo "📚 빠른 시작:"
+	@echo "  quick-start    - 프로젝트 전체 초기 설정 (권장)"
+	@echo "  setup-dev      - 개발 환경 초기 설정"
+	@echo "  install-hooks  - Git hooks 설치"
+	@echo ""
+	@echo "🛠️ 개발 환경:"
+	@echo "  dev            - 개발 환경 시작 (Docker Compose)"
+	@echo "  dev-detach     - 개발 환경 백그라운드 시작"
+	@echo "  dev-stop       - 개발 환경 중단"
+	@echo "  frontend-dev   - 프론트엔드만 개발 모드 시작"
+	@echo "  backend-dev    - 백엔드만 개발 모드 시작"
+	@echo "  watch          - 파일 변경 감지 및 자동 재시작"
+	@echo ""
+	@echo "🧪 테스트:"
+	@echo "  test           - 모든 테스트 실행"
+	@echo "  test-watch     - 테스트 watch 모드"
+	@echo "  e2e            - E2E 테스트 실행"
+	@echo "  e2e-ui         - E2E 테스트 UI 모드"
+	@echo "  e2e-debug      - E2E 테스트 디버그 모드"
+	@echo "  load-test-local - 로컬 부하 테스트"
+	@echo "  api-test       - API 테스트 실행"
+	@echo ""
+	@echo "🔧 코드 품질:"
+	@echo "  lint           - 린터 실행"
+	@echo "  lint-fix       - 린터 자동 수정"
+	@echo "  fmt            - 코드 포맷팅"
+	@echo ""
+	@echo "🗄️ 데이터베이스:"
+	@echo "  migrate        - 데이터베이스 마이그레이션"
+	@echo "  seed-db        - 테스트 데이터 삽입"
+	@echo "  db-reset       - 데이터베이스 초기화"
+	@echo ""
+	@echo "📦 빌드 및 의존성:"
+	@echo "  build          - 프로덕션 이미지 빌드"
+	@echo "  frontend-build - 프론트엔드만 빌드"
+	@echo "  backend-build  - 백엔드만 빌드"
+	@echo "  deps           - 의존성 설치"
+	@echo "  check-deps     - 의존성 확인"
+	@echo ""
+	@echo "🧹 정리:"
+	@echo "  clean          - 컨테이너와 이미지 정리"
+	@echo "  reset-env      - 전체 환경 초기화"
+	@echo ""
+	@echo "☁️ 배포 및 모니터링:"
+	@echo "  deploy-initial - 초기 인프라 배포 (로컬 전용)"
 	@echo "  deploy-check   - 배포 상태 확인"
-	@echo "  deploy-logs    - 모든 워크플로우 로그 상태 확인"
-	@echo "  deploy-logs-frontend - 프론트엔드 배포 로그"
-	@echo "  deploy-logs-backend  - 백엔드 배포 로그"
-	@echo "  deploy-logs-failed   - 실패한 배포 로그만"
-	@echo "  deploy-logs-e2e      - E2E 테스트 로그"
-	@echo "  deploy-logs-load     - 부하 테스트 로그"
-	@echo "  deploy-debug   - 배포 디버깅 정보"
-	@echo "  gh-workflow-run      - 워크플로우 수동 실행 가이드 (조회 전용)"
-	@echo "  cdk-deploy     - CDK로 인프라 배포"
-	@echo "  cdk-destroy    - CDK 인프라 삭제"
-	@echo "  cdk-diff       - CDK 변경사항 확인"
-	@echo "  verify-deployment - AWS 배포 상태 검증"
-	@echo "  verify-all     - 완전한 배포 검증"
+	@echo "  deploy-logs    - 워크플로우 로그 확인"
+	@echo "  deploy-logs-failed - 실패한 배포만"
+	@echo "  deploy-debug   - 배포 디버깅"
+	@echo "  verify-all     - 전체 시스템 검증"
+	@echo ""
+	@echo "💡 자세한 사용법: make <command> 또는 CLAUDE.md 참조"
 
 # 개발 명령어
 dev: check-deps
@@ -312,3 +339,174 @@ status: deploy-check health
 # 완전한 검증 (배포 상태 + AWS 리소스 검증)
 verify-all: deploy-check verify-deployment
 	@echo "🎯 전체 배포 검증 완료"
+
+# ============================================================================
+# 개발 효율성 명령어
+# ============================================================================
+
+# 빠른 시작 - 프로젝트 전체 초기 설정
+quick-start:
+	@echo "🚀 프로젝트 전체 초기 설정을 시작합니다..."
+	@echo "1️⃣ 의존성 확인 중..."
+	@$(MAKE) check-deps
+	@echo "2️⃣ 의존성 설치 중..."
+	@$(MAKE) deps
+	@echo "3️⃣ Git hooks 설치 중..."
+	@$(MAKE) install-hooks
+	@echo "4️⃣ 데이터베이스 마이그레이션 중..."
+	@$(MAKE) migrate
+	@echo "5️⃣ 개발 환경 시작 중..."
+	@$(MAKE) dev-detach
+	@echo "✅ 프로젝트 설정 완료!"
+	@echo ""
+	@echo "🎯 다음 단계:"
+	@echo "  • 브라우저에서 http://localhost:3000 확인"
+	@echo "  • API 상태: http://localhost:8080/health"
+	@echo "  • 로그 확인: make dev-logs"
+	@echo "  • 개발 중단: make dev-stop"
+
+# 개발 환경 초기 설정
+setup-dev:
+	@echo "🛠️ 개발 환경 초기 설정 중..."
+	@$(MAKE) check-deps
+	@$(MAKE) deps
+	@$(MAKE) install-hooks
+	@$(MAKE) migrate
+	@echo "✅ 개발 환경 설정 완료"
+
+# Git hooks 설치
+install-hooks:
+	@echo "🔧 Git hooks 설치 중..."
+	@npm run install-hooks
+
+# 파일 변경 감지 및 자동 재시작
+watch:
+	@echo "👀 파일 변경 감지 모드 시작..."
+	@echo "백엔드 파일 변경 시 자동 재시작됩니다"
+	@cd backend && find . -name "*.go" | entr -r go run cmd/server/main.go
+
+# 개별 서비스 개발 모드
+frontend-dev:
+	@echo "🎨 프론트엔드 개발 모드 시작..."
+	@cd frontend && npm run dev
+
+backend-dev:
+	@echo "⚙️ 백엔드 개발 모드 시작..."
+	@echo "🔑 JWT_SECRET 환경변수 설정 중..."
+	@cd backend && JWT_SECRET="local-development-secret-key-$(shell date +%s)" go run cmd/server/main.go
+
+# 개별 서비스 빌드
+frontend-build:
+	@echo "🔨 프론트엔드 빌드 중..."
+	@cd frontend && npm run build
+
+backend-build:
+	@echo "🔨 백엔드 빌드 중..."
+	@cd backend && go build -o bin/server cmd/server/main.go
+
+# 테스트 watch 모드
+test-watch:
+	@echo "🧪 테스트 watch 모드 시작..."
+	@echo "프론트엔드 테스트 watch 모드"
+	@cd frontend && npm run test
+
+# E2E 테스트 명령어들
+e2e:
+	@echo "🧪 E2E 테스트 실행 중..."
+	@cd frontend && npm run test:e2e
+
+e2e-ui:
+	@echo "🧪 E2E 테스트 UI 모드 시작..."
+	@cd frontend && npx playwright test --ui
+
+e2e-debug:
+	@echo "🧪 E2E 테스트 디버그 모드 시작..."
+	@cd frontend && npx playwright test --debug
+
+# 로컬 부하 테스트
+load-test-local:
+	@echo "📊 로컬 부하 테스트 실행 중..."
+	@command -v k6 >/dev/null 2>&1 || (echo "❌ k6를 찾을 수 없습니다. 설치하세요: brew install k6"; exit 1)
+	@cd load-tests && k6 run basic-load-test.js
+
+# API 테스트
+api-test:
+	@echo "🔌 API 테스트 실행 중..."
+	@echo "백엔드 헬스 체크..."
+	@curl -f http://localhost:8080/health || echo "❌ 백엔드가 실행되지 않았습니다"
+	@echo ""
+	@echo "API 엔드포인트 테스트..."
+	@curl -s http://localhost:8080/api/articles | jq . || echo "❌ API 응답 오류"
+
+# 린터 자동 수정
+lint-fix:
+	@echo "🔧 린터 자동 수정 실행 중..."
+	@cd backend && golangci-lint run --fix || echo "⚠️ 백엔드 lint-fix 완료 (일부 수동 수정 필요할 수 있음)"
+	@cd frontend && npm run lint -- --fix || echo "⚠️ 프론트엔드 lint-fix 완료"
+
+# 테스트 데이터 삽입
+seed-db:
+	@echo "🌱 테스트 데이터 삽입 중..."
+	@echo "TODO: 테스트 데이터 생성 스크립트 구현 필요"
+	@echo "현재는 수동으로 API를 통해 데이터를 생성하세요"
+
+# 전체 환경 초기화
+reset-env:
+	@echo "🔄 전체 환경 초기화 중..."
+	@echo "⚠️ 모든 데이터가 삭제됩니다. 계속하시겠습니까? (Ctrl+C로 취소)"
+	@read -p "Enter를 눌러 계속..."
+	@$(MAKE) clean
+	@$(MAKE) db-reset
+	@echo "✅ 환경 초기화 완료"
+
+# 개발 상태 확인
+dev-status:
+	@echo "📊 개발 환경 상태 확인..."
+	@echo ""
+	@echo "🐳 Docker 컨테이너 상태:"
+	@docker-compose ps || echo "Docker Compose가 실행되지 않음"
+	@echo ""
+	@echo "🌐 서비스 상태:"
+	@curl -s http://localhost:8080/health > /dev/null && echo "✅ 백엔드: 실행 중" || echo "❌ 백엔드: 중단됨"
+	@curl -s http://localhost:3000 > /dev/null && echo "✅ 프론트엔드: 실행 중" || echo "❌ 프론트엔드: 중단됨"
+	@echo ""
+	@echo "📁 프로젝트 구조:"
+	@ls -la | head -10
+
+# 로그 통합 보기
+logs-all:
+	@echo "📋 통합 로그 보기..."
+	@echo "Ctrl+C로 종료"
+	@docker-compose logs -f
+
+# 개발 디버그 정보
+dev-debug:
+	@echo "🐛 개발 디버그 정보 수집 중..."
+	@echo ""
+	@echo "📍 시스템 정보:"
+	@echo "OS: $$(uname -s)"
+	@echo "아키텍처: $$(uname -m)"
+	@echo ""
+	@echo "📍 도구 버전:"
+	@docker --version 2>/dev/null || echo "Docker: 설치되지 않음"
+	@node --version 2>/dev/null || echo "Node.js: 설치되지 않음"
+	@go version 2>/dev/null || echo "Go: 설치되지 않음"
+	@gh --version 2>/dev/null || echo "GitHub CLI: 설치되지 않음"
+	@echo ""
+	@echo "📍 포트 사용 상황:"
+	@lsof -i :3000 2>/dev/null | head -2 || echo "포트 3000: 사용되지 않음"
+	@lsof -i :8080 2>/dev/null | head -2 || echo "포트 8080: 사용되지 않음"
+	@echo ""
+	@echo "📍 파일 권한:"
+	@ls -la scripts/ | head -5
+
+# 자주 사용하는 명령어 조합
+start: dev-detach
+	@echo "🚀 개발 서버가 백그라운드에서 시작되었습니다"
+	@echo "로그 확인: make dev-logs"
+
+stop: dev-stop
+	@echo "🛑 개발 서버가 중단되었습니다"
+
+restart: stop start
+	@echo "🔄 개발 서버가 재시작되었습니다"

@@ -119,29 +119,173 @@ cd backend && go test ./...               # Run all Go unit tests
 cd frontend && npm run test:run           # Run all frontend unit tests
 ```
 
-### Development and Debugging (Makefile Scripts)
+### Comprehensive Development Commands (Makefile Scripts)
+
+#### 🚀 빠른 시작 - 프로젝트 전체 초기 설정
 ```bash
-# Deployment Status and Monitoring
-make deploy-check               # Check deployment status of both frontend and backend
-make deploy-logs               # View recent deployment logs
-make status                    # Quick health check for entire system
-
-# Debugging and Troubleshooting
-make debug                     # Collect comprehensive debugging information
-make deploy-debug              # Deployment-specific debugging info
-make gh-login-check            # Verify GitHub CLI authentication
-
-# CDK Infrastructure Management
-make cdk-deploy               # Deploy infrastructure with CDK
-make cdk-destroy              # Delete CDK infrastructure
-make cdk-diff                 # Show CDK changes before deployment
-make cdk-synth                # Generate CloudFormation templates
-
-# GitHub Actions Integration
-make gh-workflow-run          # Manual workflow execution guide
+make quick-start              # Complete project setup automation (recommended)
+make setup-dev               # Development environment initial setup
+make install-hooks           # Install Git hooks
 ```
 
-These Makefile scripts automate repetitive deployment and debugging tasks, making it easier to manage the migration process.
+#### 🛠️ 개발 환경 관리
+```bash
+make dev                     # Start development environment (Docker Compose)
+make dev-detach             # Start development environment in background
+make dev-stop               # Stop development environment
+make dev-logs               # View development logs
+make frontend-dev           # Start frontend only in development mode
+make backend-dev            # Start backend only in development mode
+make watch                  # File change detection with auto-restart
+```
+
+#### 🔨 빌드 및 의존성
+```bash
+make frontend-build         # Build frontend only
+make backend-build          # Build backend only
+make build                  # Build production images
+make deps                   # Install all dependencies (backend + frontend)
+make check-deps             # Verify required dependencies are installed
+make install-deps           # Show installation guide for dev dependencies
+```
+
+#### 🧪 테스트 실행
+```bash
+make test                   # Run all tests (backend + frontend)
+make test-watch             # Run tests in watch mode
+make e2e                    # Run E2E tests (Playwright)
+make e2e-ui                 # Run E2E tests with UI mode
+make e2e-debug              # Run E2E tests in debug mode
+make load-test-local        # Run local load testing (k6)
+make api-test               # Test API endpoints directly
+```
+
+#### 🔧 코드 품질 관리
+```bash
+make lint                   # Run linters for both backend and frontend
+make lint-fix               # Auto-fix linting issues
+make fmt                    # Format code (Go + frontend)
+```
+
+#### 🗄️ 데이터베이스 관리
+```bash
+make migrate                # Run database migrations
+make seed-db                # Insert test data (TODO: implementation needed)
+make db-reset               # Reset database completely
+make db-backup              # Backup current database
+```
+
+#### 🧹 환경 관리
+```bash
+make clean                  # Clean containers and images
+make reset-env              # Complete environment reset (destructive)
+make dev-status             # Check development environment status
+make dev-debug              # Collect development debugging information
+make logs-all               # View integrated logs
+```
+
+#### ☁️ 배포 상태 및 모니터링
+```bash
+make deploy-check           # Check deployment status of both frontend and backend
+make deploy-logs            # View recent workflow logs (all)
+make deploy-logs-frontend   # View frontend deployment logs
+make deploy-logs-backend    # View backend deployment logs
+make deploy-logs-failed     # View failed deployments only
+make deploy-logs-e2e        # View E2E test logs
+make deploy-logs-load       # View load test logs
+make status                 # Quick health check for entire system
+```
+
+#### 🏗️ 배포 및 인프라 (⚠️ GitHub Actions 전용)
+```bash
+make deploy-initial         # Initial infrastructure deployment (local only - required first!)
+make verify-deployment      # Verify AWS deployment status
+make verify-all             # Complete deployment verification
+```
+
+#### 🐛 디버깅 및 문제 해결
+```bash
+make debug                  # Collect comprehensive debugging information
+make deploy-debug           # Deployment-specific debugging info
+make gh-login-check         # Verify GitHub CLI authentication
+```
+
+#### 🏗️ CDK 인프라 관리 (⚠️ GitHub Actions 권장)
+```bash
+make cdk-deploy             # Deploy infrastructure with CDK
+make cdk-destroy            # Delete CDK infrastructure
+make cdk-diff               # Show CDK changes before deployment
+make cdk-synth              # Generate CloudFormation templates
+```
+
+#### 🔄 GitHub Actions 통합
+```bash
+make gh-workflow-run        # Manual workflow execution guide (query-only)
+```
+
+#### ⚡ 자주 사용하는 조합 명령어
+```bash
+make start                  # Alias for dev-detach
+make stop                   # Alias for dev-stop
+make restart                # Stop and start development environment
+make health                 # Service health check
+```
+
+### 📋 Makefile 사용 권장 패턴
+
+#### 🚀 프로젝트 첫 시작 시
+```bash
+make quick-start            # 모든 설정을 자동으로 완료
+# 또는 단계별로:
+make check-deps && make deps && make install-hooks && make migrate && make dev
+```
+
+#### 🛠️ 일상적인 개발 작업
+```bash
+make start                  # 개발 환경 시작
+make dev-logs              # 로그 확인
+make test-watch            # 테스트 watch 모드
+make lint-fix              # 코드 정리
+make stop                  # 개발 환경 종료
+```
+
+#### 🧪 테스트 및 검증
+```bash
+make e2e                   # E2E 테스트 실행
+make e2e-ui                # E2E 테스트 UI 모드로 디버깅
+make load-test-local       # 로컬 성능 테스트
+make api-test              # API 엔드포인트 직접 테스트
+```
+
+#### 🔍 배포 및 모니터링
+```bash
+make deploy-check          # 배포 상태 확인
+make deploy-logs-failed    # 실패한 배포만 확인
+make verify-all            # 전체 시스템 검증
+make debug                 # 종합 디버깅 정보 수집
+```
+
+#### 🧹 환경 정리 및 재설정
+```bash
+make clean                 # Docker 정리
+make db-reset              # 데이터베이스 초기화
+make reset-env             # 전체 환경 재설정 (주의: 파괴적)
+```
+
+### 🎯 Claude Code를 위한 특별 지침
+
+#### 워크플로우 로그 조회 시스템
+- **스크립트**: `scripts/get-workflow-logs.sh` (조회 전용, GitHub CLI 사용)
+- **주요 명령어**: `make deploy-logs`, `make deploy-logs-failed`
+- **특징**: 로컬 실행 방지, 환경 차이 최소화, 컬러 출력
+
+#### 개발 효율성 우선순위
+1. `make quick-start` - 새 환경 설정 시 최우선
+2. `make deploy-logs-failed` - 문제 발생 시 첫 번째 확인
+3. `make debug` - 종합적인 문제 진단
+4. `make verify-all` - 배포 후 전체 검증
+
+These comprehensive Makefile scripts provide automated workflows for all development, testing, deployment, and debugging tasks, significantly streamlining the migration process and daily development work.
 
 ## Architecture Implementation
 
