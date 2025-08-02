@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       
       const response = await authAPI.login(credentials.email, credentials.password);
+      
       const { user: userData } = response;
 
       // Store token and user data
@@ -58,10 +59,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('token', userData.token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
+      } else {
       }
       
       return response;
     } catch (error: unknown) {
+      console.error('🔴 [DEBUG] AuthContext login error:', error);
       const errorMessage = extractErrorMessage(error, 'Login failed. Please check your credentials.');
       setError(errorMessage);
       throw error; // Re-throw original error for proper handling

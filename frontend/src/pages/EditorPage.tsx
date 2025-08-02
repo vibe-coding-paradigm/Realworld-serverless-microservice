@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { createRoutes } from '@/lib/routes';
 import { useCreateArticle, useUpdateArticle, useArticle } from '@/hooks/useArticles';
 import { ErrorMessage } from '@/components/ui/error';
 
@@ -126,7 +127,7 @@ const EditorPage: React.FC = () => {
             tagList: formData.tagList,
           }
         });
-        navigate(`/article/${result.article.slug}`);
+        navigate(createRoutes.articleDetail(result.article.slug));
       } else {
         const result = await createMutation.mutateAsync({
           title: formData.title,
@@ -134,7 +135,7 @@ const EditorPage: React.FC = () => {
           body: formData.body,
           tagList: formData.tagList,
         });
-        navigate(`/article/${result.article.slug}`);
+        navigate(createRoutes.articleDetail(result.article.slug));
       }
     } catch (error: unknown) {
       console.error('Failed to save article:', error);

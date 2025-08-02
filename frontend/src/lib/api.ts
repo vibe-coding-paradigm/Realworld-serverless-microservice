@@ -1,6 +1,16 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Use CloudFront directly in development to avoid CORS/proxy issues
+const API_BASE_URL = (() => {
+  // If development build with __DEV_API_URL__ defined, use CloudFront directly
+  if (typeof __DEV_API_URL__ !== 'undefined') {
+    return __DEV_API_URL__ + '/api';
+  }
+  // Otherwise use environment variable or relative path
+  return import.meta.env.VITE_API_URL || '/api';
+})();
+
+console.log('API_BASE_URL:', API_BASE_URL);
 
 // Create axios instance with base configuration
 export const api = axios.create({

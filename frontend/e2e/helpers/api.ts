@@ -4,7 +4,7 @@ export class ApiHelper {
   constructor(private request: APIRequestContext) {}
   
   private get baseURL() {
-    return process.env.API_URL || 'http://3.39.187.72:8080';
+    return process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
   }
 
   private get apiBaseURL() {
@@ -27,8 +27,11 @@ export class ApiHelper {
 
   async getArticles() {
     const response = await this.request.get(`${this.apiBaseURL}/articles`);
-    expect(response.ok()).toBeTruthy();
-    return await response.json();
+    
+    return {
+      response,
+      data: response.ok() ? await response.json() : null
+    };
   }
 
   async createUser(userData: { username: string; email: string; password: string }) {
@@ -43,13 +46,31 @@ export class ApiHelper {
   }
 
   async loginUser(credentials: { email: string; password: string }) {
-    const response = await this.request.post(`${this.apiBaseURL}/users/login`, {
-      data: { user: credentials }
+    const url = `${this.apiBaseURL}/users/login`;
+    const requestData = { user: credentials };
+    
+    console.log(`API Helper Request: POST ${url}`);
+    console.log(`API Helper Headers: {"Content-Type": "application/json"}`);
+    console.log(`API Helper Body: ${JSON.stringify(requestData)}`);
+    
+    const response = await this.request.post(url, {
+      data: requestData
     });
+    
+    console.log(`API Helper Response: ${response.status()} ${response.statusText()}`);
     
     return {
       response,
       data: response.ok() ? await response.json() : null
+    };
+  }
+  
+  // Debug method to get URLs
+  getDebugInfo() {
+    return {
+      baseURL: this.baseURL,
+      apiBaseURL: this.apiBaseURL,
+      healthURL: this.healthURL
     };
   }
 
@@ -70,6 +91,19 @@ export class ApiHelper {
   async createComment(slug: string, commentData: any, token: string) {
     const response = await this.request.post(`${this.apiBaseURL}/articles/${slug}/comments`, {
       data: { comment: commentData },
+      headers: {
+        'Authorization': `Token ${token}`
+      }
+    });
+    
+    return {
+      response,
+      data: response.ok() ? await response.json() : null
+    };
+  }
+
+  async deleteArticle(slug: string, token: string) {
+    const response = await this.request.delete(`${this.apiBaseURL}/articles/${slug}`, {
       headers: {
         'Authorization': `Token ${token}`
       }

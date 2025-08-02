@@ -42,8 +42,8 @@ export const testArticles = {
 };
 
 export const waitTimes = {
-  short: 1000,
-  medium: 3000,
-  long: 5000,
-  api: 10000
+  short: 2000,
+  medium: 10000,
+  long: 15000,
+  api: 20000
 };

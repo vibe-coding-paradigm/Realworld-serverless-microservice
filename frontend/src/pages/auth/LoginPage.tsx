@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { ROUTES } from '@/lib/routes';
 import { ErrorMessage } from '@/components/ui/error';
 
 const LoginPage: React.FC = () => {
@@ -50,14 +51,16 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    
     if (!validateForm()) {
       return;
     }
 
     try {
-      await login(formData);
+      const result = await login(formData);
       navigate('/');
-    } catch {
+    } catch (error) {
+      console.error('🔴 [DEBUG] Login failed:', error);
       // Error is handled by AuthContext
     }
   };
@@ -69,7 +72,7 @@ const LoginPage: React.FC = () => {
           <div className="w-full max-w-lg">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-medium mb-2">Sign in</h1>
-              <Link to="/register" className="text-green-500 hover:underline">
+              <Link to={ROUTES.REGISTER} className="text-green-500 hover:underline">
                 Need an account?
               </Link>
             </div>

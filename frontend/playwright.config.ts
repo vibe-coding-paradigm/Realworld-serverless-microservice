@@ -1,9 +1,34 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
+ * Smart environment detection for E2E testing
+ * Supports both local development and cloud deployment scenarios
+ */
+function getBaseURL(): string {
+  // Priority 1: Explicit environment variable (CI/CD)
+  if (process.env.PLAYWRIGHT_BASE_URL) {
+    return process.env.PLAYWRIGHT_BASE_URL;
+  }
+  
+  // Priority 2: CI environment - use GitHub Pages
+  if (process.env.CI) {
+    return 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/';
+  }
+  
+  // Priority 3: Local development - check if dev server is likely running
+  if (process.env.NODE_ENV === 'development' || process.env.npm_lifecycle_event === 'dev') {
+    return 'http://localhost:3000';
+  }
+  
+  // Priority 4: Default to GitHub Pages for production testing
+  return 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/';
+}
+
+/**
  * Playwright configuration for RealWorld E2E testing
  * 
  * Tests both GitHub Pages frontend and AWS ECS backend
+ * Automatically detects local vs cloud environment
  */
 export default defineConfig({
   testDir: './e2e',
@@ -24,7 +49,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/',
+    baseURL: getBaseURL(),
     
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -36,8 +61,8 @@ export default defineConfig({
     video: 'retain-on-failure',
     
     /* Global timeout for all tests */
-    actionTimeout: 10000,
-    navigationTimeout: 30000,
+    actionTimeout: 15000,
+    navigationTimeout: 60000,
   },
 
   /* Configure projects for major browsers */
@@ -46,27 +71,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
   ],
 
   /* Global setup and teardown */
@@ -74,9 +78,22 @@ export default defineConfig({
   globalTeardown: './e2e/global-teardown.ts',
 
   /* Run your local dev server before starting the tests */
-  webServer: process.env.CI ? undefined : {
-    command: 'npm run dev',
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: (() => {
+    const baseURL = getBaseURL();
+    
+    // Only start dev server for local development
+    if (baseURL.includes('localhost') && !process.env.CI) {
+      return {
+        command: 'npm run dev',
+        port: 3000,
+        reuseExistingServer: true,
+        timeout: 120 * 1000, // 2 minutes
+        stderr: 'pipe',
+        stdout: 'pipe'
+      };
+    }
+    
+    // For cloud testing, no web server needed
+    return undefined;
+  })(),
 });

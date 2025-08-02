@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateComment } from '@/hooks/useComments';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '@/lib/routes';
 
 interface CommentFormProps {
   articleSlug: string;
@@ -34,8 +35,8 @@ export const CommentForm: React.FC<CommentFormProps> = ({ articleSlug }) => {
     return (
       <div className="text-center py-6">
         <p className="text-gray-500 mb-2">
-          <Link to="/login" className="text-green-500">Sign in</Link> or{' '}
-          <Link to="/register" className="text-green-500">sign up</Link> to add comments on this article.
+          <Link to={ROUTES.LOGIN} className="text-green-500">Sign in</Link> or{' '}
+          <Link to={ROUTES.REGISTER} className="text-green-500">sign up</Link> to add comments on this article.
         </p>
       </div>
     );

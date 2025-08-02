@@ -5,6 +5,7 @@ import { useComments } from '@/hooks/useComments';
 import { useAuth } from '@/hooks/useAuth';
 import { CommentForm } from '@/components/article/CommentForm';
 import { CommentList } from '@/components/article/CommentList';
+import { ROUTES, createRoutes } from '@/lib/routes';
 
 const ArticlePage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -33,7 +34,7 @@ const ArticlePage: React.FC = () => {
 
     try {
       await deleteArticleMutation.mutateAsync(article.slug);
-      navigate('/');
+      navigate(ROUTES.HOME);
     } catch (error) {
       console.error('Failed to delete article:', error);
     }
@@ -59,7 +60,7 @@ const ArticlePage: React.FC = () => {
         <div className="realworld-container" style={{ padding: '2rem 15px' }}>
           <div className="text-center py-8">
             <p className="text-red-500">Article not found.</p>
-            <Link to="/" className="btn-realworld btn-outline-primary mt-4">
+            <Link to={ROUTES.HOME} className="btn-realworld btn-outline-primary mt-4">
               Go Home
             </Link>
           </div>
@@ -76,7 +77,7 @@ const ArticlePage: React.FC = () => {
           <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
           
           <div className="article-meta flex items-center">
-            <Link to={`/profile/${article.author.username}`} className="author">
+            <Link to={createRoutes.profile(article.author.username)} className="author">
               {article.author.image && (
                 <img 
                   src={article.author.image} 
@@ -86,7 +87,7 @@ const ArticlePage: React.FC = () => {
               )}
             </Link>
             <div className="info mr-auto">
-              <Link to={`/profile/${article.author.username}`} className="author text-white">
+              <Link to={createRoutes.profile(article.author.username)} className="author text-white">
                 {article.author.username}
               </Link>
               <span className="date block text-gray-300 text-sm">
@@ -97,7 +98,7 @@ const ArticlePage: React.FC = () => {
             {isAuthor && (
               <div className="flex gap-2">
                 <Link 
-                  to={`/editor/${article.slug}`}
+                  to={createRoutes.editorEdit(article.slug)}
                   className="btn-realworld btn-outline-primary text-white border-white hover:bg-white hover:text-gray-800"
                 >
                   <i className="ion-edit mr-1"></i>

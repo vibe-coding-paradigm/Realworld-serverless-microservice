@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { ROUTES } from '@/lib/routes';
 import { ErrorMessage } from '@/components/ui/error';
 
 const RegisterPage: React.FC = () => {
@@ -78,7 +79,7 @@ const RegisterPage: React.FC = () => {
           <div className="w-full max-w-lg">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-medium mb-2">Sign up</h1>
-              <Link to="/login" className="text-green-500 hover:underline">
+              <Link to={ROUTES.LOGIN} className="text-green-500 hover:underline">
                 Have an account?
               </Link>
             </div>

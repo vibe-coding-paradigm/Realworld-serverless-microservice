@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeleteComment } from '@/hooks/useComments';
+import { createRoutes } from '@/lib/routes';
 import type { Comment } from '@/types';
 
 interface CommentListProps {
@@ -62,7 +63,7 @@ export const CommentList: React.FC<CommentListProps> = ({ comments, articleSlug 
                 />
               )}
               <Link 
-                to={`/profile/${comment.author.username}`}
+                to={createRoutes.profile(comment.author.username)}
                 className="text-green-500 font-medium mr-2"
               >
                 {comment.author.username}

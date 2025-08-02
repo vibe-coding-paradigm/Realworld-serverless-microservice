@@ -11,7 +11,7 @@ test.describe('Health and Basic Connectivity', () => {
     const baseURL = page.context().route;
     console.log('Accessing URL:', page.url());
     
-    await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'networkidle' });
     console.log('Final URL:', page.url());
     console.log('Page title:', await page.title());
     
@@ -38,7 +38,8 @@ test.describe('Health and Basic Connectivity', () => {
   test('should fetch articles from API @backend', async ({ request }) => {
     const api = new ApiHelper(request);
     
-    const articles = await api.getArticles();
+    const { response, data: articles } = await api.getArticles();
+    expect(response.status()).toBe(200);
     
     expect(articles).toHaveProperty('articles');
     expect(articles).toHaveProperty('articlesCount');

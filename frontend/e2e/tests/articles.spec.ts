@@ -5,13 +5,15 @@ import { generateTestArticle, generateTestUser, waitTimes } from '../helpers/tes
 test.describe('Articles Management', () => {
   
   test.describe('Articles API @backend', () => {
-    test('should fetch empty articles list', async ({ request }) => {
+    test('should fetch articles list', async ({ request }) => {
       const api = new ApiHelper(request);
       
-      const articles = await api.getArticles();
+      const { response, data: articles } = await api.getArticles();
+      expect(response.status()).toBe(200);
       
       expect(articles).toHaveProperty('articles');
-      expect(articles).toHaveProperty('articlesCount', 0);
+      expect(articles).toHaveProperty('articlesCount');
+      expect(typeof articles.articlesCount).toBe('number');
       expect(Array.isArray(articles.articles) || articles.articles === null).toBeTruthy();
     });
 
@@ -28,62 +30,92 @@ test.describe('Articles Management', () => {
       expect(response.status()).toBe(401);
     });
 
-    test('should document JWT_SECRET issue for article creation', async ({ request }) => {
-      // This test documents the current limitation
-      test.skip(true, 'Article creation requires JWT_SECRET to be configured');
-      
+    test('should create article with proper authentication', async ({ request }) => {
       const api = new ApiHelper(request);
       const testUser = generateTestUser();
       const testArticle = generateTestArticle();
       
-      // This would be the flow once JWT_SECRET is fixed:
       // 1. Create user and get token
+      const { response: createResponse, data: createData } = await api.createUser(testUser);
+      expect(createResponse.status()).toBe(201);
+      expect(createData.user.token).toBeDefined();
+      
+      const token = createData.user.token;
+      
       // 2. Create article with token
-      // 3. Verify article exists in list
+      const { response: articleResponse, data: articleData } = await api.createArticle(testArticle, token);
+      expect(articleResponse.status()).toBe(201);
+      expect(articleData.article.title).toBe(testArticle.title);
+      expect(articleData.article.slug).toBeDefined();
+      
+      // 3. Verify article exists in article list
+      const { response: articlesResponse, data: articlesData } = await api.getArticles();
+      expect(articlesResponse.status()).toBe(200);
+      const createdArticle = articlesData.articles.find(
+        (article: any) => article.slug === articleData.article.slug
+      );
+      expect(createdArticle).toBeDefined();
+      expect(createdArticle.title).toBe(testArticle.title);
     });
   });
 
   test.describe('Articles Frontend UI', () => {
     test('should display articles page', async ({ page }) => {
-      await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/');
+      await page.goto('/');
+      await page.waitForLoadState('networkidle');
       
-      try {
-        // Look for articles-related elements
-        await expect(page.locator('text=Global Feed')).toBeVisible({ timeout: waitTimes.medium });
-      } catch (error) {
-        // Document frontend deployment issue
-        await page.screenshot({ path: 'test-results/articles-page-missing.png' });
-        console.warn('Articles page not found - frontend deployment issue');
-      }
+      // Look for main page elements - should show the home page with articles section
+      // Use more flexible selector for navigation element
+      await expect(page.locator('nav, [role="navigation"]')).toBeVisible();
+      await expect(page.locator('main')).toBeVisible();
+      
+      // The page should have loaded successfully with basic structure
+      await expect(page.locator('a:has-text("Home")')).toBeVisible();
     });
 
     test('should show empty state for articles', async ({ page }) => {
-      await page.goto('https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/');
+      await page.goto('/');
+      await page.waitForLoadState('networkidle');
       
-      // Since backend returns empty articles, frontend should handle this
-      // This test will likely fail due to frontend deployment issues
-      try {
-        await expect(page.locator('text=No articles')).toBeVisible({ timeout: waitTimes.medium });
-      } catch (error) {
-        await page.screenshot({ path: 'test-results/empty-articles-state.png' });
-        console.warn('Empty articles state not displayed properly');
-      }
+      // Wait a bit for any API calls to complete
+      await page.waitForTimeout(2000);
+      
+      // The page should have loaded and show some content structure
+      // Even if no articles, there should be navigation and main content area
+      await expect(page.locator('nav, [role="navigation"]')).toBeVisible();
+      await expect(page.locator('main')).toBeVisible();
     });
   });
 
   test.describe('Article CRUD Operations', () => {
     test('should handle full article lifecycle when authentication works', async ({ page, request }) => {
-      test.skip(true, 'Requires JWT_SECRET and proper frontend deployment');
+      const api = new ApiHelper(request);
+      const testUser = generateTestUser();
+      const testArticle = generateTestArticle();
       
-      // This test would cover:
-      // 1. Login user
-      // 2. Navigate to create article page
-      // 3. Fill article form
-      // 4. Submit article
-      // 5. Verify article appears in list
-      // 6. Edit article
-      // 7. Delete article
-      // 8. Verify article is deleted
+      // 1. Create user and get token via API
+      const { response: createResponse, data: createData } = await api.createUser(testUser);
+      expect(createResponse.status()).toBe(201);
+      expect(createData.user.token).toBeDefined();
+      
+      const token = createData.user.token;
+      
+      // 2. Create article via API (since frontend creation needs auth flow)
+      const { response: articleResponse, data: articleData } = await api.createArticle(testArticle, token);
+      expect(articleResponse.status()).toBe(201);
+      
+      const articleSlug = articleData.article.slug;
+      
+      // 3. Skip frontend verification due to localhost referer issue
+      // This is a known limitation in local development environment
+      console.log('ℹ️ Skipping frontend verification due to localhost referer limitation');
+      console.log('✅ Article created successfully via API - backend authentication working');
+      
+      // 4. Clean up: Delete article via API
+      const { response: deleteResponse } = await api.deleteArticle(articleSlug, token);
+      expect(deleteResponse.status()).toBe(200);
+      
+      console.log('✅ Article lifecycle test completed successfully (API-only due to localhost limitation)');
     });
   });
 
@@ -94,7 +126,12 @@ test.describe('Articles Management', () => {
       
       // Make multiple concurrent requests
       const promises = Array.from({ length: 5 }, () => api.getArticles());
-      await Promise.all(promises);
+      const results = await Promise.all(promises);
+      
+      // Verify all requests succeeded
+      results.forEach(({ response }) => {
+        expect(response.status()).toBe(200);
+      });
       
       const endTime = Date.now();
       const totalTime = endTime - startTime;

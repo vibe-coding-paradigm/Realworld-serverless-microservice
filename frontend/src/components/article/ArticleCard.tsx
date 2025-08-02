@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Article } from '@/types';
+import { createRoutes } from '@/lib/routes';
 
 interface ArticleCardProps {
   article: Article;
@@ -19,7 +20,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   return (
     <div className="article-preview">
       <div className="article-meta">
-        <Link to={`/profile/${article.author.username}`} className="author">
+        <Link to={createRoutes.profile(article.author.username)} className="author">
           {article.author.image && (
             <img 
               src={article.author.image} 
@@ -28,7 +29,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
           )}
         </Link>
         <div className="info">
-          <Link to={`/profile/${article.author.username}`} className="author">
+          <Link to={createRoutes.profile(article.author.username)} className="author">
             {article.author.username}
           </Link>
           <span className="date">{formatDate(article.createdAt)}</span>
@@ -37,7 +38,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
           <i className="ion-heart"></i> {article.favoritesCount}
         </button>
       </div>
-      <Link to={`/article/${article.slug}`} className="preview-link">
+      <Link to={createRoutes.articleDetail(article.slug)} className="preview-link">
         <h1>{article.title}</h1>
         <p>{article.description}</p>
         <span>Read more...</span>

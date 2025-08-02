@@ -3,10 +3,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArticles } from '@/hooks/useArticles';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '@/lib/routes';
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'global' | 'personal'>('global');
+  
   
   const { data: articlesData, isLoading, error } = useArticles({
     limit: 10,
@@ -38,10 +40,10 @@ const HomePage: React.FC = () => {
                     Ready to share your thoughts with the world?
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link to="/editor" className="btn-realworld btn-primary">
+                    <Link to={ROUTES.EDITOR} className="btn-realworld btn-primary">
                       Write an Article
                     </Link>
-                    <Link to="/articles" className="btn-realworld btn-outline-primary">
+                    <Link to={ROUTES.ARTICLES} className="btn-realworld btn-outline-primary">
                       Browse Articles
                     </Link>
                   </div>
@@ -57,10 +59,10 @@ const HomePage: React.FC = () => {
                     Join our community of writers and readers. Share your knowledge and discover new perspectives.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link to="/register" className="btn-realworld btn-primary">
+                    <Link to={ROUTES.REGISTER} className="btn-realworld btn-primary">
                       Get Started
                     </Link>
-                    <Link to="/login" className="btn-realworld btn-outline-primary">
+                    <Link to={ROUTES.LOGIN} className="btn-realworld btn-outline-primary">
                       Sign In
                     </Link>
                   </div>
@@ -126,17 +128,23 @@ const HomePage: React.FC = () => {
                 </div>
               )}
 
-              {articlesData && articlesData.articles.length === 0 && (
+              {articlesData && articlesData.articles && articlesData.articles.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-gray-500">No articles are here... yet.</p>
                 </div>
               )}
 
-              {articlesData && articlesData.articles.length > 0 && (
+              {articlesData && articlesData.articles && articlesData.articles.length > 0 && (
                 <div className="articles-list">
                   {articlesData.articles.map((article: any) => (
                     <ArticleCard key={article.slug} article={article} />
                   ))}
+                </div>
+              )}
+
+              {articlesData && !articlesData.articles && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No articles are here... yet.</p>
                 </div>
               )}
             </div>
