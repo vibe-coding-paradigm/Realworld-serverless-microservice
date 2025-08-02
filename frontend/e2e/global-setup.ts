@@ -19,7 +19,9 @@ async function globalSetup(config: FullConfig) {
   
   try {
     // Check if backend is healthy
-    const response = await fetch(`${apiUrl}/health`);
+    // Remove /api suffix for health check if present
+    const healthUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+    const response = await fetch(`${healthUrl}/health`);
     if (response.ok) {
       const health = await response.json();
       console.log(`✅ Backend healthy: ${health.service} v${health.version}`);

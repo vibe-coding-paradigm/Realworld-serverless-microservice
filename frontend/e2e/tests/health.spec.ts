@@ -47,7 +47,9 @@ test.describe('Health and Basic Connectivity', () => {
 
   test('should have CORS headers configured', async ({ request }) => {
     const apiUrl = process.env.API_URL || 'http://3.39.187.72:8080';
-    const response = await request.get(`${apiUrl}/health`);
+    // Remove /api suffix for health check if present
+    const healthUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+    const response = await request.get(`${healthUrl}/health`);
     
     expect(response.ok()).toBeTruthy();
     

@@ -6,6 +6,8 @@ import * as efs from 'aws-cdk-lib/aws-efs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Construct } from 'constructs';
 
 export interface ComputeStackProps {
@@ -19,6 +21,7 @@ export class ComputeStack extends Construct {
   public readonly fileSystem: efs.FileSystem;
   public readonly loadBalancer: elbv2.ApplicationLoadBalancer;
   public readonly targetGroup: elbv2.ApplicationTargetGroup;
+  public readonly distribution: cloudfront.Distribution;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
     super(scope, id);
@@ -77,6 +80,13 @@ export class ComputeStack extends Construct {
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
       'Allow HTTP traffic from internet'
+    );
+
+    // 인터넷에서 ALB로의 HTTPS 트래픽 허용 (포트 443)
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      'Allow HTTPS traffic from internet'
     );
 
     // Application Load Balancer 생성
@@ -218,10 +228,37 @@ export class ComputeStack extends Construct {
     this.service.attachToApplicationTargetGroup(this.targetGroup);
 
     // HTTP 리스너 생성 및 타겟 그룹 연결
-    const listener = this.loadBalancer.addListener('HttpListener', {
+    const httpListener = this.loadBalancer.addListener('HttpListener', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       defaultTargetGroups: [this.targetGroup]
+    });
+
+    // CloudFront Distribution for HTTPS support
+    this.distribution = new cloudfront.Distribution(this, 'ConduitDistribution', {
+      defaultBehavior: {
+        origin: new origins.LoadBalancerV2Origin(this.loadBalancer, {
+          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // API responses should not be cached
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+      },
+      additionalBehaviors: {
+        '/api/*': {
+          origin: new origins.LoadBalancerV2Origin(this.loadBalancer, {
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // API responses should not be cached
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+        },
+      },
+      comment: 'Conduit API CloudFront Distribution',
     });
 
 
@@ -272,6 +309,12 @@ export class ComputeStack extends Construct {
       value: this.targetGroup.targetGroupArn,
       description: 'Target Group ARN',
       exportName: 'ConduitTargetGroupArn'
+    });
+
+    new cdk.CfnOutput(scope, 'CloudFrontDomainName', {
+      value: `https://${this.distribution.distributionDomainName}`,
+      description: 'CloudFront Distribution HTTPS URL',
+      exportName: 'ConduitCloudFrontURL'
     });
   }
 }
