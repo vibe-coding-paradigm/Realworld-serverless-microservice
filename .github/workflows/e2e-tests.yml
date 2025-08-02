@@ -64,10 +64,16 @@ jobs:
 
     - name: Wait for backend to be ready
       run: |
-        API_URL="${{ inputs.backend_url }}"
-        echo "Waiting for backend at $API_URL to be ready..."
+        BACKEND_URL="${{ inputs.backend_url }}"
+        # Check if backend_url already contains /api, if so, remove it for health check
+        if [[ "$BACKEND_URL" == *"/api" ]]; then
+          HEALTH_URL="${BACKEND_URL%/api}/health"
+        else
+          HEALTH_URL="$BACKEND_URL/health"
+        fi
+        echo "Waiting for backend at $HEALTH_URL to be ready..."
         for i in {1..30}; do
-          if curl -s "$API_URL/health" | grep -q "ok"; then
+          if curl -s "$HEALTH_URL" | grep -q "ok"; then
             echo "Backend is ready!"
             break
           fi
@@ -104,8 +110,14 @@ jobs:
         echo "🔧 E2E Test Configuration:"
         echo "Backend URL: $API_URL" 
         echo "Frontend URL: $PLAYWRIGHT_BASE_URL"
-        echo "Health Check URL: $API_URL/health"
-        echo "Articles API URL: $API_URL/api/articles"
+        # backend_url should already include /api if from CloudFront
+        if [[ "$API_URL" == *"/api" ]]; then
+          echo "Health Check URL: ${API_URL%/api}/health"
+          echo "Articles API URL: $API_URL/articles"
+        else
+          echo "Health Check URL: $API_URL/health"
+          echo "Articles API URL: $API_URL/api/articles"
+        fi
         npm run test:e2e
 
     - name: Upload Playwright report
