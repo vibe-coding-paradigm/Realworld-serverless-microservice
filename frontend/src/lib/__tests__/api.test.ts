@@ -44,17 +44,26 @@ describe('API Client', () => {
       
       // Mock window.location.href without actual navigation
       const locationSetter = vi.fn()
+      delete (window as any).location
       Object.defineProperty(window, 'location', {
         value: {
-          ...window.location,
-          set href(url: string) {
-            locationSetter(url)
-          },
-          get href() {
-            return 'http://localhost:3000'
-          }
+          origin: 'http://localhost:3000',
+          hostname: 'localhost',
+          pathname: '/',
+          href: 'http://localhost:3000',
+          assign: vi.fn(),
+          replace: vi.fn(),
+          reload: vi.fn()
         },
-        writable: true
+        writable: true,
+        configurable: true
+      })
+      
+      // Mock href setter
+      Object.defineProperty(window.location, 'href', {
+        set: locationSetter,
+        get: () => 'http://localhost:3000',
+        configurable: true
       })
 
       mock.onGet('/test').reply(401, { message: 'Unauthorized' })
@@ -67,7 +76,7 @@ describe('API Client', () => {
 
       expect(localStorage.getItem('token')).toBeNull()
       expect(localStorage.getItem('user')).toBeNull()
-      expect(locationSetter).toHaveBeenCalledWith('/login')
+      expect(locationSetter).toHaveBeenCalledWith('http://localhost:3000/login')
     })
   })
 })

@@ -10,7 +10,6 @@
     "format": "make fmt",
     "migrate": "make migrate",
     "prepare": "husky || true",
-    "install-hooks": "bash scripts/install-hooks.sh",
     "test:e2e:local": "cd frontend && API_URL=http://localhost:8080 npm run test:e2e"
   },
   "devDependencies": {

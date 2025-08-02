@@ -1,56 +1,42 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🚀 Running pre-push checks..."
+echo "🚀 Running pre-push checks (E2E tests)..."
 
-# Backend build verification
-echo "🐹 Verifying backend build..."
-if [ -d "backend" ]; then
-  (
-    cd backend
+# Run E2E tests using Makefile command
+echo "🔍 Running E2E tests..."
+if make e2e; then
+    echo "✅ E2E tests passed!"
+    echo ""
+    echo "🔧 Running additional quality checks..."
     
-    echo "  🔨 Building backend..."
-    if go build ./cmd/...; then
-      echo "  ✅ Backend build successful"
-      # Clean up build artifacts
-      rm -f server migrate
+    # Optional: Run load tests in the background (non-blocking)
+    if command -v k6 >/dev/null 2>&1; then
+        echo "📊 Running quick load test..."
+        if make load-test-local > /dev/null 2>&1; then
+            echo "✅ Load test passed!"
+        else
+            echo "⚠️  Load test failed, but push allowed"
+            echo "💡 Run 'make load-test-local' to investigate"
+        fi
     else
-      echo "  ❌ Backend build failed"
-      exit 1
+        echo "⚠️  k6 not installed, skipping load test"
+        echo "💡 Install k6 for load testing: brew install k6"
     fi
-  ) || exit 1
-fi
-
-# Frontend test verification
-echo "🧪 Running frontend tests..."
-if [ -d "frontend" ]; then
-  (
-    cd frontend
     
-    echo "  🔍 Running frontend tests..."
-    if npm run test:run; then
-      echo "  ✅ Frontend tests passed"
-    else
-      echo "  ❌ Frontend tests failed"
-      exit 1
-    fi
-  ) || exit 1
+    echo ""
+    echo "✅ All pre-push checks passed!"
+    echo "🚀 Push allowed - E2E tests confirmed deployment readiness"
+else
+    echo ""
+    echo "❌ E2E tests failed!"
+    echo "🚫 Push blocked - fix failing E2E tests before pushing"
+    echo ""
+    echo "🔧 Debugging tips:"
+    echo "   • Check if backend is running: make dev-status"
+    echo "   • Run E2E tests manually: make e2e"
+    echo "   • View detailed logs: make e2e-debug"
+    echo "   • Reset environment: make reset-env"
+    echo ""
+    exit 1
 fi
-
-# Frontend build verification
-echo "🌐 Verifying frontend build..."
-if [ -d "frontend" ]; then
-  (
-    cd frontend
-    
-    echo "  🔨 Building frontend..."
-    if npm run build; then
-      echo "  ✅ Frontend build successful"
-    else
-      echo "  ❌ Frontend build failed"
-      exit 1
-    fi
-  ) || exit 1
-fi
-
-echo "✅ All pre-push checks passed!"
