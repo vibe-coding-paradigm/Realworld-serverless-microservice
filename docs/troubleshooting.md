@@ -16,7 +16,10 @@
 11. [React Router basename 설정 문제](#11-react-router-basename-설정-문제)
 12. [E2E 테스트 CloudFront URL 처리 문제](#12-e2e-테스트-cloudfront-url-처리-문제)
 13. [E2E 테스트 API URL 중복 처리 문제](#13-e2e-테스트-api-url-중복-처리-문제)
-14. [모범 사례 및 패턴](#14-모범-사례-및-패턴)
+14. [Git Hooks 시스템 통합 및 최적화](#14-git-hooks-시스템-통합-및-최적화)
+15. [Pre-push Hook 로드 테스트 타임아웃 문제](#15-pre-push-hook-로드-테스트-타임아웃-문제)
+16. [Git Hooks 중복 실행 문제](#16-git-hooks-중복-실행-문제)
+17. [모범 사례 및 패턴](#17-모범-사례-및-패턴)
 
 ---
 
@@ -724,7 +727,253 @@ const apiEndpoint = backendUrl.includes('/api') ? backendUrl : `${backendUrl}/ap
 
 ---
 
-## 14. 모범 사례 및 패턴
+## 14. Git Hooks 시스템 통합 및 최적화
+
+### 문제: 수동 Git hooks 스크립트와 Husky 시스템 중복
+
+**문제 설명**: 프로젝트에 수동 Git hooks 스크립트와 Husky 기반 Git hooks가 혼재하여 관리 복잡성 증가 및 일관성 부족
+
+**에러 증상**:
+```bash
+# 수동 스크립트와 husky hooks 혼재
+scripts/install-hooks.sh        # 수동 설치 스크립트
+scripts/pre-commit-hook.sh      # 수동 pre-commit
+.husky/pre-commit               # husky pre-commit
+package.json: "install-hooks"   # 중복 스크립트
+```
+
+**사용된 프롬프트**:
+```
+"@scripts/install-hooks.sh 는 필요해? husky를 쓰고 있잖아."
+```
+
+**해결 과정**:
+
+1. **현재 설정 분석**:
+```bash
+# husky 설정 확인
+ls -la .husky/
+cat package.json | grep husky
+
+# 수동 스크립트 확인
+ls -la scripts/
+```
+
+2. **Husky 설정 상태 검증**:
+```json
+// package.json에서 husky 자동 설치 확인
+{
+  "scripts": {
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}
+```
+
+3. **수동 스크립트 제거 및 정리**:
+```bash
+# 불필요한 수동 스크립트 제거
+rm scripts/install-hooks.sh scripts/pre-commit-hook.sh scripts/pre-push-hook.sh
+
+# package.json에서 중복 스크립트 제거
+# "install-hooks": "bash scripts/install-hooks.sh" 라인 삭제
+```
+
+4. **Husky hooks 요구사항에 맞게 수정**:
+```bash
+# pre-commit: unit 테스트 (기존 husky 설정 유지)
+# pre-push: E2E 테스트로 변경 (기존: 빌드 검증만)
+
+# .husky/pre-push 수정
+echo "🔍 Running E2E tests..."
+if make e2e; then
+    echo "✅ E2E tests passed!"
+else
+    echo "❌ E2E tests failed!"
+    exit 1
+fi
+```
+
+**결과**: 
+- Husky 기반 단일 Git hooks 시스템으로 통합
+- 수동 설치 과정 제거로 팀원 온보딩 단순화  
+- Pre-commit: Unit 테스트, Pre-push: E2E 테스트로 명확한 역할 분리
+
+---
+
+## 15. Pre-push Hook 로드 테스트 타임아웃 문제
+
+### 문제: Pre-push hook에서 로드 테스트로 인한 2분+ 타임아웃 발생
+
+**문제 설명**: Git push 시 pre-push hook에서 로드 테스트가 포함되어 2분 이상 소요되며 사용자 경험 저해
+
+**에러 증상**:
+```bash
+🚀 Running pre-push checks (E2E tests)...
+✅ E2E tests passed! (20초)
+🔧 Running additional quality checks...
+📊 Running quick load test...
+# 여기서 2분+ 대기 후 타임아웃
+```
+
+**사용된 프롬프트**:
+```
+"로드 테스트는 git hook에서 제외해줘."
+"진행해. 수동으로 make e2e-local을 실행하면 20초 정도 걸리는데 2분이 넘는건 이상해."
+```
+
+**해결 과정**:
+
+1. **문제 원인 분석**:
+```bash
+# E2E 테스트 직접 실행 시간 측정
+time make e2e-local
+# 결과: 19.7초 (정상)
+
+# Pre-push hook 실행 시간 확인
+git push origin main
+# 결과: 2분+ 타임아웃 (비정상)
+```
+
+2. **Hook 실행 명령어 분석**:
+```bash
+# Makefile 확인
+grep -A 5 "e2e:" Makefile
+# e2e: make e2e (일반 E2E)
+# e2e-local: make e2e-local (로컬 최적화)
+
+# 실제 hook에서 실행되는 명령어 확인
+cat .husky/pre-push
+```
+
+3. **로드 테스트 제거 시도**:
+```bash
+# 첫 번째 시도: 타임아웃 추가
+if timeout 30s make load-test-local > /dev/null 2>&1; then
+    echo "✅ Load test passed!"
+else
+    echo "⚠️ Load test failed or timed out, but push allowed"
+fi
+
+# 두 번째 시도: 로드 테스트 완전 제거
+# pre-push hook에서 로드 테스트 관련 코드 모두 삭제
+```
+
+4. **최종 해결 방법**:
+```bash
+# .husky/pre-push를 E2E 테스트만 실행하도록 단순화
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push checks (E2E tests)..."
+echo "🔍 Running E2E tests (local mode)..."
+if make e2e-local; then
+    echo "✅ E2E tests passed!"
+    echo "🚀 Push allowed - E2E tests confirmed deployment readiness"
+else
+    echo "❌ E2E tests failed!"
+    echo "🚫 Push blocked - fix failing E2E tests before pushing"
+    exit 1
+fi
+```
+
+**결과**: Pre-push hook 실행 시간 2분+ → 20초로 단축, 개발자 생산성 크게 향상
+
+---
+
+## 16. Git Hooks 중복 실행 문제
+
+### 문제: `.git/hooks/`와 `.husky/` 디렉토리의 Hook 중복으로 예상과 다른 Hook 실행
+
+**문제 설명**: 이전 수동 설치된 Git hooks(`.git/hooks/pre-push`)가 Husky hooks(`.husky/pre-push`)를 오버라이드하여 예상과 다른 로직 실행
+
+**에러 증상**:
+```bash
+# .husky/pre-push에서는 make e2e-local 실행 설정
+# 실제로는 .git/hooks/pre-push에서 make e2e + 로드테스트 실행
+
+🚀 Running pre-push E2E tests...
+📊 Running quick load test...  # 이 메시지는 .husky에 없음
+# 2분+ 타임아웃 발생
+```
+
+**사용된 프롬프트**:
+```
+"make e2e-local을 실행하면 20초 정도 걸리는데 2분이 넘는건 이상해."
+```
+
+**문제 분석 과정**:
+
+1. **Hook 실행 우선순위 확인**:
+```bash
+# Git hooks 우선순위: .git/hooks/ > .husky/
+ls -la .git/hooks/pre-push    # 이전 수동 설치된 hook 발견
+ls -la .husky/pre-push        # Husky hook 존재
+```
+
+2. **각 Hook 내용 비교**:
+```bash
+# .git/hooks/pre-push (이전 수동 설치)
+cat .git/hooks/pre-push
+# 내용: make e2e + 로드 테스트 포함 (복잡한 로직)
+
+# .husky/pre-push (현재 의도된 hook)  
+cat .husky/pre-push
+# 내용: make e2e-local만 실행 (단순한 로직)
+```
+
+3. **근본 원인 파악**:
+```bash
+# 메시지 출처 확인
+grep -r "Running quick load test" .
+# .git/hooks/pre-push에서 발견
+
+grep -r "additional quality checks" .
+# .git/hooks/pre-push에서 발견
+```
+
+**해결 과정**:
+
+1. **중복 Hook 제거**:
+```bash
+# 이전 수동 설치된 hook 제거
+rm .git/hooks/pre-push
+
+# Husky hook만 남김 (.husky/pre-push)
+```
+
+2. **Hook 실행 확인**:
+```bash
+# 다시 push 시도
+git push origin main
+# 결과: 20초 내 완료 (정상)
+```
+
+3. **Husky 설정 최종 확인**:
+```bash
+# Husky가 제대로 설치되었는지 확인
+npm run prepare
+
+# Hook이 제대로 연결되었는지 확인
+ls -la .git/hooks/
+# husky.sh만 있고 개별 hook 파일들은 없어야 정상
+```
+
+**교훈**:
+- Git hooks 우선순위 이해: `.git/hooks/` > `.husky/`
+- 수동 설치된 hooks와 Husky 혼재 시 예상치 못한 동작
+- Husky 전환 시 기존 `.git/hooks/` 정리 필수
+
+**결과**: 
+- 의도된 Husky hook만 실행되어 일관된 동작 보장
+- Pre-push 시간 2분+ → 20초로 정상화
+- Git hooks 시스템 단순화 및 유지보수성 향상
+
+---
+
+## 17. 모범 사례 및 패턴
 
 ### 식별된 트러블슈팅 패턴
 
@@ -740,6 +989,12 @@ const apiEndpoint = backendUrl.includes('/api') ? backendUrl : `${backendUrl}/ap
 7. **프론트엔드-백엔드 URL 호환성**: 다양한 배포 환경(로컬, GitHub Pages, CloudFront)에서의 일관된 동작
 8. **중첩 구조 단순화**: 복잡한 HTML/CSS 구조를 단순하고 견고한 구조로 개선
 9. **E2E 테스트 환경 적응성**: 다양한 백엔드 URL 형태에 대한 유연한 처리
+
+**최신 패턴 (Git Hooks 시스템 최적화)**:
+10. **도구 통합 검증**: 기존 도구(Husky)와 수동 설정의 중복 확인 및 정리
+11. **Hook 실행 시간 최적화**: 개발자 경험을 위한 빠른 피드백 루프 (20초 이내)
+12. **Git hooks 우선순위 이해**: `.git/hooks/` vs `.husky/` 실행 순서 및 충돌 방지
+13. **점진적 성능 개선**: 문제 발견 → 임시 해결 → 근본 원인 해결 단계적 접근
 
 ### 개발 모범 사례
 
