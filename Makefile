@@ -21,6 +21,7 @@ help:
 	@echo "  test           - 모든 테스트 실행"
 	@echo "  test-watch     - 테스트 watch 모드"
 	@echo "  e2e            - E2E 테스트 실행"
+	@echo "  e2e-local      - E2E 테스트 로컬 모드"
 	@echo "  e2e-ui         - E2E 테스트 UI 모드"
 	@echo "  e2e-debug      - E2E 테스트 디버그 모드"
 	@echo "  load-test-local - 로컬 부하 테스트"
@@ -414,6 +415,10 @@ test-watch:
 e2e:
 	@echo "🧪 E2E 테스트 실행 중..."
 	@cd frontend && npm run test:e2e
+
+e2e-local:
+	@echo "🧪 E2E 테스트 로컬 모드 시작..."
+	@cd frontend && npm run test:e2e:local
 
 e2e-ui:
 	@echo "🧪 E2E 테스트 UI 모드 시작..."
