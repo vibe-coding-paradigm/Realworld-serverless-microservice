@@ -189,6 +189,8 @@ body {
   border: 1px solid #ccc;
   border-radius: 0.25rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .form-control:focus {
@@ -349,4 +351,39 @@ html {
   background-color: transparent;
   border: 1px solid #ddd;
   color: #aaa;
+}
+
+/* Auth page improvements */
+.auth-page {
+  min-height: calc(100vh - 56px); /* Account for navbar height */
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+.auth-page fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0; /* Prevent fieldset from overflowing */
+}
+
+.auth-page .form-control {
+  margin-bottom: 0;
+}
+
+.auth-page .error-messages {
+  background-color: #f2dede;
+  border: 1px solid #ebccd1;
+  color: #a94442;
+  padding: 1rem;
+  border-radius: 0.25rem;
+  list-style: none;
+  margin: 0;
+}
+
+/* Ensure buttons don't overflow */
+.btn-realworld {
+  box-sizing: border-box;
+  max-width: 100%;
 }

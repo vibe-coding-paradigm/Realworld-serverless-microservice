@@ -75,74 +75,51 @@ const LoginPage: React.FC = () => {
             </div>
 
             {error && (
-              <ul className="error-messages mb-4" style={{ 
-                backgroundColor: '#f2dede',
-                border: '1px solid #ebccd1',
-                color: '#a94442',
-                padding: '1rem',
-                borderRadius: '0.25rem',
-                listStyle: 'none',
-                margin: '0'
-              }}>
+              <ul className="error-messages mb-4">
                 <li><ErrorMessage message={error} /></li>
               </ul>
             )}
 
             <form onSubmit={handleSubmit}>
               <fieldset style={{ border: 'none', padding: '0', margin: '0' }}>
-                <fieldset className="form-group mb-4">
+                <div className="mb-4">
                   <input
                     name="email"
                     type="email"
                     placeholder="Email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="form-control"
+                    className={`form-control ${formErrors.email ? 'border-red-500' : ''}`}
                     disabled={loading}
-                    style={{
-                      fontSize: '1.25rem',
-                      padding: '0.75rem',
-                      border: formErrors.email ? '1px solid #d9534f' : '1px solid #ccc'
-                    }}
                   />
                   {formErrors.email && (
-                    <div style={{ color: '#d9534f', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                    <div className="text-red-500 text-sm mt-2">
                       <ErrorMessage message={formErrors.email} />
                     </div>
                   )}
-                </fieldset>
+                </div>
 
-                <fieldset className="form-group mb-4">
+                <div className="mb-4">
                   <input
                     name="password"
                     type="password"
                     placeholder="Password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="form-control"
+                    className={`form-control ${formErrors.password ? 'border-red-500' : ''}`}
                     disabled={loading}
-                    style={{
-                      fontSize: '1.25rem',
-                      padding: '0.75rem',
-                      border: formErrors.password ? '1px solid #d9534f' : '1px solid #ccc'
-                    }}
                   />
                   {formErrors.password && (
-                    <div style={{ color: '#d9534f', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                    <div className="text-red-500 text-sm mt-2">
                       <ErrorMessage message={formErrors.password} />
                     </div>
                   )}
-                </fieldset>
+                </div>
 
                 <button 
                   type="submit" 
-                  className="btn-realworld btn-primary w-full"
+                  className="btn-realworld btn-primary w-full text-xl py-3"
                   disabled={loading}
-                  style={{
-                    width: '100%',
-                    fontSize: '1.25rem',
-                    padding: '0.75rem'
-                  }}
                 >
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
