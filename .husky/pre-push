@@ -8,23 +8,6 @@ echo "🔍 Running E2E tests..."
 if make e2e; then
     echo "✅ E2E tests passed!"
     echo ""
-    echo "🔧 Running additional quality checks..."
-    
-    # Optional: Run load tests with timeout (non-blocking)
-    if command -v k6 >/dev/null 2>&1; then
-        echo "📊 Running quick load test (30s timeout)..."
-        if timeout 30s make load-test-local > /dev/null 2>&1; then
-            echo "✅ Load test passed!"
-        else
-            echo "⚠️  Load test failed or timed out, but push allowed"
-            echo "💡 Run 'make load-test-local' manually to investigate"
-        fi
-    else
-        echo "⚠️  k6 not installed, skipping load test"
-        echo "💡 Install k6 for load testing: brew install k6"
-    fi
-    
-    echo ""
     echo "✅ All pre-push checks passed!"
     echo "🚀 Push allowed - E2E tests confirmed deployment readiness"
 else

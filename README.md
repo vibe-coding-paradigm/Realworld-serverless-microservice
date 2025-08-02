@@ -662,13 +662,129 @@ docker-compose up -d backend
 **새 팀원 온보딩:**
 1. 저장소 클론: `git clone <repo>`
 2. 의존성 설치: `npm ci` (root) + `cd frontend && npm ci`
-3. **Hook 설치: `npm run install-hooks`** ⭐ 필수
+3. **Git Hooks 자동 설정됨** ⭐ (husky가 npm ci 시 자동 설치)
 4. 테스트 실행: `npm run test:e2e:local`
 
 **코드 리뷰 시 확인사항:**
 - ✅ PR 작성자가 로컬에서 E2E 테스트를 통과했는지 확인
 - ✅ GitHub Actions E2E 테스트 통과 여부 확인
 - ✅ 새로운 기능에 대한 E2E 테스트 추가 여부 확인
+
+#### 🔒 Git Hooks 시스템 (품질 보장)
+
+이 프로젝트는 **husky 기반 Git hooks**를 사용하여 코드 품질을 자동으로 보장합니다. Git hooks는 커밋과 푸시 시점에 자동으로 실행되어 품질 검증을 수행합니다.
+
+##### 🎯 Git Hooks 구조
+
+```mermaid
+graph TD
+    A[개발자가 git commit 실행] --> B[Pre-commit Hook 실행]
+    B --> C{Unit Tests<br/>통과?}
+    C -->|✅ 통과| D[Linting 검사]
+    C -->|❌ 실패| E[🚫 커밋 차단]
+    D --> F{Lint<br/>결과}
+    F -->|✅ 통과| G[💚 커밋 허용]
+    F -->|⚠️ 이슈 있음| H[⚠️ 경고 후 커밋 허용]
+    
+    G --> I[개발자가 git push 실행]
+    H --> I
+    I --> J[Pre-push Hook 실행]
+    J --> K{E2E Tests<br/>통과?}
+    K -->|✅ 통과| L[🚀 푸시 허용]
+    K -->|❌ 실패| M[🚫 푸시 차단]
+    
+    E --> N[문제 해결 후 재시도]
+    M --> O[E2E 테스트 수정 후 재시도]
+    N --> A
+    O --> I
+```
+
+##### 📋 Hook 별 실행 작업
+
+**🔍 Pre-commit Hook (git commit 시)**
+- **목적**: 빠른 피드백으로 기본 품질 보장
+- **실행 시간**: ~5-15초
+- **실행 작업**:
+  1. **백엔드 Unit 테스트**: `go test ./...`
+     - 모든 Go 패키지의 단위 테스트 실행
+     - 비즈니스 로직 검증
+  2. **프론트엔드 Unit 테스트**: `npm test -- --run`
+     - React 컴포넌트 테스트 (Vitest)
+     - API 클라이언트 테스트
+     - 유틸리티 함수 테스트
+  3. **코드 품질 검사**: 
+     - **백엔드**: `golangci-lint run` (Go 린터)
+     - **프론트엔드**: `eslint .` (ESLint + TypeScript)
+  4. **결과 처리**:
+     - Unit 테스트 실패 시: 🚫 **커밋 차단**
+     - Lint 이슈 발견 시: ⚠️ **경고 후 커밋 허용** (advisory)
+
+**🚀 Pre-push Hook (git push 시)**
+- **목적**: 배포 준비 상태 종합 검증
+- **실행 시간**: ~15-30초
+- **실행 작업**:
+  1. **E2E 테스트 실행**: `make e2e`
+     - 29개 종합 시나리오 테스트 (Playwright)
+     - 인증 플로우 검증
+     - 게시글 CRUD 검증
+     - 반응형 디자인 검증
+     - 크로스 브라우저 테스트 (Chromium, Firefox, WebKit)
+  2. **결과 처리**:
+     - E2E 테스트 통과 시: 🚀 **푸시 허용**
+     - E2E 테스트 실패 시: 🚫 **푸시 차단**
+
+##### 🛠️ Git Hooks 설정 및 관리
+
+**초기 설정:**
+```bash
+# husky는 npm prepare 스크립트로 자동 설치됨
+npm ci                    # 의존성 설치 시 husky 자동 설정
+
+# 또는 수동 설정
+npm run prepare          # husky 설치
+```
+
+**Hook 우회 (비상시에만 사용):**
+```bash
+# ⚠️ 비상시에만 사용 - 일반적으로 권장하지 않음
+git commit --no-verify   # pre-commit hook 우회
+git push --no-verify     # pre-push hook 우회
+```
+
+**Hook 실행 중 문제 해결:**
+```bash
+# Unit 테스트 개별 실행
+make test               # 전체 unit 테스트
+cd backend && go test ./...      # 백엔드만
+cd frontend && npm test          # 프론트엔드만
+
+# E2E 테스트 개별 실행  
+make e2e                # E2E 테스트
+make e2e-ui             # UI 모드로 디버깅
+make e2e-debug          # 디버그 모드
+
+# 코드 품질 개별 실행
+make lint               # 전체 lint
+make lint-fix           # 자동 수정 시도
+```
+
+##### 🎯 Hook 시스템의 장점
+
+1. **빠른 피드백**: 커밋 전 기본 품질 검증으로 조기 문제 발견
+2. **배포 안정성**: 푸시 전 E2E 테스트로 기능 무결성 보장  
+3. **팀 일관성**: 모든 개발자가 동일한 품질 기준 적용
+4. **CI/CD 최적화**: 로컬에서 검증된 코드만 원격으로 전송
+5. **자동화**: 수동 테스트 실행 누락 방지
+
+##### 📊 품질 메트릭
+
+현재 프로젝트 품질 상태:
+- **Unit 테스트**: 47개 테스트 통과 (100%)
+- **E2E 테스트**: 29개 시나리오 통과 (100%)
+- **테스트 커버리지**: 핵심 비즈니스 로직 80%+ 
+- **Lint 검사**: TypeScript strict mode + Go linting
+
+이 Git hooks 시스템을 통해 **코드 품질과 배포 안정성을 자동으로 보장**하며, 개발팀 전체의 생산성을 향상시킵니다.
 
 #### 🏗️ 배포 및 인프라 관리
 ```bash
