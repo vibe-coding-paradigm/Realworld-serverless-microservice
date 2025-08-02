@@ -44,13 +44,17 @@ api.interceptors.response.use(
       // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Use window.location.pathname to get the correct base path
+      
+      // 동적으로 base path 감지 - React Router basename과 일치하도록
       const currentOrigin = window.location.origin;
       const currentPathname = window.location.pathname;
-      // Extract base path from current pathname
-      const basePath = currentPathname.startsWith('/Realworld-serverless-microservice') 
-        ? '/Realworld-serverless-microservice' 
+      
+      // GitHub Pages 환경 감지
+      const isGitHubPages = window.location.hostname.includes('github.io');
+      const basePath = isGitHubPages && currentPathname.includes('/Realworld-serverless-microservice')
+        ? '/Realworld-serverless-microservice'
         : '';
+        
       window.location.href = `${currentOrigin}${basePath}/login`;
     }
     return Promise.reject(error);

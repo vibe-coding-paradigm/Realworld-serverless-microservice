@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { ROUTES } from '@/lib/routes';
+import { ROUTES, createRoutes } from '@/lib/routes';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -39,8 +39,8 @@ const Header: React.FC = () => {
                   </Link>
                 </li>
 
-                {/* TODO: Settings와 Profile 페이지가 구현되면 주석 해제 */}
-                {/* <li>
+                {/* TODO: Settings와 Profile 페이지가 구현되면 활성화 */}
+                <li>
                   <Link to={ROUTES.SETTINGS} className="nav-link">
                     <i className="ion-gear-a mr-1"></i>
                     Settings
@@ -58,20 +58,8 @@ const Header: React.FC = () => {
                     )}
                     {user.username}
                   </Link>
-                </li> */}
-
-                <li>
-                  <span className="nav-link">
-                    {user.image && (
-                      <img 
-                        src={user.image} 
-                        alt={user.username} 
-                        className="inline-block w-6 h-6 rounded-full mr-1"
-                      />
-                    )}
-                    {user.username}
-                  </span>
                 </li>
+
 
                 <li>
                   <button 

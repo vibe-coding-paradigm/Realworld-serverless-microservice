@@ -58,7 +58,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(formData);
-      navigate('/');
+      navigate(ROUTES.HOME);
     } catch (error) {
       console.error('🔴 [DEBUG] Login failed:', error);
       // Error is handled by AuthContext

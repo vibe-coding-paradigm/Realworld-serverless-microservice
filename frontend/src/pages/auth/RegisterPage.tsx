@@ -66,7 +66,7 @@ const RegisterPage: React.FC = () => {
 
     try {
       await register(formData);
-      navigate('/');
+      navigate(ROUTES.HOME);
     } catch {
       // Error is handled by AuthContext
     }

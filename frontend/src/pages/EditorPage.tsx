@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { createRoutes } from '@/lib/routes';
+import { ROUTES, createRoutes } from '@/lib/routes';
 import { useCreateArticle, useUpdateArticle, useArticle } from '@/hooks/useArticles';
 import { ErrorMessage } from '@/components/ui/error';
 
@@ -29,7 +29,7 @@ const EditorPage: React.FC = () => {
   // Redirect if not logged in
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      navigate(ROUTES.LOGIN);
     }
   }, [user, navigate]);
 
@@ -40,7 +40,7 @@ const EditorPage: React.FC = () => {
       
       // Check if user is the author
       if (article.author.username !== user?.username) {
-        navigate('/');
+        navigate(ROUTES.HOME);
         return;
       }
       
