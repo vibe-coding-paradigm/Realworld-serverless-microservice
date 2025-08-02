@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all
 
 # 기본 타겟
 help:
@@ -16,8 +16,14 @@ help:
 	@echo "배포 및 디버깅:"
 	@echo "  deploy-initial - 초기 인프라 전체 배포 (로컬 전용)"
 	@echo "  deploy-check   - 배포 상태 확인"
-	@echo "  deploy-logs    - 배포 로그 확인"
+	@echo "  deploy-logs    - 모든 워크플로우 로그 상태 확인"
+	@echo "  deploy-logs-frontend - 프론트엔드 배포 로그"
+	@echo "  deploy-logs-backend  - 백엔드 배포 로그"
+	@echo "  deploy-logs-failed   - 실패한 배포 로그만"
+	@echo "  deploy-logs-e2e      - E2E 테스트 로그"
+	@echo "  deploy-logs-load     - 부하 테스트 로그"
 	@echo "  deploy-debug   - 배포 디버깅 정보"
+	@echo "  gh-workflow-run      - 워크플로우 수동 실행 가이드 (조회 전용)"
 	@echo "  cdk-deploy     - CDK로 인프라 배포"
 	@echo "  cdk-destroy    - CDK 인프라 삭제"
 	@echo "  cdk-diff       - CDK 변경사항 확인"
@@ -185,20 +191,31 @@ deploy-check:
 	@gh run list --workflow="frontend-deploy.yml" --limit 3
 	@echo ""
 	@echo "📊 백엔드 배포 상태:"
-	@gh run list --workflow="backend-deploy-cdk.yml" --limit 3
+	@gh run list --workflow="backend-deploy.yml" --limit 3
 
 deploy-logs:
 	@echo "📋 최근 배포 로그를 확인하는 중..."
-	@command -v gh >/dev/null 2>&1 || (echo "❌ GitHub CLI를 찾을 수 없습니다"; exit 1)
-	@echo "프론트엔드 최근 배포 로그:"
-	@gh run list --workflow="frontend-deploy.yml" --limit 1 --json url,conclusion,status | \
-		jq -r '.[0] | if .conclusion == "failure" then .url else "성공적으로 배포됨" end' | \
-		xargs -I {} sh -c 'if [ "{}" != "성공적으로 배포됨" ]; then echo "실패한 배포 로그: {}"; else echo "{}"; fi'
-	@echo ""
-	@echo "백엔드 최근 배포 로그:"
-	@gh run list --workflow="backend-deploy-cdk.yml" --limit 1 --json url,conclusion,status | \
-		jq -r '.[0] | if .conclusion == "failure" then .url else "성공적으로 배포됨" end' | \
-		xargs -I {} sh -c 'if [ "{}" != "성공적으로 배포됨" ]; then echo "실패한 배포 로그: {}"; else echo "{}"; fi'
+	@bash scripts/get-workflow-logs.sh all --status
+
+deploy-logs-frontend:
+	@echo "📋 프론트엔드 배포 로그를 확인하는 중..."
+	@bash scripts/get-workflow-logs.sh frontend
+
+deploy-logs-backend:
+	@echo "📋 백엔드 배포 로그를 확인하는 중..."
+	@bash scripts/get-workflow-logs.sh backend
+
+deploy-logs-failed:
+	@echo "📋 실패한 배포 로그를 확인하는 중..."
+	@bash scripts/get-workflow-logs.sh all --failed
+
+deploy-logs-e2e:
+	@echo "📋 E2E 테스트 로그를 확인하는 중..."
+	@bash scripts/get-workflow-logs.sh e2e
+
+deploy-logs-load:
+	@echo "📋 부하 테스트 로그를 확인하는 중..."
+	@bash scripts/get-workflow-logs.sh load
 
 deploy-debug:
 	@echo "🐛 배포 디버깅 정보를 수집하는 중..."
@@ -254,9 +271,20 @@ gh-login-check:
 	@gh auth status || echo "❌ GitHub CLI에 로그인하지 않았습니다. 'gh auth login' 명령어를 실행하세요"
 
 gh-workflow-run:
-	@echo "▶️  수동으로 워크플로우 실행:"
-	@echo "프론트엔드 배포 실행하려면: gh workflow run frontend-deploy.yml"
-	@echo "백엔드 배포 실행하려면: gh workflow run backend-deploy-cdk.yml"
+	@echo "▶️  워크플로우 수동 실행 가이드:"
+	@echo ""
+	@echo "⚠️  주의: 로컬에서 직접 워크플로우를 실행하지 마세요!"
+	@echo "   환경 차이로 인한 문제가 발생할 수 있습니다."
+	@echo ""
+	@echo "✅ 권장 방법:"
+	@echo "  1. 코드 변경 후 git push"
+	@echo "  2. GitHub Actions가 자동으로 실행"
+	@echo "  3. make deploy-logs로 상태 확인"
+	@echo ""
+	@echo "🔧 긴급한 경우에만 GitHub 웹에서 수동 실행:"
+	@echo "  - 프론트엔드: https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml"
+	@echo "  - 백엔드: https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/backend-deploy.yml"
+	@echo "  - E2E 테스트: https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/e2e-tests.yml"
 
 # 통합 디버깅 명령어
 debug: deploy-debug gh-login-check
