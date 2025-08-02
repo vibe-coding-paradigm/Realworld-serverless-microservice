@@ -14,7 +14,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
+        <Router basename="/Realworld-serverless-microservice">
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
