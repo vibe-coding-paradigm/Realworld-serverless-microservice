@@ -62,11 +62,32 @@ export const getFullURL = (path: string = '/') => {
 
 /**
  * Safe navigation function that ensures correct URL resolution
+ * Includes special handling for GitHub Pages SPA routing
  */
 export const navigateToPage = async (page: any, path: string = '/') => {
   const fullURL = getFullURL(path);
   console.log(`Navigating to: ${fullURL}`);
+  
+  // Navigate to the URL
   await page.goto(fullURL, { waitUntil: 'networkidle' });
+  
+  // For non-root paths, wait for potential SPA redirect to complete
+  if (path !== '/' && fullURL.includes('github.io')) {
+    console.log('Waiting for potential GitHub Pages SPA redirect...');
+    // Wait a bit for JavaScript redirect to process
+    await page.waitForTimeout(2000);
+    // Wait for any potential navigation to complete
+    await page.waitForLoadState('networkidle');
+    
+    // Verify we're not still on a 404 page
+    const title = await page.title();
+    if (title === 'Conduit' && page.url() === fullURL) {
+      // We might still be on the 404 page, wait a bit more
+      await page.waitForTimeout(3000);
+      await page.waitForLoadState('networkidle');
+    }
+  }
+  
   console.log(`Final URL: ${page.url()}`);
   return page.url();
 };

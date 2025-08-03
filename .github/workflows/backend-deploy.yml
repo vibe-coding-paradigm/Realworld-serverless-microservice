@@ -256,12 +256,4 @@ jobs:
             fi
           done
 
-  e2e-tests:
-    name: Run E2E Tests After Backend Deployment
-    needs: [deploy, verify]
-    uses: ./.github/workflows/e2e-tests.yml
-    with:
-      backend_url: ${{ needs.deploy.outputs.backend-url }}
-      frontend_url: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
-    secrets: inherit
 

@@ -1,6 +1,10 @@
 name: E2E Tests
 
 on:
+  workflow_run:
+    workflows: ["Deploy Backend to AWS", "Deploy Frontend to GitHub Pages"]
+    types: [completed]
+    branches: [main]
   workflow_call:
     inputs:
       backend_url:
@@ -25,10 +29,78 @@ on:
         default: 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice'
 
 jobs:
+  check-deployment-status:
+    name: Check Both Deployments Are Successful
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run'
+    outputs:
+      should_run_tests: ${{ steps.check-status.outputs.should_run_tests }}
+      backend_url: ${{ steps.get-urls.outputs.backend_url }}
+      frontend_url: ${{ steps.get-urls.outputs.frontend_url }}
+    steps:
+      - name: Check deployment status
+        id: check-status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            
+            // Get recent workflow runs for both deployments
+            const backendRuns = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              workflow_id: 'backend-deploy.yml',
+              branch: 'main',
+              per_page: 5,
+              status: 'completed'
+            });
+            
+            const frontendRuns = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              workflow_id: 'frontend-deploy.yml',
+              branch: 'main',
+              per_page: 5,
+              status: 'completed'
+            });
+            
+            const latestBackend = backendRuns.data.workflow_runs[0];
+            const latestFrontend = frontendRuns.data.workflow_runs[0];
+            
+            console.log('Latest backend run:', latestBackend?.conclusion, latestBackend?.created_at);
+            console.log('Latest frontend run:', latestFrontend?.conclusion, latestFrontend?.created_at);
+            
+            // Check if both latest runs are successful and recent (within last hour)
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const backendRecent = latestBackend && new Date(latestBackend.created_at) > oneHourAgo;
+            const frontendRecent = latestFrontend && new Date(latestFrontend.created_at) > oneHourAgo;
+            
+            const shouldRun = latestBackend?.conclusion === 'success' && 
+                            latestFrontend?.conclusion === 'success' && 
+                            backendRecent && frontendRecent;
+            
+            console.log('Should run E2E tests:', shouldRun);
+            core.setOutput('should_run_tests', shouldRun);
+
+      - name: Get deployment URLs
+        id: get-urls
+        if: steps.check-status.outputs.should_run_tests == 'true'
+        run: |
+          # Set default URLs (these will be used for workflow_run triggers)
+          BACKEND_URL="https://d1ct76fqx0s1b8.cloudfront.net/api"
+          FRONTEND_URL="https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice"
+          
+          echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend_url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "✅ Using backend URL: $BACKEND_URL"
+          echo "✅ Using frontend URL: $FRONTEND_URL"
+
   e2e-tests:
     name: Run E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [check-deployment-status]
+    if: always() && (github.event_name != 'workflow_run' || needs.check-deployment-status.outputs.should_run_tests == 'true')
     
     steps:
     - name: Checkout code
@@ -49,22 +121,38 @@ jobs:
       working-directory: frontend
       run: npx playwright install --with-deps
 
-    - name: Validate required inputs
+    - name: Set URLs based on trigger type
+      id: set-urls
       run: |
-        if [ -z "${{ inputs.backend_url }}" ]; then
-          echo "❌ Error: backend_url input is required"
+        if [ "${{ github.event_name }}" = "workflow_run" ]; then
+          # Use URLs from check-deployment-status job
+          BACKEND_URL="${{ needs.check-deployment-status.outputs.backend_url }}"
+          FRONTEND_URL="${{ needs.check-deployment-status.outputs.frontend_url }}"
+        else
+          # Use inputs for workflow_call and workflow_dispatch
+          BACKEND_URL="${{ inputs.backend_url }}"
+          FRONTEND_URL="${{ inputs.frontend_url }}"
+        fi
+        
+        echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "frontend_url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+        echo "✅ Using backend URL: $BACKEND_URL"
+        echo "✅ Using frontend URL: $FRONTEND_URL"
+
+    - name: Validate URLs
+      run: |
+        if [ -z "${{ steps.set-urls.outputs.backend_url }}" ]; then
+          echo "❌ Error: backend_url is not set"
           exit 1
         fi
-        if [ -z "${{ inputs.frontend_url }}" ]; then
-          echo "❌ Error: frontend_url input is required"
+        if [ -z "${{ steps.set-urls.outputs.frontend_url }}" ]; then
+          echo "❌ Error: frontend_url is not set"
           exit 1
         fi
-        echo "✅ Using backend URL: ${{ inputs.backend_url }}"
-        echo "✅ Using frontend URL: ${{ inputs.frontend_url }}"
 
     - name: Wait for backend to be ready
       run: |
-        BACKEND_URL="${{ inputs.backend_url }}"
+        BACKEND_URL="${{ steps.set-urls.outputs.backend_url }}"
         # Check if backend_url already contains /api, if so, remove it for health check
         if [[ "$BACKEND_URL" == *"/api" ]]; then
           HEALTH_URL="${BACKEND_URL%/api}/health"
@@ -83,7 +171,7 @@ jobs:
 
     - name: Wait for frontend to be ready
       run: |
-        FRONTEND_URL="${{ inputs.frontend_url }}"
+        FRONTEND_URL="${{ steps.set-urls.outputs.frontend_url }}"
         echo "Waiting for frontend at $FRONTEND_URL to be ready..."
         for i in {1..30}; do
           RESPONSE=$(curl -sL -H "User-Agent: Mozilla/5.0 (compatible; E2E-Test/1.0)" "$FRONTEND_URL" || echo "")
@@ -104,8 +192,8 @@ jobs:
     - name: Run E2E tests
       working-directory: frontend
       env:
-        API_URL: ${{ inputs.backend_url }}
-        PLAYWRIGHT_BASE_URL: ${{ inputs.frontend_url }}
+        API_URL: ${{ steps.set-urls.outputs.backend_url }}
+        PLAYWRIGHT_BASE_URL: ${{ steps.set-urls.outputs.frontend_url }}
       run: |
         echo "🔧 E2E Test Configuration:"
         echo "Backend URL: $API_URL" 
