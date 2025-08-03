@@ -3,6 +3,13 @@ import { generateTestUser, generateTestArticle, waitTimes, navigateToPage } from
 import { smartLogin } from '../helpers/login';
 import { ApiHelper } from '../helpers/api';
 
+// 환경 감지 helper
+function isLocalEnvironment(): boolean {
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL;
+  const isLocal = baseUrl?.includes('localhost') || baseUrl?.includes('127.0.0.1');
+  return isLocal || false;
+}
+
 /**
  * Phase 1 데모 시나리오 E2E 테스트
  * 
@@ -30,6 +37,8 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
   });
   
   test('Complete demo scenario - exactly as performed in demo', async ({ page }) => {
+    // 로컬 환경에서는 스킵
+    test.skip(isLocalEnvironment(), 'Skipping CloudFront-specific test in local environment');
     
     console.log('🎬 Starting Phase 1 Demo Scenario Test');
     console.log('🌐 Testing against production environment:');
@@ -57,9 +66,9 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     });
     
     await test.step('백엔드 연결 및 기존 게시글 확인', async () => {
-      // API 요청을 통한 백엔드 연결 확인 (절대 URL 사용)
-      const apiUrl = process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
-      const response = await page.request.get(`${apiUrl}/api/articles`);
+      // API 요청을 통한 백엔드 연결 확인 (GitHub Variables 사용)
+      const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+      const response = await page.request.get(`${apiUrl}${apiUrl.endsWith('/api') ? '' : '/api'}/articles`);
       expect(response.status()).toBe(200);
       
       const data = await response.json();
@@ -334,16 +343,18 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
   });
   
   test('Verify production environment configuration', async ({ page }) => {
+    // 로컬 환경에서는 스킵
+    test.skip(isLocalEnvironment(), 'Skipping CloudFront-specific test in local environment');
     
     console.log('\n🔧 프로덕션 환경 설정 검증');
     
     await test.step('API 엔드포인트 확인', async () => {
       await navigateToPage(page, '/');
       
-      // 페이지에서 사용되는 API URL 확인
+      // 페이지에서 사용되는 API URL 확인 (GitHub Variables 사용)
       const apiUrl = await page.evaluate(() => {
         // @ts-ignore
-        return window.VITE_API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+        return window.VITE_API_URL || process.env.BACKEND_URL || 'https://d1ct76fqx0s1b8.cloudfront.net/api';
       });
       
       console.log(`현재 API URL: ${apiUrl}`);
@@ -357,9 +368,9 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     });
     
     await test.step('CORS 및 네트워크 설정 확인', async () => {
-      // API 요청 테스트 (절대 URL 사용)
-      const apiUrl = process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
-      const response = await page.request.get(`${apiUrl}/api/articles`);
+      // API 요청 테스트 (GitHub Variables 사용)
+      const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+      const response = await page.request.get(`${apiUrl}${apiUrl.endsWith('/api') ? '' : '/api'}/articles`);
       
       const headers = response.headers();
       console.log('API 응답 헤더:');
@@ -396,6 +407,8 @@ test.describe('Demo Failure Edge Cases', () => {
   });
   
   test('Handle 401 authentication errors gracefully', async ({ page }) => {
+    // 로컬 환경에서는 스킵
+    test.skip(isLocalEnvironment(), 'Skipping CloudFront-specific test in local environment');
     
     console.log('\n🚨 401 에러 처리 테스트');
     
@@ -408,9 +421,9 @@ test.describe('Demo Failure Edge Cases', () => {
     
     await navigateToPage(page, '/');
     
-    // 인증이 필요한 작업 시도 (절대 URL 사용)
-    const apiUrl = process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
-    const response = await page.request.post(`${apiUrl}/api/articles`, {
+    // 인증이 필요한 작업 시도 (GitHub Variables 사용)
+    const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+    const response = await page.request.post(`${apiUrl}${apiUrl.endsWith('/api') ? '' : '/api'}/articles`, {
       headers: {
         'Authorization': 'Token invalid-token',
         'Content-Type': 'application/json'
