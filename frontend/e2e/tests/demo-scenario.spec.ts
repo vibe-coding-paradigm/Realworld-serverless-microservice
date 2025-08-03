@@ -57,8 +57,9 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     });
     
     await test.step('백엔드 연결 및 기존 게시글 확인', async () => {
-      // API 요청을 통한 백엔드 연결 확인
-      const response = await page.request.get('/api/articles');
+      // API 요청을 통한 백엔드 연결 확인 (절대 URL 사용)
+      const apiUrl = process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+      const response = await page.request.get(`${apiUrl}/api/articles`);
       expect(response.status()).toBe(200);
       
       const data = await response.json();
@@ -356,8 +357,9 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     });
     
     await test.step('CORS 및 네트워크 설정 확인', async () => {
-      // API 요청 테스트
-      const response = await page.request.get('/api/articles');
+      // API 요청 테스트 (절대 URL 사용)
+      const apiUrl = process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+      const response = await page.request.get(`${apiUrl}/api/articles`);
       
       const headers = response.headers();
       console.log('API 응답 헤더:');
@@ -406,8 +408,9 @@ test.describe('Demo Failure Edge Cases', () => {
     
     await navigateToPage(page, '/');
     
-    // 인증이 필요한 작업 시도
-    const response = await page.request.post('/api/articles', {
+    // 인증이 필요한 작업 시도 (절대 URL 사용)
+    const apiUrl = process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+    const response = await page.request.post(`${apiUrl}/api/articles`, {
       headers: {
         'Authorization': 'Token invalid-token',
         'Content-Type': 'application/json'
