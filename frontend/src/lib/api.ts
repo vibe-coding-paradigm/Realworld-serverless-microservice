@@ -1,13 +1,66 @@
 import axios from 'axios';
 
-// Use CloudFront directly in development to avoid CORS/proxy issues
+/**
+ * Smart API URL detection with environment support
+ * Supports local development, E2E testing, and production deployment
+ */
 const API_BASE_URL = (() => {
-  // If development build with __DEV_API_URL__ defined, use CloudFront directly
+  // Priority 1: E2E testing environment detection
+  const isE2ETest = (() => {
+    // Safe browser environment check
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      return false;
+    }
+    
+    const userAgent = navigator.userAgent;
+    return userAgent.includes('Playwright') || 
+           userAgent.includes('HeadlessChrome') ||
+           (window.location && window.location.search && window.location.search.includes('e2e-test')) ||
+           (document && document.documentElement && document.documentElement.getAttribute('data-test-env') === 'playwright');
+  })();
+  
+  if (isE2ETest) {
+    // For E2E tests, determine environment dynamically
+    const isLocalhost = window && window.location && window.location.hostname && window.location.hostname === 'localhost';
+    if (isLocalhost) {
+      console.log('🧪 E2E Test (Local): Using localhost backend');
+      return 'http://localhost:8080/api';
+    } else {
+      console.log('🧪 E2E Test (Cloud): Using CloudFront backend');
+      return 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+    }
+  }
+  
+  // Priority 2: Explicit VITE_API_URL (for custom builds)
+  if (import.meta.env.VITE_API_URL) {
+    console.log('✅ Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Priority 3: Development build with DEV_API_URL
   if (typeof __DEV_API_URL__ !== 'undefined') {
+    console.log('✅ Using DEV_API_URL:', __DEV_API_URL__ + '/api');
     return __DEV_API_URL__ + '/api';
   }
-  // Otherwise use environment variable or relative path
-  return import.meta.env.VITE_API_URL || '/api';
+  
+  // Priority 4: Production environment detection
+  const isProduction = import.meta.env.PROD;
+  const isGitHubPages = window && window.location && window.location.hostname && window.location.hostname.includes('github.io');
+  
+  if (isProduction && isGitHubPages) {
+    console.log('✅ Production (GitHub Pages): Using CloudFront backend');
+    return 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+  }
+  
+  // Priority 5: Local development fallback
+  if (window && window.location && window.location.hostname && window.location.hostname === 'localhost') {
+    console.log('✅ Local Development: Using localhost backend');
+    return 'http://localhost:8080/api';
+  }
+  
+  // Priority 6: Default fallback (relative path)
+  console.log('✅ Fallback: Using relative API path');
+  return '/api';
 })();
 
 console.log('API_BASE_URL:', API_BASE_URL);

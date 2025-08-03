@@ -1,22 +1,46 @@
 import { APIRequestContext, expect } from '@playwright/test';
 
 export class ApiHelper {
-  constructor(private request: APIRequestContext) {}
-  
-  private get baseURL() {
-    return process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+  private readonly apiBaseURL: string;
+  private readonly healthURL: string;
+  private readonly environment: string;
+
+  constructor(private request: APIRequestContext) {
+    // Direct environment detection without circular imports
+    this.environment = this.detectEnvironment();
+    this.apiBaseURL = this.getApiUrl();
+    this.healthURL = this.getHealthUrl();
+    
+    console.log(`🔗 API Helper initialized for ${this.environment} environment`);
+    console.log(`📡 API URL: ${this.apiBaseURL}`);
+    console.log(`❤️ Health URL: ${this.healthURL}`);
   }
 
-  private get apiBaseURL() {
-    const url = this.baseURL;
-    // If API_URL already includes /api, use it as is, otherwise append /api
-    return url.endsWith('/api') ? url : `${url}/api`;
+  private detectEnvironment(): string {
+    // Check environment variables that would be set in different contexts
+    if (process.env.API_URL && process.env.API_URL.includes('localhost')) {
+      return 'local';
+    }
+    if (process.env.PLAYWRIGHT_BASE_URL && process.env.PLAYWRIGHT_BASE_URL.includes('localhost')) {
+      return 'local';
+    }
+    return 'cloud';
   }
 
-  private get healthURL() {
-    const url = this.baseURL;
-    // Remove /api suffix for health check if present
-    return url.endsWith('/api') ? url.slice(0, -4) : url;
+  private getApiUrl(): string {
+    if (this.environment === 'local') {
+      return 'http://localhost:8080/api';
+    } else {
+      return 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+    }
+  }
+
+  private getHealthUrl(): string {
+    if (this.environment === 'local') {
+      return 'http://localhost:8080';
+    } else {
+      return 'https://d1ct76fqx0s1b8.cloudfront.net';
+    }
   }
 
   async healthCheck() {
@@ -74,10 +98,10 @@ export class ApiHelper {
     };
   }
   
-  // Debug method to get URLs
+  // Debug method to get URLs and environment info
   getDebugInfo() {
     return {
-      baseURL: this.baseURL,
+      environment: this.environment,
       apiBaseURL: this.apiBaseURL,
       healthURL: this.healthURL
     };
