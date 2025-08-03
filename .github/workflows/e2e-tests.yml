@@ -169,40 +169,53 @@ jobs:
 
     - name: Set URLs based on trigger type
       id: set-urls
+      env:
+        VARS_BACKEND_URL: ${{ vars.BACKEND_URL }}
+        VARS_FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        INPUT_BACKEND_URL: ${{ inputs.backend_url }}
+        INPUT_FRONTEND_URL: ${{ inputs.frontend_url }}
+        NEEDS_BACKEND_URL: ${{ needs.check-deployment-status.outputs.backend_url }}
+        NEEDS_FRONTEND_URL: ${{ needs.check-deployment-status.outputs.frontend_url }}
       run: |
         echo "🔍 Debug: Event name is '${{ github.event_name }}'"
-        echo "🔍 Debug: GitHub Variables - BACKEND_URL='${{ vars.BACKEND_URL }}', FRONTEND_URL='${{ vars.FRONTEND_URL }}'"
+        echo "🔍 Debug: Environment Variables:"
+        echo "  VARS_BACKEND_URL='$VARS_BACKEND_URL'"
+        echo "  VARS_FRONTEND_URL='$VARS_FRONTEND_URL'"
+        echo "  INPUT_BACKEND_URL='$INPUT_BACKEND_URL'"
+        echo "  INPUT_FRONTEND_URL='$INPUT_FRONTEND_URL'"
+        echo "  NEEDS_BACKEND_URL='$NEEDS_BACKEND_URL'"
+        echo "  NEEDS_FRONTEND_URL='$NEEDS_FRONTEND_URL'"
         
         if [ "${{ github.event_name }}" = "workflow_run" ]; then
           # Use URLs from check-deployment-status job if available
-          BACKEND_URL="${{ needs.check-deployment-status.outputs.backend_url }}"
-          FRONTEND_URL="${{ needs.check-deployment-status.outputs.frontend_url }}"
+          BACKEND_URL="$NEEDS_BACKEND_URL"
+          FRONTEND_URL="$NEEDS_FRONTEND_URL"
           
           echo "🔍 Debug: workflow_run URLs - BACKEND_URL='$BACKEND_URL', FRONTEND_URL='$FRONTEND_URL'"
           
           # If URLs are empty (check-deployment-status was skipped), use GitHub Variables
           if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
             echo "⚠️ URLs from check-deployment-status are empty, using GitHub Variables"
-            BACKEND_URL="${{ vars.BACKEND_URL }}"
-            FRONTEND_URL="${{ vars.FRONTEND_URL }}"
+            BACKEND_URL="$VARS_BACKEND_URL"
+            FRONTEND_URL="$VARS_FRONTEND_URL"
           fi
         elif [ "${{ github.event_name }}" = "schedule" ]; then
           # Use GitHub Variables for scheduled runs
           echo "📅 Scheduled run detected, using GitHub Variables"
-          BACKEND_URL="${{ vars.BACKEND_URL }}"
-          FRONTEND_URL="${{ vars.FRONTEND_URL }}"
+          BACKEND_URL="$VARS_BACKEND_URL"
+          FRONTEND_URL="$VARS_FRONTEND_URL"
         else
           # Use inputs for workflow_call and workflow_dispatch, fallback to GitHub Variables
-          BACKEND_URL="${{ inputs.backend_url }}"
-          FRONTEND_URL="${{ inputs.frontend_url }}"
+          BACKEND_URL="$INPUT_BACKEND_URL"
+          FRONTEND_URL="$INPUT_FRONTEND_URL"
           
           echo "🔍 Debug: inputs URLs - BACKEND_URL='$BACKEND_URL', FRONTEND_URL='$FRONTEND_URL'"
           
           # If inputs are empty, use GitHub Variables
           if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
             echo "⚠️ Input URLs are empty, using GitHub Variables"
-            BACKEND_URL="${{ vars.BACKEND_URL }}"
-            FRONTEND_URL="${{ vars.FRONTEND_URL }}"
+            BACKEND_URL="$VARS_BACKEND_URL"
+            FRONTEND_URL="$VARS_FRONTEND_URL"
           fi
         fi
         
