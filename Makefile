@@ -322,16 +322,16 @@ debug: deploy-debug gh-login-check
 verify-deployment:
 	@echo "🔍 AWS 배포 상태를 검증하는 중..."
 	@command -v node >/dev/null 2>&1 || (echo "❌ Node.js를 찾을 수 없습니다"; exit 1)
-	@if [ ! -d "scripts/node_modules" ]; then \
+	@if [ ! -d "infra/verify-deployment/node_modules" ]; then \
 		echo "📦 검증 스크립트 의존성 설치 중..."; \
-		cd scripts && npm install; \
+		cd infra/verify-deployment && npm install; \
 	fi
-	@cd scripts && node verify-deployment.js
+	@cd infra/verify-deployment && node verify-deployment.js
 
 verify-deployment-install:
 	@echo "📦 검증 스크립트 의존성을 설치하는 중..."
 	@command -v npm >/dev/null 2>&1 || (echo "❌ npm을 찾을 수 없습니다"; exit 1)
-	cd scripts && npm install
+	cd infra/verify-deployment && npm install
 
 # 빠른 배포 상태 확인
 status: deploy-check health
