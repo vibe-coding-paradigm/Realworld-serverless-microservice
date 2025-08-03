@@ -6,7 +6,7 @@ RealWorld 애플리케이션 Phase 1 (모노리식 → 클라우드 전환) 완�
 
 ### 🤖 **AI 에이전트 자동화 데모**
 
-**이 데모는 AI 에이전트(Claude Code)가 Puppeteer MCP를 사용하여 자동으로 수행하며, 브라우저 개발자 도구(F12)를 활성화하여 실시간 모니터링합니다.**
+**이 데모는 AI 에이전트(Claude Code)가 Playwright MCP를 사용하여 자동으로 수행하며, 브라우저 개발자 도구(F12)를 활성화하여 실시간 모니터링합니다.**
 
 ### 🎯 데모 목표
 - RealWorld 완전 기능 구현 시연
@@ -14,8 +14,7 @@ RealWorld 애플리케이션 Phase 1 (모노리식 → 클라우드 전환) 완�
 - E2E 테스트 및 성능 검증
 
 ## 🚀 데모 환경
-- **프론트엔드**: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
-- **백엔드**: http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com
+https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
 
 ## 🎬 데모 시나리오
 
@@ -67,7 +66,7 @@ RealWorld 애플리케이션 Phase 1 (모노리식 → 클라우드 전환) 완�
 ## 📋 데모 체크리스트
 
 ### **사전 준비**
-- [ ] Claude Code + Puppeteer MCP 연결
+- [ ] Claude Code + Playwright MCP 연결
 - [ ] 브라우저 개발자 도구 활성화 설정
 - [ ] 인터넷 연결 확인
 
