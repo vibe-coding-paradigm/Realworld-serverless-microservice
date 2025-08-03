@@ -16,7 +16,7 @@ on:
         description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
         required: false
         type: string
-        default: 'https://d1ct76fqx0s1b8.cloudfront.net'
+        default: 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com'
       frontend_url:
         description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
         required: false
@@ -171,6 +171,7 @@ jobs:
       id: set-urls
       env:
         VARS_BACKEND_URL: ${{ vars.BACKEND_URL }}
+        VARS_BACKEND_URL_ECS: ${{ vars.BACKEND_URL_ECS }}
         VARS_FRONTEND_URL: ${{ vars.FRONTEND_URL }}
         INPUT_BACKEND_URL: ${{ inputs.backend_url }}
         INPUT_FRONTEND_URL: ${{ inputs.frontend_url }}
@@ -180,6 +181,7 @@ jobs:
         echo "🔍 Debug: Event name is '${{ github.event_name }}'"
         echo "🔍 Debug: Environment Variables:"
         echo "  VARS_BACKEND_URL='$VARS_BACKEND_URL'"
+        echo "  VARS_BACKEND_URL_ECS='$VARS_BACKEND_URL_ECS'"
         echo "  VARS_FRONTEND_URL='$VARS_FRONTEND_URL'"
         echo "  INPUT_BACKEND_URL='$INPUT_BACKEND_URL'"
         echo "  INPUT_FRONTEND_URL='$INPUT_FRONTEND_URL'"
@@ -193,28 +195,28 @@ jobs:
           
           echo "🔍 Debug: workflow_run URLs - BACKEND_URL='$BACKEND_URL', FRONTEND_URL='$FRONTEND_URL'"
           
-          # If URLs are empty (check-deployment-status was skipped), use GitHub Variables
+          # If URLs are empty (check-deployment-status was skipped), use ECS backend
           if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
-            echo "⚠️ URLs from check-deployment-status are empty, using GitHub Variables"
-            BACKEND_URL="$VARS_BACKEND_URL"
+            echo "⚠️ URLs from check-deployment-status are empty, using ECS backend"
+            BACKEND_URL="$VARS_BACKEND_URL_ECS"
             FRONTEND_URL="$VARS_FRONTEND_URL"
           fi
         elif [ "${{ github.event_name }}" = "schedule" ]; then
-          # Use GitHub Variables for scheduled runs
-          echo "📅 Scheduled run detected, using GitHub Variables"
-          BACKEND_URL="$VARS_BACKEND_URL"
+          # Use ECS backend for scheduled runs (for monolithic API testing)
+          echo "📅 Scheduled run detected, using ECS backend for monolithic API"
+          BACKEND_URL="$VARS_BACKEND_URL_ECS"
           FRONTEND_URL="$VARS_FRONTEND_URL"
         else
-          # Use inputs for workflow_call and workflow_dispatch, fallback to GitHub Variables
+          # Use inputs for workflow_call and workflow_dispatch, fallback to ECS backend
           BACKEND_URL="$INPUT_BACKEND_URL"
           FRONTEND_URL="$INPUT_FRONTEND_URL"
           
           echo "🔍 Debug: inputs URLs - BACKEND_URL='$BACKEND_URL', FRONTEND_URL='$FRONTEND_URL'"
           
-          # If inputs are empty, use GitHub Variables
+          # If inputs are empty, use ECS backend
           if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
-            echo "⚠️ Input URLs are empty, using GitHub Variables"
-            BACKEND_URL="$VARS_BACKEND_URL"
+            echo "⚠️ Input URLs are empty, using ECS backend for monolithic API"
+            BACKEND_URL="$VARS_BACKEND_URL_ECS"
             FRONTEND_URL="$VARS_FRONTEND_URL"
           fi
         fi
