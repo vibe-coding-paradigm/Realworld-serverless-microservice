@@ -20,6 +20,8 @@ export class ServerlessArticlesStack extends Construct {
   public readonly updateArticleFunction: lambda.Function;
   public readonly deleteArticleFunction: lambda.Function;
   public readonly favoriteArticleFunction: lambda.Function;
+  public readonly articlesResource: apigateway.Resource;
+  public readonly articleBySlugResource: apigateway.Resource;
 
   constructor(scope: Construct, id: string, props?: ServerlessArticlesStackProps) {
     super(scope, id);
@@ -273,43 +275,43 @@ export class ServerlessArticlesStack extends Construct {
     }
 
     // Articles resource (/articles)
-    const articlesResource = this.api.root.addResource('articles');
+    this.articlesResource = this.api.root.addResource('articles');
 
     // List articles endpoint (GET /articles)
-    articlesResource.addMethod('GET', new apigateway.LambdaIntegration(this.listArticlesFunction, {
+    this.articlesResource.addMethod('GET', new apigateway.LambdaIntegration(this.listArticlesFunction, {
       proxy: true,
       allowTestInvoke: true,
     }));
 
     // Create article endpoint (POST /articles)
-    articlesResource.addMethod('POST', new apigateway.LambdaIntegration(this.createArticleFunction, {
+    this.articlesResource.addMethod('POST', new apigateway.LambdaIntegration(this.createArticleFunction, {
       proxy: true,
       allowTestInvoke: true,
     }));
 
     // Article by slug resource (/articles/{slug})
-    const articleBySlugResource = articlesResource.addResource('{slug}');
+    this.articleBySlugResource = this.articlesResource.addResource('{slug}');
 
     // Get article endpoint (GET /articles/{slug})
-    articleBySlugResource.addMethod('GET', new apigateway.LambdaIntegration(this.getArticleFunction, {
+    this.articleBySlugResource.addMethod('GET', new apigateway.LambdaIntegration(this.getArticleFunction, {
       proxy: true,
       allowTestInvoke: true,
     }));
 
     // Update article endpoint (PUT /articles/{slug})
-    articleBySlugResource.addMethod('PUT', new apigateway.LambdaIntegration(this.updateArticleFunction, {
+    this.articleBySlugResource.addMethod('PUT', new apigateway.LambdaIntegration(this.updateArticleFunction, {
       proxy: true,
       allowTestInvoke: true,
     }));
 
     // Delete article endpoint (DELETE /articles/{slug})
-    articleBySlugResource.addMethod('DELETE', new apigateway.LambdaIntegration(this.deleteArticleFunction, {
+    this.articleBySlugResource.addMethod('DELETE', new apigateway.LambdaIntegration(this.deleteArticleFunction, {
       proxy: true,
       allowTestInvoke: true,
     }));
 
     // Favorite/unfavorite resource (/articles/{slug}/favorite)
-    const favoriteResource = articleBySlugResource.addResource('favorite');
+    const favoriteResource = this.articleBySlugResource.addResource('favorite');
 
     // Favorite article endpoint (POST /articles/{slug}/favorite)
     favoriteResource.addMethod('POST', new apigateway.LambdaIntegration(this.favoriteArticleFunction, {

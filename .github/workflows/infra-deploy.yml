@@ -1,0 +1,288 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/lib/**'
+      - 'infra/bin/**'
+      - 'infra/cdk.json'
+      - 'infra/package*.json'
+      - '.github/workflows/infra-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      stack:
+        description: 'Stack to deploy (all, compute, storage)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - compute
+          - storage
+      destroy:
+        description: 'Destroy infrastructure instead of deploy'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      compute-changed: ${{ steps.changes.outputs.compute }}
+      storage-changed: ${{ steps.changes.outputs.storage }}
+      serverless-changed: ${{ steps.changes.outputs.serverless }}
+      deploy-all: ${{ steps.changes.outputs.deploy-all }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect infrastructure changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger
+            STACK="${{ github.event.inputs.stack }}"
+            if [ "$STACK" = "all" ]; then
+              echo "compute=true" >> $GITHUB_OUTPUT
+              echo "storage=true" >> $GITHUB_OUTPUT
+              echo "serverless=true" >> $GITHUB_OUTPUT
+              echo "deploy-all=true" >> $GITHUB_OUTPUT
+            else
+              echo "compute=false" >> $GITHUB_OUTPUT
+              echo "storage=false" >> $GITHUB_OUTPUT
+              echo "serverless=false" >> $GITHUB_OUTPUT
+              echo "deploy-all=false" >> $GITHUB_OUTPUT
+              echo "${STACK}=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Automatic detection
+            if git diff --name-only HEAD~1 | grep -E '^infra/lib/compute-stack\.ts$' > /dev/null; then
+              echo "compute=true" >> $GITHUB_OUTPUT
+            else
+              echo "compute=false" >> $GITHUB_OUTPUT
+            fi
+            
+            if git diff --name-only HEAD~1 | grep -E '^infra/lib/storage-stack\.ts$' > /dev/null; then
+              echo "storage=true" >> $GITHUB_OUTPUT
+            else
+              echo "storage=false" >> $GITHUB_OUTPUT
+            fi
+            
+            if git diff --name-only HEAD~1 | grep -E '^infra/lib/serverless-.*-stack\.ts$|^infra/bin/|^infra/cdk\.json$|^infra/package.*\.json$' > /dev/null; then
+              echo "serverless=true" >> $GITHUB_OUTPUT
+              echo "deploy-all=true" >> $GITHUB_OUTPUT
+            else
+              echo "serverless=false" >> $GITHUB_OUTPUT
+              echo "deploy-all=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  deploy-infrastructure:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      cluster-name: ${{ steps.outputs.outputs.cluster-name }}
+      load-balancer-url: ${{ steps.outputs.outputs.load-balancer-url }}
+      deployment-status: ${{ steps.outputs.outputs.deployment-status }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js for CDK
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Install CDK dependencies
+        run: |
+          cd infra
+          npm ci
+
+      - name: CDK Bootstrap (if needed)
+        run: |
+          cd infra
+          # Check if bootstrap is needed
+          if ! aws cloudformation describe-stacks --stack-name CDKToolkit &>/dev/null; then
+            echo "🏗️ Bootstrapping CDK..."
+            npx cdk bootstrap
+          else
+            echo "✅ CDK already bootstrapped"
+          fi
+
+      - name: Destroy infrastructure (if requested)
+        if: github.event.inputs.destroy == 'true'
+        run: |
+          cd infra
+          echo "🗑️ Destroying infrastructure..."
+          npx cdk destroy --force
+          echo "✅ Infrastructure destroyed"
+          exit 0
+
+      - name: Deploy infrastructure with CDK
+        run: |
+          cd infra
+          
+          echo "🚀 Deploying infrastructure..."
+          
+          if [ "${{ needs.detect-changes.outputs.deploy-all }}" = "true" ]; then
+            echo "Deploying complete infrastructure..."
+            npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
+          else
+            # Deploy specific stacks
+            STACKS_TO_DEPLOY=""
+            
+            if [ "${{ needs.detect-changes.outputs.compute }}" = "true" ]; then
+              STACKS_TO_DEPLOY="$STACKS_TO_DEPLOY ConduitStack/Compute"
+            fi
+            
+            if [ "${{ needs.detect-changes.outputs.storage }}" = "true" ]; then
+              STACKS_TO_DEPLOY="$STACKS_TO_DEPLOY ConduitStack/Storage"
+            fi
+            
+            if [ "${{ needs.detect-changes.outputs.serverless }}" = "true" ]; then
+              STACKS_TO_DEPLOY="$STACKS_TO_DEPLOY ConduitStack/ServerlessAuth ConduitStack/ServerlessArticles ConduitStack/ServerlessComments"
+            fi
+            
+            if [ ! -z "$STACKS_TO_DEPLOY" ]; then
+              echo "Deploying stacks:$STACKS_TO_DEPLOY"
+              npx cdk deploy $STACKS_TO_DEPLOY --require-approval never --outputs-file cdk-outputs.json
+            else
+              echo "No infrastructure changes detected"
+            fi
+          fi
+
+      - name: Get deployment outputs
+        id: outputs
+        run: |
+          cd infra
+          
+          echo "📋 Getting infrastructure outputs..."
+          
+          # Get cluster name
+          CLUSTER_NAME=$(aws cloudformation describe-stacks \
+            --stack-name ConduitStack \
+            --query 'Stacks[0].Outputs[?OutputKey==`ClusterName`].OutputValue' \
+            --output text --region ${{ vars.AWS_REGION }} 2>/dev/null || echo "")
+          
+          # Get load balancer URL (if exists)
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names conduit-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text --region ${{ vars.AWS_REGION }} 2>/dev/null || echo "")
+          
+          if [ "$ALB_DNS" != "None" ] && [ ! -z "$ALB_DNS" ]; then
+            LB_URL="http://$ALB_DNS"
+          else
+            LB_URL=""
+          fi
+          
+          echo "Cluster: $CLUSTER_NAME"
+          echo "Load Balancer: $LB_URL"
+          
+          # Set outputs
+          echo "cluster-name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          echo "load-balancer-url=$LB_URL" >> $GITHUB_OUTPUT
+          echo "deployment-status=completed" >> $GITHUB_OUTPUT
+
+  verify-infrastructure:
+    needs: deploy-infrastructure
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Verify ECS infrastructure
+        if: needs.deploy-infrastructure.outputs.cluster-name != ''
+        run: |
+          echo "🔍 Verifying ECS infrastructure..."
+          
+          CLUSTER="${{ needs.deploy-infrastructure.outputs.cluster-name }}"
+          
+          if [ ! -z "$CLUSTER" ]; then
+            echo "ECS Cluster: $CLUSTER"
+            aws ecs describe-clusters --clusters "$CLUSTER" --query 'clusters[0].{Name:clusterName,Status:status,ActiveServices:activeServicesCount,RunningTasks:runningTasksCount}' --output table
+          fi
+
+      - name: Verify DynamoDB tables
+        run: |
+          echo "🔍 Verifying DynamoDB tables..."
+          
+          # List Conduit tables
+          aws dynamodb list-tables --query 'TableNames[?starts_with(@, `conduit-`)]' --output table
+
+      - name: Verify Lambda functions
+        run: |
+          echo "🔍 Verifying Lambda functions..."
+          
+          # List Conduit Lambda functions
+          aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `conduit-`)].{Name:FunctionName,Runtime:Runtime,State:State}' --output table
+
+      - name: Test load balancer (if exists)
+        if: needs.deploy-infrastructure.outputs.load-balancer-url != ''
+        env:
+          LB_URL: ${{ needs.deploy-infrastructure.outputs.load-balancer-url }}
+        run: |
+          echo "🧪 Testing load balancer..."
+          echo "Load Balancer URL: $LB_URL"
+          
+          # Test health endpoint with retry
+          max_attempts=3
+          attempt=0
+          
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f --connect-timeout 10 --max-time 30 "$LB_URL/health" > /dev/null 2>&1; then
+              echo "✅ Load balancer health check passed"
+              break
+            else
+              attempt=$((attempt + 1))
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Retrying health check in 10 seconds..."
+                sleep 10
+              else
+                echo "⚠️  Load balancer health check failed - may be warming up"
+              fi
+            fi
+          done
+
+      - name: Summary
+        run: |
+          echo "🎉 Infrastructure deployment completed!"
+          echo ""
+          echo "📊 Infrastructure Summary:"
+          echo "  Status: ${{ needs.deploy-infrastructure.outputs.deployment-status }}"
+          echo "  ECS Cluster: ${{ needs.deploy-infrastructure.outputs.cluster-name }}"
+          echo "  Load Balancer: ${{ needs.deploy-infrastructure.outputs.load-balancer-url }}"
+          echo ""
+          echo "🔗 Available resources:"
+          echo "  - ECS Cluster for container workloads"
+          echo "  - DynamoDB tables for serverless data"
+          echo "  - Lambda functions for serverless compute"
+          echo "  - Load balancer for HTTP traffic routing"
+          echo ""
+          echo "🔗 Next steps:"
+          echo "  - Deploy serverless functions: gh workflow run serverless-deploy.yml"
+          echo "  - Deploy backend services: gh workflow run backend-deploy.yml"
+          echo "  - Run E2E tests: gh workflow run e2e-tests.yml"

@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { ComputeStack } from './compute-stack';
 import { ServerlessAuthStack } from './serverless-auth-stack';
 import { ServerlessArticlesStack } from './serverless-articles-stack';
+import { ServerlessCommentsStack } from './serverless-comments-stack';
 
 export class ConduitStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,6 +25,14 @@ export class ConduitStack extends cdk.Stack {
     // Serverless Articles Stack (API Gateway + Lambda + DynamoDB)
     const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {
       authApi: serverlessAuthStack.api, // Use the same API Gateway as auth
+    });
+
+    // Serverless Comments Stack (API Gateway + Lambda + DynamoDB)
+    const serverlessCommentsStack = new ServerlessCommentsStack(this, 'ServerlessComments', {
+      existingApi: serverlessArticlesStack.api, // Use the same API Gateway as articles/auth
+      articlesTable: serverlessArticlesStack.articlesTable, // Reference to articles table for validation
+      existingArticlesResource: serverlessArticlesStack.articlesResource, // Existing /articles resource
+      existingSlugResource: serverlessArticlesStack.articleBySlugResource, // Existing /articles/{slug} resource
     });
 
     // Output important values
@@ -57,6 +66,12 @@ export class ConduitStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ArticlesTableName', {
       value: serverlessArticlesStack.articlesTable.tableName,
       description: 'DynamoDB Articles Table Name'
+    });
+
+    // Serverless Comments Stack Outputs
+    new cdk.CfnOutput(this, 'CommentsTableName', {
+      value: serverlessCommentsStack.commentsTable.tableName,
+      description: 'DynamoDB Comments Table Name'
     });
 
   }
