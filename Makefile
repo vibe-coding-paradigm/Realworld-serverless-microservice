@@ -418,6 +418,16 @@ e2e:
 
 e2e-local:
 	@echo "🧪 E2E 테스트 로컬 모드 시작..."
+	@echo "🔍 로컬 백엔드 서버 확인 중..."
+	@curl -f http://localhost:8080/health >/dev/null 2>&1 || { \
+		echo "❌ 로컬 백엔드 서버가 실행되지 않았습니다"; \
+		echo "💡 백엔드 서버를 먼저 시작하세요:"; \
+		echo "   • Docker: make dev-detach"; \
+		echo "   • 직접 실행: cd backend && go run cmd/server/main.go"; \
+		exit 1; \
+	}
+	@echo "✅ 로컬 백엔드 서버가 실행 중입니다"
+	@echo "🎯 완전한 로컬 E2E 테스트 실행 중 (프론트엔드: localhost:3000, 백엔드: localhost:8080)..."
 	@cd frontend && npm run test:e2e:local
 
 e2e-ui:
