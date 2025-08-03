@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug e2e-cloud e2e-serverless get-api-url load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug e2e-cloud e2e-serverless get-api-url load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env deploy-serverless deploy-serverless-auth deploy-serverless-articles deploy-serverless-comments deploy-infra deploy-infra-destroy deploy-logs-serverless deploy-logs-infra get-serverless-api-url verify-serverless
 
 # 기본 타겟
 help:
@@ -52,6 +52,8 @@ help:
 	@echo ""
 	@echo "☁️ 배포 및 모니터링:"
 	@echo "  deploy-initial - 초기 인프라 배포 (로컬 전용)"
+	@echo "  deploy-serverless - 서버리스 Lambda 함수 배포"
+	@echo "  deploy-infra   - 인프라만 배포 (ECS, DynamoDB, ALB)"
 	@echo "  deploy-check   - 배포 상태 확인"
 	@echo "  deploy-logs    - 워크플로우 로그 확인"
 	@echo "  deploy-logs-failed - 실패한 배포만"
@@ -578,3 +580,67 @@ stop: dev-stop
 
 restart: stop start
 	@echo "🔄 개발 서버가 재시작되었습니다"
+
+# 서버리스 배포 명령어들
+deploy-serverless:
+	@echo "🚀 서버리스 Lambda 함수 배포 중..."
+	@echo "GitHub Actions 워크플로우를 실행합니다: serverless-deploy.yml"
+	@gh workflow run serverless-deploy.yml
+	@echo "✅ 서버리스 배포 워크플로우가 시작되었습니다"
+	@echo "📊 상태 확인: make deploy-logs-serverless"
+
+deploy-serverless-auth:
+	@echo "🔐 인증 서비스만 배포 중..."
+	@gh workflow run serverless-deploy.yml -f service=auth
+	@echo "✅ 인증 서비스 배포 워크플로우가 시작되었습니다"
+
+deploy-serverless-articles:
+	@echo "📝 게시글 서비스만 배포 중..."
+	@gh workflow run serverless-deploy.yml -f service=articles
+	@echo "✅ 게시글 서비스 배포 워크플로우가 시작되었습니다"
+
+deploy-serverless-comments:
+	@echo "💬 댓글 서비스만 배포 중..."
+	@gh workflow run serverless-deploy.yml -f service=comments
+	@echo "✅ 댓글 서비스 배포 워크플로우가 시작되었습니다"
+
+deploy-infra:
+	@echo "🏗️  인프라 배포 중..."
+	@echo "GitHub Actions 워크플로우를 실행합니다: infra-deploy.yml"
+	@gh workflow run infra-deploy.yml
+	@echo "✅ 인프라 배포 워크플로우가 시작되었습니다"
+	@echo "📊 상태 확인: make deploy-logs-infra"
+
+deploy-infra-destroy:
+	@echo "🗑️  인프라 삭제 중..."
+	@echo "⚠️  이 작업은 모든 AWS 리소스를 삭제합니다!"
+	@read -p "계속하시겠습니까? (y/N): " confirm && [ "$$confirm" = "y" ]
+	@gh workflow run infra-deploy.yml -f destroy=true
+	@echo "✅ 인프라 삭제 워크플로우가 시작되었습니다"
+
+# 서버리스 관련 로그 확인
+deploy-logs-serverless:
+	@echo "📋 서버리스 배포 로그 확인 중..."
+	@bash scripts/get-workflow-logs.sh "Deploy Serverless Lambda Functions" 5
+
+deploy-logs-infra:
+	@echo "📋 인프라 배포 로그 확인 중..."
+	@bash scripts/get-workflow-logs.sh "Deploy Infrastructure" 5
+
+# 서버리스 API URL 확인
+get-serverless-api-url:
+	@echo "🔗 서버리스 API URL 확인 중..."
+	@cd infra && aws cloudformation describe-stacks --stack-name ConduitStack --query 'Stacks[0].Outputs[?OutputKey==`CombinedApiUrl`].OutputValue' --output text 2>/dev/null || echo "서버리스 스택이 배포되지 않았습니다"
+
+# 서버리스 상태 확인
+verify-serverless:
+	@echo "🔍 서버리스 배포 상태 확인 중..."
+	@echo ""
+	@echo "📊 Lambda 함수 상태:"
+	@aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `conduit-`)].{Name:FunctionName,Runtime:Runtime,State:State,LastModified:LastModified}' --output table || echo "AWS CLI 설정 또는 Lambda 함수를 확인하세요"
+	@echo ""
+	@echo "📊 DynamoDB 테이블 상태:"
+	@aws dynamodb list-tables --query 'TableNames[?starts_with(@, `conduit-`)]' --output table || echo "DynamoDB 테이블을 확인하세요"
+	@echo ""
+	@echo "🔗 API Gateway URL:"
+	@make get-serverless-api-url

@@ -77,4 +77,208 @@ if [ -d "frontend" ]; then
   cd ..
 fi
 
+# Infrastructure and Lambda functions checks
+echo "🏗️ Checking infrastructure and Lambda functions..."
+if [ -d "infra" ]; then
+  cd infra
+  
+  # Install dependencies if needed
+  if [ ! -d "node_modules" ]; then
+    echo "  📦 Installing CDK dependencies..."
+    npm ci
+  fi
+  
+  # CDK synth check (validates CDK code)
+  echo "  📄 Validating CDK templates..."
+  if npx cdk synth --quiet >/dev/null 2>&1; then
+    echo "  ✅ CDK templates are valid"
+  else
+    echo "  ❌ CDK templates have errors"
+    echo "  🔧 Run 'cd infra && npx cdk synth' to see details"
+    exit 1
+  fi
+  
+  # Run infrastructure tests if they exist
+  if [ -f "package.json" ] && grep -q '"test"' package.json; then
+    echo "  🧪 Running infrastructure tests..."
+    if npm test; then
+      echo "  ✅ Infrastructure tests passed"
+    else
+      echo "  ❌ Infrastructure tests failed"
+      exit 1
+    fi
+  else
+    echo "  ⚠️  No infrastructure tests found, skipping..."
+  fi
+  
+  cd ..
+fi
+
+# Lambda functions unit tests
+echo "🔥 Checking Lambda functions..."
+
+# Check Auth Lambda functions
+if [ -d "infra/lambda-functions/auth" ]; then
+  echo "  🔐 Testing Auth Lambda functions..."
+  cd infra/lambda-functions/auth
+  
+  # Check Go formatting
+  echo "    📝 Checking Go formatting..."
+  if ! gofmt -l . | grep .; then
+    echo "    ✅ Auth Lambda formatting check passed"
+  else
+    echo "    ❌ Auth Lambda formatting issues found"
+    gofmt -l .
+    echo "    🔧 Run 'gofmt -w .' in infra/lambda-functions/auth to fix"
+    exit 1
+  fi
+  
+  # Ensure go.mod exists and is tidy
+  if [ -f "go.mod" ]; then
+    echo "    📦 Checking go.mod..."
+    if go mod tidy && git diff --exit-code go.mod go.sum >/dev/null 2>&1; then
+      echo "    ✅ go.mod is tidy"
+    else
+      echo "    ❌ go.mod needs tidying"
+      echo "    🔧 Run 'go mod tidy' in infra/lambda-functions/auth"
+      exit 1
+    fi
+  fi
+  
+  # Run Go tests for auth functions
+  echo "    🧪 Running Auth Lambda tests..."
+  if go test ./...; then
+    echo "    ✅ Auth Lambda tests passed"
+  else
+    echo "    ❌ Auth Lambda tests failed"
+    exit 1
+  fi
+  
+  # Test build
+  echo "    🔨 Testing Auth Lambda build..."
+  if GOOS=linux GOARCH=amd64 go build -o /tmp/test-register register.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-login login.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-getuser getuser.go; then
+    echo "    ✅ Auth Lambda functions build successfully"
+    rm -f /tmp/test-register /tmp/test-login /tmp/test-getuser
+  else
+    echo "    ❌ Auth Lambda functions build failed"
+    exit 1
+  fi
+  
+  cd ../../..
+fi
+
+# Check Articles Lambda functions
+if [ -d "infra/lambda-functions/articles" ]; then
+  echo "  📝 Testing Articles Lambda functions..."
+  cd infra/lambda-functions/articles
+  
+  # Check Go formatting
+  echo "    📝 Checking Go formatting..."
+  if ! gofmt -l . | grep .; then
+    echo "    ✅ Articles Lambda formatting check passed"
+  else
+    echo "    ❌ Articles Lambda formatting issues found"
+    gofmt -l .
+    echo "    🔧 Run 'gofmt -w .' in infra/lambda-functions/articles to fix"
+    exit 1
+  fi
+  
+  # Ensure go.mod exists and is tidy
+  if [ -f "go.mod" ]; then
+    echo "    📦 Checking go.mod..."
+    if go mod tidy && git diff --exit-code go.mod go.sum >/dev/null 2>&1; then
+      echo "    ✅ go.mod is tidy"
+    else
+      echo "    ❌ go.mod needs tidying"
+      echo "    🔧 Run 'go mod tidy' in infra/lambda-functions/articles"
+      exit 1
+    fi
+  fi
+  
+  # Run Go tests for articles functions
+  echo "    🧪 Running Articles Lambda tests..."
+  if go test ./...; then
+    echo "    ✅ Articles Lambda tests passed"
+  else
+    echo "    ❌ Articles Lambda tests failed"
+    exit 1
+  fi
+  
+  # Test build
+  echo "    🔨 Testing Articles Lambda build..."
+  if GOOS=linux GOARCH=amd64 go build -o /tmp/test-list list_articles.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-get get_article.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-create create_article.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-update update_article.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-delete delete_article.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-favorite favorite_article.go; then
+    echo "    ✅ Articles Lambda functions build successfully"
+    rm -f /tmp/test-list /tmp/test-get /tmp/test-create /tmp/test-update /tmp/test-delete /tmp/test-favorite
+  else
+    echo "    ❌ Articles Lambda functions build failed"
+    exit 1
+  fi
+  
+  cd ../../..
+fi
+
+# Check Comments Lambda functions
+if [ -d "infra/lambda-functions/comments" ]; then
+  echo "  💬 Testing Comments Lambda functions..."
+  cd infra/lambda-functions/comments
+  
+  # Check Go formatting
+  echo "    📝 Checking Go formatting..."
+  if ! gofmt -l . | grep .; then
+    echo "    ✅ Comments Lambda formatting check passed"
+  else
+    echo "    ❌ Comments Lambda formatting issues found"
+    gofmt -l .
+    echo "    🔧 Run 'gofmt -w .' in infra/lambda-functions/comments to fix"
+    exit 1
+  fi
+  
+  # Ensure go.mod exists and is tidy
+  if [ -f "go.mod" ]; then
+    echo "    📦 Checking go.mod..."
+    if go mod tidy && git diff --exit-code go.mod go.sum >/dev/null 2>&1; then
+      echo "    ✅ go.mod is tidy"
+    else
+      echo "    ❌ go.mod needs tidying"
+      echo "    🔧 Run 'go mod tidy' in infra/lambda-functions/comments"
+      exit 1
+    fi
+  fi
+  
+  # Run Go tests for comments functions
+  echo "    🧪 Running Comments Lambda tests..."
+  if go test ./...; then
+    echo "    ✅ Comments Lambda tests passed"
+  else
+    echo "    ❌ Comments Lambda tests failed"
+    exit 1
+  fi
+  
+  # Test build
+  echo "    🔨 Testing Comments Lambda build..."
+  if GOOS=linux GOARCH=amd64 go build -o /tmp/test-list-comments list_comments.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-create-comment create_comment.go && \
+     GOOS=linux GOARCH=amd64 go build -o /tmp/test-delete-comment delete_comment.go; then
+    echo "    ✅ Comments Lambda functions build successfully"
+    rm -f /tmp/test-list-comments /tmp/test-create-comment /tmp/test-delete-comment
+  else
+    echo "    ❌ Comments Lambda functions build failed"
+    exit 1
+  fi
+  
+  cd ../../..
+fi
+
 echo "✅ All pre-commit checks passed!"
+echo "📋 Summary:"
+echo "  ✅ Backend code (Go) - formatting, linting, tests"
+echo "  ✅ Frontend code (TypeScript/React) - linting, compilation, tests"
+echo "  ✅ Infrastructure (CDK) - template validation, tests"
+echo "  ✅ Lambda functions (Go) - formatting, tests, build verification"
