@@ -84,12 +84,15 @@ export default defineConfig({
     // Only start dev server for local development
     if (baseURL.includes('localhost') && !process.env.CI) {
       return {
-        command: 'npm run dev',
+        command: 'VITE_API_URL=http://localhost:8080/api npm run dev',
         port: 3000,
         reuseExistingServer: true,
         timeout: 120 * 1000, // 2 minutes
         stderr: 'pipe',
-        stdout: 'pipe'
+        stdout: 'pipe',
+        env: {
+          VITE_API_URL: 'http://localhost:8080/api'
+        }
       };
     }
     

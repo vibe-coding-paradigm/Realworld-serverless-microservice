@@ -20,8 +20,11 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // For local development, use CloudFront directly to avoid proxy issues
+      // BUT for E2E testing, allow override via VITE_API_URL
       __DEV_API_URL__: mode === 'development' 
-        ? '"https://d1ct76fqx0s1b8.cloudfront.net"'
+        ? process.env.VITE_API_URL 
+          ? 'undefined'  // Let VITE_API_URL take precedence in E2E tests
+          : '"https://d1ct76fqx0s1b8.cloudfront.net"'
         : 'undefined'
     }
   };

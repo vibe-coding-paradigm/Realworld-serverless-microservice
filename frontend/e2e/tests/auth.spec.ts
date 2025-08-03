@@ -87,6 +87,11 @@ test.describe('Authentication Flow', () => {
 
   test.describe('Authentication Integration', () => {
     test('should handle full authentication flow', async ({ page, request }) => {
+      // Set test environment marker for API URL detection
+      await page.addInitScript(() => {
+        document.documentElement.setAttribute('data-test-env', 'playwright');
+      });
+      
       const api = new ApiHelper(request);
       const testUser = generateTestUser();
       

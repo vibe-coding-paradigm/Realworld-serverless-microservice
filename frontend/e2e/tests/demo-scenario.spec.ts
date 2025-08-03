@@ -1,15 +1,36 @@
 import { test, expect } from '@playwright/test';
 import { generateTestUser, generateTestArticle, waitTimes, navigateToPage } from '../helpers/test-data';
+import { smartLogin } from '../helpers/login';
+import { ApiHelper } from '../helpers/api';
 
 /**
  * Phase 1 데모 시나리오 E2E 테스트
  * 
  * 실제 데모에서 실패했던 시나리오들을 정확히 재현하여 테스트
  * 실제 프로덕션 환경(GitHub Pages + AWS CloudFront)에서 테스트
+ * 
+ * 주의: 이 테스트들은 프로덕션 환경에서만 실행됩니다.
  */
 test.describe('Phase 1 Demo Scenario - Production Environment', () => {
   
+  // 로컬 환경에서는 이 테스트들을 건너뛰기
+  test.beforeAll(async () => {
+    const isLocalEnvironment = process.env.API_URL?.includes('localhost') || 
+                              process.env.PLAYWRIGHT_BASE_URL?.includes('localhost') ||
+                              !process.env.API_URL; // API_URL이 없으면 로컬로 간주
+    
+    if (isLocalEnvironment) {
+      console.log('🚫 로컬 환경에서는 프로덕션 데모 시나리오 테스트를 건너뜁니다.');
+      console.log('   이 테스트들은 클라우드 환경(GitHub Pages + CloudFront)에서만 실행됩니다.');
+      // Playwright의 테스트 건너뛰기
+      test.skip(true, '로컬 환경에서는 프로덕션 전용 테스트를 제외합니다.');
+    } else {
+      console.log('🌐 프로덕션 환경 감지됨, 데모 시나리오 테스트를 실행합니다.');
+    }
+  });
+  
   test('Complete demo scenario - exactly as performed in demo', async ({ page }) => {
+    
     console.log('🎬 Starting Phase 1 Demo Scenario Test');
     console.log('🌐 Testing against production environment:');
     console.log(`   Frontend: ${page.context().baseURL || 'GitHub Pages'}`);
@@ -312,6 +333,7 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
   });
   
   test('Verify production environment configuration', async ({ page }) => {
+    
     console.log('\n🔧 프로덕션 환경 설정 검증');
     
     await test.step('API 엔드포인트 확인', async () => {
@@ -350,10 +372,29 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
 
 /**
  * Edge Case 테스트 - 데모에서 발생한 문제들
+ * 
+ * 주의: 이 테스트들도 프로덕션 환경에서만 실행됩니다.
  */
 test.describe('Demo Failure Edge Cases', () => {
   
+  // 로컬 환경에서는 이 테스트들을 건너뛰기
+  test.beforeAll(async () => {
+    const isLocalEnvironment = process.env.API_URL?.includes('localhost') || 
+                              process.env.PLAYWRIGHT_BASE_URL?.includes('localhost') ||
+                              !process.env.API_URL; // API_URL이 없으면 로컬로 간주
+    
+    if (isLocalEnvironment) {
+      console.log('🚫 로컬 환경에서는 프로덕션 데모 Edge Case 테스트를 건너뜁니다.');
+      console.log('   이 테스트들은 클라우드 환경(GitHub Pages + CloudFront)에서만 실행됩니다.');
+      // Playwright의 테스트 건너뛰기
+      test.skip(true, '로컬 환경에서는 프로덕션 전용 테스트를 제외합니다.');
+    } else {
+      console.log('🌐 프로덕션 환경 감지됨, Edge Case 테스트를 실행합니다.');
+    }
+  });
+  
   test('Handle 401 authentication errors gracefully', async ({ page }) => {
+    
     console.log('\n🚨 401 에러 처리 테스트');
     
     await navigateToPage(page, '/');
@@ -386,6 +427,7 @@ test.describe('Demo Failure Edge Cases', () => {
   });
   
   test('Handle JavaScript errors without crashing', async ({ page }) => {
+    
     console.log('\n🐛 JavaScript 에러 처리 테스트');
     
     const errors: string[] = [];
