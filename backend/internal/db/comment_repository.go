@@ -64,7 +64,8 @@ func (r *CommentRepository) GetByArticleSlug(articleSlug string) ([]models.Comme
 	}
 	defer rows.Close()
 
-	var comments []models.Comment
+	// Initialize with empty slice to ensure JSON serializes as [] instead of null
+	comments := make([]models.Comment, 0)
 	for rows.Next() {
 		var comment models.Comment
 		var author models.User

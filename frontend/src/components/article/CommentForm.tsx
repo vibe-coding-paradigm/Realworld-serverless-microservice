@@ -49,6 +49,7 @@ export const CommentForm: React.FC<CommentFormProps> = ({ articleSlug }) => {
           <textarea 
             className="form-control w-full p-3 border rounded resize-none"
             placeholder="Write a comment..."
+            name="body"
             rows={3}
             value={body}
             onChange={(e) => setBody(e.target.value)}

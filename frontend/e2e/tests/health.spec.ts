@@ -15,8 +15,8 @@ test.describe('Health and Basic Connectivity', () => {
     // Additional wait for page to fully load
     await page.waitForTimeout(2000);
     
-    // Check if basic elements are present
-    await expect(page).toHaveTitle(/Vite|RealWorld/);
+    // Check if basic elements are present - update to match actual title
+    await expect(page).toHaveTitle(/Conduit|RealWorld/);
     
     // Take a screenshot for debugging
     await page.screenshot({ path: 'test-results/frontend-home.png' });
