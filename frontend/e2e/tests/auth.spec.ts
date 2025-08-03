@@ -113,12 +113,9 @@ test.describe('Authentication Flow', () => {
       if (apiLoginResponse.status() !== 200) {
         console.log(`API login failed with status: ${apiLoginResponse.status()}`);
         // Get error details if possible
-        try {
-          const errorData = await apiLoginResponse.json();
-          console.log(`API login error:`, errorData);
-        } catch (e) {
-          console.log('Could not parse API error response');
-        }
+        const errorData = await apiLoginResponse.json();
+        console.log(`API login error:`, errorData);
+        expect(apiLoginResponse.status()).toBe(200);
       } else {
         console.log('✅ API login successful - credentials are valid');
         const responseData = await apiLoginResponse.json();
@@ -200,7 +197,7 @@ test.describe('Authentication Flow', () => {
       // Monitor network requests
       const responsePromise = page.waitForResponse(response => 
         response.url().includes('/api/users/login') && response.status() !== 0
-      ).catch(() => null);
+      );
       
       await page.click('button[type="submit"]:has-text("Sign in")');
       
@@ -213,18 +210,9 @@ test.describe('Authentication Flow', () => {
         console.log(`Response headers:`, response.headers());
         
         if (status !== 200) {
-          try {
-            const responseBody = await response.text();
-            console.log(`Login API error response: ${responseBody}`);
-          } catch (e) {
-            console.log('Could not read response body with text(), trying json()');
-            try {
-              const jsonBody = await response.json();
-              console.log(`Login API error response (JSON): ${JSON.stringify(jsonBody)}`);
-            } catch (e2) {
-              console.log('Could not read response body at all');
-            }
-          }
+          const responseBody = await response.text();
+          console.log(`Login API error response: ${responseBody}`);
+          expect(status).toBe(200);
         }
       } else {
         console.log('No login API response detected');
@@ -250,13 +238,9 @@ test.describe('Authentication Flow', () => {
       
       // Check each indicator
       for (const check of checks) {
-        try {
-          if (await check()) {
-            authSuccess = true;
-            break;
-          }
-        } catch (e) {
-          // Continue to next check
+        if (await check()) {
+          authSuccess = true;
+          break;
         }
       }
       
@@ -300,19 +284,7 @@ test.describe('Authentication Flow', () => {
       }
       
       // Assert authentication was successful
-      // Note: In local development, browser login may fail due to localhost referer issues
-      // while API direct login succeeds. This is a known limitation of local proxy setup.
-      if (!authSuccess) {
-        console.log('⚠️  Browser login failed due to localhost referer issue (known limitation)');
-        console.log('✅ API direct login was successful, indicating backend is working correctly');
-        console.log('🚀 This issue does not occur in production (GitHub Pages → CloudFront)');
-        
-        // For local development, consider this a conditional pass if API login worked
-        // In production, this would work fine
-        expect(true).toBeTruthy(); // Allow test to pass with warning
-      } else {
-        expect(authSuccess).toBeTruthy();
-      }
+      expect(authSuccess).toBeTruthy();
     });
   });
 });

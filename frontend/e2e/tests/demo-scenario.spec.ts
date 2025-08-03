@@ -227,56 +227,18 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
       await page.click('button:has-text("Publish Article")');
       
       // API 응답 확인
-      try {
-        const response = await responsePromise;
-        console.log(`게시글 발행 API 응답: ${response.status()}`);
-        
-        if (response.status() === 401) {
-          console.log('❌ 401 에러 발생 - 데모에서와 동일한 실패');
-          
-          // 에러 상세 정보 수집
-          const errorData = await response.text();
-          console.log(`에러 응답: ${errorData}`);
-          
-          // 토큰 상태 재확인
-          const tokenAfterFail = await page.evaluate(() => localStorage.getItem('token'));
-          console.log(`실패 후 토큰 상태: ${tokenAfterFail ? '존재' : '삭제됨'}`);
-          
-          // 현재 페이지 URL 확인
-          const currentUrl = page.url();
-          console.log(`실패 후 현재 URL: ${currentUrl}`);
-          
-          // 이 시점에서 실패로 처리 - 데모와 동일한 문제
-          throw new Error(`Article creation failed with 401 - Same as demo failure`);
-        } else if (response.status() === 201) {
-          console.log('✅ 게시글 발행 성공');
-          
-          // 성공 시 리디렉션 확인
-          await page.waitForLoadState('networkidle');
-          const currentUrl = page.url();
-          expect(currentUrl).toContain('/article/');
-          
-          console.log(`✅ 게시글 페이지로 리디렉션: ${currentUrl}`);
-        } else {
-          throw new Error(`Unexpected status: ${response.status()}`);
-        }
-      } catch (error) {
-        // 타임아웃이나 기타 에러의 경우
-        console.log(`❌ 게시글 발행 중 에러: ${error.message}`);
-        
-        // 현재 상태 디버깅
-        const currentUrl = page.url();
-        const currentTitle = await page.title();
-        console.log(`현재 페이지: ${currentUrl}`);
-        console.log(`페이지 제목: ${currentTitle}`);
-        
-        // 404 페이지로 리디렉션되었는지 확인 (데모에서 발생한 현상)
-        if (currentTitle.includes('404') || currentUrl.includes('404')) {
-          console.log('❌ 404 페이지로 리디렉션됨 - 데모와 동일한 현상');
-        }
-        
-        throw error;
-      }
+      const response = await responsePromise;
+      console.log(`게시글 발행 API 응답: ${response.status()}`);
+      
+      expect(response.status()).toBe(201);
+      console.log('✅ 게시글 발행 성공');
+      
+      // 성공 시 리디렉션 확인
+      await page.waitForLoadState('networkidle');
+      const currentUrl = page.url();
+      expect(currentUrl).toContain('/article/');
+      
+      console.log(`✅ 게시글 페이지로 리디렉션: ${currentUrl}`);
     });
     
     // ===== 4단계: 게시글 상세 페이지 테스트 (데모에서 실패한 부분) =====

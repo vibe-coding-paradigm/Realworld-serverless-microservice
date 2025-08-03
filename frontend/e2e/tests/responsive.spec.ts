@@ -42,26 +42,22 @@ test.describe('Responsive Design', () => {
           await navigateToPage(page, '/');
           
           // Test touch interactions
-          try {
-            // Look for clickable elements
-            const clickableElements = page.locator('button, a, input[type="submit"]');
-            const count = await clickableElements.count();
-            
-            if (count > 0) {
-              // Check that buttons are large enough for touch
-              for (let i = 0; i < Math.min(count, 3); i++) {
-                const element = clickableElements.nth(i);
-                const box = await element.boundingBox();
-                
-                if (box) {
-                  // Minimum touch target size should be 44x44px
-                  expect(box.height).toBeGreaterThanOrEqual(32);
-                  expect(box.width).toBeGreaterThanOrEqual(32);
-                }
+          // Look for clickable elements
+          const clickableElements = page.locator('button, a, input[type="submit"]');
+          const count = await clickableElements.count();
+          
+          if (count > 0) {
+            // Check that buttons are large enough for touch
+            for (let i = 0; i < Math.min(count, 3); i++) {
+              const element = clickableElements.nth(i);
+              const box = await element.boundingBox();
+              
+              if (box) {
+                // Minimum touch target size should be 44x44px
+                expect(box.height).toBeGreaterThanOrEqual(32);
+                expect(box.width).toBeGreaterThanOrEqual(32);
               }
             }
-          } catch (error) {
-            console.warn(`Touch interaction test failed for ${viewport.name}: ${error}`);
           }
         }
       });
@@ -69,26 +65,21 @@ test.describe('Responsive Design', () => {
       test('should display navigation appropriately', async ({ page }) => {
         await navigateToPage(page, '/');
         
-        try {
-          // Check for navigation elements
-          const nav = page.locator('nav, header, .navbar');
+        // Check for navigation elements
+        const nav = page.locator('nav, header, .navbar');
+        
+        if (await nav.count() > 0) {
+          await expect(nav.first()).toBeVisible();
           
-          if (await nav.count() > 0) {
-            await expect(nav.first()).toBeVisible();
+          // On mobile, navigation might be collapsed
+          if (viewport.name === 'Mobile') {
+            // Look for mobile menu toggle
+            const mobileToggle = page.locator('[aria-label*="menu"], .hamburger, .menu-toggle');
             
-            // On mobile, navigation might be collapsed
-            if (viewport.name === 'Mobile') {
-              // Look for mobile menu toggle
-              const mobileToggle = page.locator('[aria-label*="menu"], .hamburger, .menu-toggle');
-              
-              if (await mobileToggle.count() > 0) {
-                await expect(mobileToggle.first()).toBeVisible();
-              }
+            if (await mobileToggle.count() > 0) {
+              await expect(mobileToggle.first()).toBeVisible();
             }
           }
-        } catch (error) {
-          console.warn(`Navigation test failed for ${viewport.name}: ${error}`);
-          await page.screenshot({ path: `test-results/nav-error-${viewport.name.toLowerCase()}.png` });
         }
       });
     });
