@@ -1,10 +1,33 @@
 name: E2E Tests
 
 on:
+  # 백엔드와 프론트엔드 배포 워크플로우 완료 시 트리거
   workflow_run:
     workflows: ["Deploy Backend to AWS", "Deploy Frontend to GitHub Pages"]
     types: [completed]
     branches: [main]
+  # 스케줄 기반으로 주기적 실행 (매 시간 15분에 실행)
+  schedule:
+    - cron: '15 * * * *'
+  # 수동 트리거
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
+        required: false
+        type: string
+        default: 'https://d1ct76fqx0s1b8.cloudfront.net'
+      frontend_url:
+        description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
+        required: false
+        type: string
+        default: 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice'
+      force_run:
+        description: 'Force run E2E tests even if recent deployments not found'
+        required: false
+        type: boolean
+        default: false
+  # 다른 워크플로우에서 호출할 때
   workflow_call:
     inputs:
       backend_url:
@@ -15,18 +38,6 @@ on:
         description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
-      backend_url:
-        description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
-        required: true
-        type: string
-        default: 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com'
-      frontend_url:
-        description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
-        required: true
-        type: string
-        default: 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice'
 
 jobs:
   check-deployment-status:
@@ -45,14 +56,22 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             
-            // Get recent workflow runs for both deployments
+            // Get the SHA of the current commit that triggered this workflow
+            const currentSha = context.payload.workflow_run.head_sha;
+            const triggeringWorkflow = context.payload.workflow_run.name;
+            console.log('Current commit SHA:', currentSha);
+            console.log('Triggering workflow:', triggeringWorkflow);
+            
+            // Wait a bit to ensure the triggering workflow has time to complete
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+            // Get recent workflow runs for both deployments for this specific commit
             const backendRuns = await github.rest.actions.listWorkflowRunsForRepo({
               owner,
               repo,
               workflow_id: 'backend-deploy.yml',
               branch: 'main',
-              per_page: 5,
-              status: 'completed'
+              per_page: 20
             });
             
             const frontendRuns = await github.rest.actions.listWorkflowRunsForRepo({
@@ -60,26 +79,53 @@ jobs:
               repo,
               workflow_id: 'frontend-deploy.yml',
               branch: 'main',
-              per_page: 5,
-              status: 'completed'
+              per_page: 20
             });
             
-            const latestBackend = backendRuns.data.workflow_runs[0];
-            const latestFrontend = frontendRuns.data.workflow_runs[0];
+            // Find runs for the current commit
+            const backendRun = backendRuns.data.workflow_runs.find(run => run.head_sha === currentSha);
+            const frontendRun = frontendRuns.data.workflow_runs.find(run => run.head_sha === currentSha);
             
-            console.log('Latest backend run:', latestBackend?.conclusion, latestBackend?.created_at);
-            console.log('Latest frontend run:', latestFrontend?.conclusion, latestFrontend?.created_at);
+            console.log('Backend run for current SHA:', backendRun?.conclusion, backendRun?.status, backendRun?.created_at);
+            console.log('Frontend run for current SHA:', frontendRun?.conclusion, frontendRun?.status, frontendRun?.created_at);
             
-            // Check if both latest runs are successful and recent (within last hour)
-            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-            const backendRecent = latestBackend && new Date(latestBackend.created_at) > oneHourAgo;
-            const frontendRecent = latestFrontend && new Date(latestFrontend.created_at) > oneHourAgo;
+            // Check if both deployments exist and are successful
+            const backendComplete = backendRun?.status === 'completed' && backendRun?.conclusion === 'success';
+            const frontendComplete = frontendRun?.status === 'completed' && frontendRun?.conclusion === 'success';
             
-            const shouldRun = latestBackend?.conclusion === 'success' && 
-                            latestFrontend?.conclusion === 'success' && 
-                            backendRecent && frontendRecent;
+            // Additional check: if one deployment is missing, maybe it wasn't triggered (no changes in that path)
+            const backendExists = !!backendRun;
+            const frontendExists = !!frontendRun;
             
-            console.log('Should run E2E tests:', shouldRun);
+            console.log(`Backend deployment exists: ${backendExists}, completed successfully: ${backendComplete}`);
+            console.log(`Frontend deployment exists: ${frontendExists}, completed successfully: ${frontendComplete}`);
+            
+            let shouldRun = false;
+            let reason = '';
+            
+            if (backendExists && frontendExists) {
+              // Both deployments exist - wait for both to be successful
+              shouldRun = backendComplete && frontendComplete;
+              if (!shouldRun) {
+                reason = `Waiting for both deployments to complete. Backend: ${backendRun?.status}/${backendRun?.conclusion}, Frontend: ${frontendRun?.status}/${frontendRun?.conclusion}`;
+              } else {
+                reason = 'Both deployments completed successfully';
+              }
+            } else if (backendExists && !frontendExists) {
+              // Only backend deployment exists - check if it's because frontend wasn't changed
+              shouldRun = backendComplete;
+              reason = shouldRun ? 'Backend deployment successful, no frontend deployment needed' : `Waiting for backend deployment. Status: ${backendRun?.status}/${backendRun?.conclusion}`;
+            } else if (!backendExists && frontendExists) {
+              // Only frontend deployment exists - check if it's because backend wasn't changed
+              shouldRun = frontendComplete;
+              reason = shouldRun ? 'Frontend deployment successful, no backend deployment needed' : `Waiting for frontend deployment. Status: ${frontendRun?.status}/${frontendRun?.conclusion}`;
+            } else {
+              // Neither deployment exists for this commit - this shouldn't happen
+              shouldRun = false;
+              reason = 'No deployments found for this commit SHA';
+            }
+            
+            console.log(`Decision: ${shouldRun ? '✅ Run tests' : '⏳ Wait'} - ${reason}`);
             core.setOutput('should_run_tests', shouldRun);
 
       - name: Get deployment URLs
