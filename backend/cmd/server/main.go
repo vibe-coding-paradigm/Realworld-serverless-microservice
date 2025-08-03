@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"github.com/vibe-coding-paradigm/realworld-build-from-prd/internal/handlers"
 )
 
+var database *db.DB
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -18,7 +21,8 @@ func main() {
 	}
 
 	// Initialize database connection
-	database, err := db.NewConnection()
+	var err error
+	database, err = db.NewConnection()
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -101,8 +105,39 @@ func main() {
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte(`{"status": "ok", "service": "conduit-api", "version": "1.0.0"}`)); err != nil {
+	
+	// Health check response
+	response := map[string]interface{}{
+		"status":    "ok",
+		"service":   "conduit-api", 
+		"version":   "1.0.0",
+		"timestamp": os.Getenv("BUILD_TIMESTAMP"),
+		"environment": os.Getenv("ENVIRONMENT"),
+	}
+	
+	// Check database connectivity
+	if database != nil {
+		if err := database.DB.Ping(); err != nil {
+			response["status"] = "unhealthy"
+			response["database"] = "disconnected"
+			response["error"] = err.Error()
+			w.WriteHeader(http.StatusServiceUnavailable)
+		} else {
+			response["database"] = "connected"
+		}
+	} else {
+		response["status"] = "unhealthy"
+		response["database"] = "not_initialized"
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+	
+	// Return health status
+	if response["status"] == "ok" {
+		w.WriteHeader(http.StatusOK)
+	}
+	
+	jsonResponse, _ := json.Marshal(response)
+	if _, err := w.Write(jsonResponse); err != nil {
 		log.Printf("Failed to write health check response: %v", err)
 	}
 }
