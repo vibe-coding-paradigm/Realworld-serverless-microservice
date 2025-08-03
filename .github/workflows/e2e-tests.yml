@@ -43,7 +43,7 @@ jobs:
   check-deployment-status:
     name: Check Both Deployments Are Successful
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_run'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     outputs:
       should_run_tests: ${{ steps.check-status.outputs.should_run_tests }}
       backend_url: ${{ steps.get-urls.outputs.backend_url }}
@@ -132,9 +132,9 @@ jobs:
         id: get-urls
         if: steps.check-status.outputs.should_run_tests == 'true'
         run: |
-          # Set default URLs (these will be used for workflow_run triggers)
-          BACKEND_URL="https://d1ct76fqx0s1b8.cloudfront.net/api"
-          FRONTEND_URL="https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice"
+          # Use GitHub Variables for stable URLs
+          BACKEND_URL="${{ vars.BACKEND_URL }}"
+          FRONTEND_URL="${{ vars.FRONTEND_URL }}"
           
           echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
           echo "frontend_url=$FRONTEND_URL" >> $GITHUB_OUTPUT
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [check-deployment-status]
-    if: always() && (github.event_name != 'workflow_run' || needs.check-deployment-status.outputs.should_run_tests == 'true')
+    if: always() && (github.event_name != 'workflow_run' || needs.check-deployment-status.result == 'skipped' || needs.check-deployment-status.outputs.should_run_tests == 'true')
     
     steps:
     - name: Checkout code
@@ -171,13 +171,31 @@ jobs:
       id: set-urls
       run: |
         if [ "${{ github.event_name }}" = "workflow_run" ]; then
-          # Use URLs from check-deployment-status job
+          # Use URLs from check-deployment-status job if available
           BACKEND_URL="${{ needs.check-deployment-status.outputs.backend_url }}"
           FRONTEND_URL="${{ needs.check-deployment-status.outputs.frontend_url }}"
+          
+          # If URLs are empty (check-deployment-status was skipped), use GitHub Variables
+          if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
+            echo "⚠️ URLs from check-deployment-status are empty, using GitHub Variables"
+            BACKEND_URL="${{ vars.BACKEND_URL }}"
+            FRONTEND_URL="${{ vars.FRONTEND_URL }}"
+          fi
+        elif [ "${{ github.event_name }}" = "schedule" ]; then
+          # Use GitHub Variables for scheduled runs
+          BACKEND_URL="${{ vars.BACKEND_URL }}"
+          FRONTEND_URL="${{ vars.FRONTEND_URL }}"
         else
-          # Use inputs for workflow_call and workflow_dispatch
+          # Use inputs for workflow_call and workflow_dispatch, fallback to GitHub Variables
           BACKEND_URL="${{ inputs.backend_url }}"
           FRONTEND_URL="${{ inputs.frontend_url }}"
+          
+          # If inputs are empty, use GitHub Variables
+          if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
+            echo "⚠️ Input URLs are empty, using GitHub Variables"
+            BACKEND_URL="${{ vars.BACKEND_URL }}"
+            FRONTEND_URL="${{ vars.FRONTEND_URL }}"
+          fi
         fi
         
         echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT

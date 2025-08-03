@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ComputeStack } from './compute-stack';
 import { ServerlessAuthStack } from './serverless-auth-stack';
+import { ServerlessArticlesStack } from './serverless-articles-stack';
 
 export class ConduitStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -19,6 +20,11 @@ export class ConduitStack extends cdk.Stack {
 
     // Serverless Authentication Stack (API Gateway + Lambda + DynamoDB)
     const serverlessAuthStack = new ServerlessAuthStack(this, 'ServerlessAuth', {});
+
+    // Serverless Articles Stack (API Gateway + Lambda + DynamoDB)
+    const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {
+      authApi: serverlessAuthStack.api, // Use the same API Gateway as auth
+    });
 
     // Output important values
     new cdk.CfnOutput(this, 'ClusterName', {
@@ -40,6 +46,17 @@ export class ConduitStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UsersTableName', {
       value: serverlessAuthStack.usersTable.tableName,
       description: 'DynamoDB Users Table Name'
+    });
+
+    // Serverless Articles Stack Outputs  
+    new cdk.CfnOutput(this, 'CombinedApiUrl', {
+      value: serverlessArticlesStack.api.url,
+      description: 'Combined API Gateway URL (Auth + Articles)'
+    });
+
+    new cdk.CfnOutput(this, 'ArticlesTableName', {
+      value: serverlessArticlesStack.articlesTable.tableName,
+      description: 'DynamoDB Articles Table Name'
     });
 
   }
