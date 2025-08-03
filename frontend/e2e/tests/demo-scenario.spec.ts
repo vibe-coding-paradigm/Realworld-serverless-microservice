@@ -25,7 +25,7 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
       // 기본 페이지 구조 확인
       await expect(page.locator('nav')).toBeVisible();
       await expect(page.locator('h1:has-text("conduit")')).toBeVisible();
-      await expect(page.locator('text=A place to share your knowledge')).toBeVisible();
+      await expect(page.locator('text=A place to share your knowledge.')).toBeVisible();
       
       // 로그아웃 상태 UI 확인 - 정확한 선택자 사용
       await expect(page.locator('nav a:has-text("Sign in")')).toBeVisible();

@@ -168,8 +168,8 @@ test.describe('Comments System E2E Tests', () => {
       await page.waitForLoadState('networkidle');
       
       // Check comments section exists
-      await expect(page.locator('.comments-section, [data-testid="comments-section"]')).toBeVisible({ timeout: waitTimes.medium });
-      await expect(page.locator('text=Comments')).toBeVisible();
+      await expect(page.locator('.comments-section')).toBeVisible({ timeout: waitTimes.medium });
+      await expect(page.locator('h3:has-text("Comments")')).toBeVisible();
     });
 
     test('should show comment form when logged in', async ({ page }) => {
@@ -190,7 +190,7 @@ test.describe('Comments System E2E Tests', () => {
       await page.waitForLoadState('networkidle');
       
       // Check comment form is visible
-      await expect(page.locator('textarea[placeholder*="comment"], textarea[name="body"]')).toBeVisible({ timeout: waitTimes.medium });
+      await expect(page.locator('textarea[placeholder="Write a comment..."]')).toBeVisible({ timeout: waitTimes.medium });
       await expect(page.locator('button:has-text("Post Comment")')).toBeVisible();
     });
 
@@ -214,7 +214,7 @@ test.describe('Comments System E2E Tests', () => {
       // Create comment
       const commentText = `Test comment created at ${new Date().toISOString()}`;
       
-      await page.locator('textarea[placeholder*="comment"], textarea[name="body"]').fill(commentText);
+      await page.locator('textarea[placeholder="Write a comment..."]').fill(commentText);
       
       // Monitor comment creation request
       const responsePromise = page.waitForResponse(response => 
@@ -228,8 +228,9 @@ test.describe('Comments System E2E Tests', () => {
       const response = await responsePromise;
       expect(response.status()).toBe(201);
       
-      // Wait for UI to update
-      await page.waitForTimeout(2000);
+      // Wait for UI to update and React Query to refresh
+      await page.waitForTimeout(3000);
+      await page.waitForLoadState('networkidle');
       
       // Verify comment appears in the list
       await expect(page.locator(`.comment-card:has-text("${commentText}"), .comment:has-text("${commentText}")`)).toBeVisible({ timeout: waitTimes.medium });
@@ -353,7 +354,7 @@ test.describe('Comments System E2E Tests', () => {
       
       // Create comment via UI
       const commentText = `Test comment for count ${Date.now()}`;
-      await page.locator('textarea[placeholder*="comment"], textarea[name="body"]').fill(commentText);
+      await page.locator('textarea[placeholder="Write a comment..."]').fill(commentText);
       
       const createResponsePromise = page.waitForResponse(response => 
         response.url().includes(`/api/articles/${articleSlug}/comments`) && 
@@ -455,7 +456,7 @@ test.describe('Comments System E2E Tests', () => {
       ];
       
       for (const commentText of comments) {
-        await page.locator('textarea[placeholder*="comment"], textarea[name="body"]').fill(commentText);
+        await page.locator('textarea[placeholder="Write a comment..."]').fill(commentText);
         
         const commentResponsePromise = page.waitForResponse(response => 
           response.url().includes('/comments') && response.request().method() === 'POST'

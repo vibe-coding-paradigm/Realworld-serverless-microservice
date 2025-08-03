@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-ui e2e-debug load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env
 
 # 기본 타겟
 help:
@@ -21,7 +21,7 @@ help:
 	@echo "  test           - 모든 테스트 실행"
 	@echo "  test-watch     - 테스트 watch 모드"
 	@echo "  e2e            - E2E 테스트 실행"
-	@echo "  e2e-local      - E2E 테스트 로컬 모드"
+	@echo "  e2e-local      - E2E 테스트 완전 자동화 로컬 모드 (프로세스 정리+백엔드 시작+테스트+정리)"
 	@echo "  e2e-ui         - E2E 테스트 UI 모드"
 	@echo "  e2e-debug      - E2E 테스트 디버그 모드"
 	@echo "  load-test-local - 로컬 부하 테스트"
@@ -418,17 +418,37 @@ e2e:
 
 e2e-local:
 	@echo "🧪 E2E 테스트 로컬 모드 시작..."
-	@echo "🔍 로컬 백엔드 서버 확인 중..."
-	@curl -f http://localhost:8080/health >/dev/null 2>&1 || { \
-		echo "❌ 로컬 백엔드 서버가 실행되지 않았습니다"; \
-		echo "💡 백엔드 서버를 먼저 시작하세요:"; \
-		echo "   • Docker: make dev-detach"; \
-		echo "   • 직접 실행: cd backend && go run cmd/server/main.go"; \
-		exit 1; \
-	}
-	@echo "✅ 로컬 백엔드 서버가 실행 중입니다"
+	@echo "🧹 기존 8080 포트 프로세스 정리 중..."
+	@lsof -ti:8080 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@echo "🔄 잠시 기다리는 중 (포트 해제)..."
+	@sleep 2
+	@echo "🚀 JWT_SECRET과 함께 백엔드 서버 시작 중..."
+	@cd backend && JWT_SECRET="local-dev-secret-$$(date +%s)" nohup go run cmd/server/main.go > /tmp/backend.log 2>&1 &
+	@echo "⏳ 백엔드 서버가 준비될 때까지 대기 중..."
+	@for i in $$(seq 1 30); do \
+		if curl -f http://localhost:8080/health >/dev/null 2>&1; then \
+			echo "✅ 백엔드 서버가 준비되었습니다 ($$i초)"; \
+			break; \
+		fi; \
+		if [ $$i -eq 30 ]; then \
+			echo "❌ 백엔드 서버 시작 실패"; \
+			echo "📋 백엔드 로그:"; \
+			cat /tmp/backend.log 2>/dev/null || echo "로그 파일을 찾을 수 없습니다"; \
+			exit 1; \
+		fi; \
+		echo "대기 중... ($$i/30)"; \
+		sleep 1; \
+	done
 	@echo "🎯 완전한 로컬 E2E 테스트 실행 중 (프론트엔드: localhost:3000, 백엔드: localhost:8080)..."
-	@cd frontend && npm run test:e2e:local
+	@cd frontend && npm run test:e2e:local; \
+	echo "🧹 E2E 테스트 완료 후 백엔드 프로세스 정리 중..."; \
+	lsof -ti:8080 2>/dev/null | xargs kill -9 2>/dev/null || true; \
+	echo "✅ 로컬 E2E 테스트 완료 및 정리 완료"
+
+e2e-local-cleanup:
+	@echo "🧹 로컬 E2E 테스트 환경 정리 중..."
+	@lsof -ti:8080 2>/dev/null | xargs kill -9 2>/dev/null || true
+	@echo "✅ 8080 포트 프로세스 정리 완료"
 
 e2e-ui:
 	@echo "🧪 E2E 테스트 UI 모드 시작..."
