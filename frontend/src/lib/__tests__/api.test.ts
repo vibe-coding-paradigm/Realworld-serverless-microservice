@@ -20,7 +20,7 @@ describe('API Client', () => {
       localStorage.setItem('token', 'test-token')
       
       mock.onGet('/test').reply((config) => {
-        expect(config.headers?.Authorization).toBe('Bearer test-token')
+        expect(config.headers?.Authorization).toBe('Token test-token')
         return [200, { success: true }]
       })
 

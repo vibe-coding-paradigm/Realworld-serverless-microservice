@@ -16,6 +16,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "test:e2e:backend": "playwright test --grep @backend",
+    "test:e2e:demo": "PLAYWRIGHT_BASE_URL=https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/ playwright test demo-scenario.spec.ts",
+    "test:e2e:demo:local": "PLAYWRIGHT_BASE_URL=http://localhost:3000 playwright test demo-scenario.spec.ts",
     "preview": "vite preview"
   },
   "dependencies": {

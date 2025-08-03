@@ -150,7 +150,7 @@ const ArticlePage: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           <div className="comments-section">
             <h3 className="text-xl font-semibold mb-4">
-              Comments ({commentsData?.comments.length || 0})
+              Comments ({commentsData?.comments?.length || 0})
             </h3>
             
             {commentsLoading && (
@@ -159,7 +159,7 @@ const ArticlePage: React.FC = () => {
               </div>
             )}
 
-            {commentsData && (
+            {commentsData && commentsData.comments && (
               <CommentList 
                 comments={commentsData.comments} 
                 articleSlug={article.slug} 
