@@ -1,3 +1,5 @@
+//go:build create_comment
+
 package main
 
 import (

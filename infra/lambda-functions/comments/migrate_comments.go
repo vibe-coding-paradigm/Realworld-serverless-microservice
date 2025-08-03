@@ -1,3 +1,5 @@
+//go:build migrate
+
 package main
 
 import (
@@ -11,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/vibe-coding-paradigm/conduit-comments/models"
 )

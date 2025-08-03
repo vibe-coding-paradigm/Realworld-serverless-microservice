@@ -1,3 +1,5 @@
+//go:build delete_comment
+
 package main
 
 import (

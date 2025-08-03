@@ -1,3 +1,5 @@
+//go:build list_comments
+
 package main
 
 import (
