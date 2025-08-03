@@ -1,25 +1,53 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🚀 Running pre-push checks (E2E tests)..."
+echo "🚀 Running pre-push checks (Serverless E2E tests)..."
 
-# Run E2E tests using Makefile command
-echo "🔍 Running E2E tests (local mode)..."
-if make e2e-local; then
-    echo "✅ E2E tests passed!"
+# Check if AWS credentials are configured
+echo "🔐 AWS 자격 증명 확인 중..."
+if ! aws sts get-caller-identity >/dev/null 2>&1; then
+    echo "❌ AWS 자격 증명이 설정되지 않았습니다"
+    echo "🔧 다음 중 하나를 수행하세요:"
+    echo "   • aws configure 실행"
+    echo "   • AWS_PROFILE 환경변수 설정"
+    echo "   • AWS SSO 로그인: aws sso login"
+    echo ""
+    exit 1
+fi
+
+echo "✅ AWS 자격 증명 확인 완료"
+
+# Check if CDK is bootstrapped and ready
+echo "🏗️ CDK 환경 확인 중..."
+if ! cd infra && npx cdk ls >/dev/null 2>&1; then
+    echo "❌ CDK 환경 설정에 문제가 있습니다"
+    echo "🔧 다음을 시도해보세요:"
+    echo "   • cd infra && npm install"
+    echo "   • npx cdk bootstrap"
+    echo ""
+    exit 1
+fi
+
+echo "✅ CDK 환경 확인 완료"
+
+# Deploy and run E2E tests in cloud environment
+echo "🔍 서버리스 배포 및 클라우드 E2E 테스트 실행 중..."
+if make e2e-serverless; then
+    echo "✅ 서버리스 E2E 테스트 성공!"
     echo ""
     echo "✅ All pre-push checks passed!"
-    echo "🚀 Push allowed - E2E tests confirmed deployment readiness"
+    echo "🚀 Push allowed - Serverless deployment and E2E tests confirmed readiness"
 else
     echo ""
-    echo "❌ E2E tests failed!"
-    echo "🚫 Push blocked - fix failing E2E tests before pushing"
+    echo "❌ 서버리스 E2E 테스트 실패!"
+    echo "🚫 Push blocked - fix failing serverless deployment or E2E tests"
     echo ""
     echo "🔧 Debugging tips:"
-    echo "   • Check if backend is running: make dev-status"
-    echo "   • Run E2E tests manually: make e2e"
-    echo "   • View detailed logs: make e2e-debug"
-    echo "   • Reset environment: make reset-env"
+    echo "   • Check AWS deployment status: make deploy-check"
+    echo "   • View CDK deployment logs: cd infra && npx cdk deploy --verbose"
+    echo "   • Run cloud E2E tests manually: make e2e-cloud"
+    echo "   • Check AWS resources: make verify-deployment"
+    echo "   • View comprehensive debug info: make debug"
     echo ""
     exit 1
 fi

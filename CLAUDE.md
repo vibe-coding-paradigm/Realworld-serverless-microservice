@@ -153,9 +153,18 @@ make install-deps           # Show installation guide for dev dependencies
 ```bash
 make test                   # Run all tests (backend + frontend)
 make test-watch             # Run tests in watch mode
+
+# E2E Testing (Local Development)
 make e2e                    # Run E2E tests (Playwright)
+make e2e-local              # Complete local E2E with backend startup
 make e2e-ui                 # Run E2E tests with UI mode
 make e2e-debug              # Run E2E tests in debug mode
+
+# E2E Testing (Serverless/Cloud)
+make e2e-cloud              # Run E2E tests against deployed AWS services
+make e2e-serverless         # Deploy to AWS and run E2E tests (full pipeline)
+
+# Load & API Testing
 make load-test-local        # Run local load testing (k6)
 make api-test               # Test API endpoints directly
 ```
@@ -470,6 +479,48 @@ When closing issues, include:
 
 ## Workflow Management
 Do not manually trigger workflows; only start workflows through PR merges to avoid duplicate executions and failures.
+
+## Git Hooks and Serverless Testing
+
+### Pre-push Hook (Husky)
+The project uses Husky pre-push hooks to ensure code quality before pushing to GitHub:
+
+#### **Phase 1 (Local Testing)**:
+```bash
+# Old workflow - local backend + local E2E
+make e2e-local  # Spins up local backend, runs E2E tests
+```
+
+#### **Phase 2+ (Serverless Testing)**:
+```bash
+# New workflow - AWS deployment + cloud E2E  
+make e2e-serverless  # Deploys to AWS, runs E2E against real services
+```
+
+#### Pre-push Process:
+1. **AWS Credentials Check**: Verifies AWS CLI is configured
+2. **CDK Environment Check**: Ensures CDK is properly set up
+3. **Serverless Deployment**: Deploys Lambda functions and DynamoDB to AWS
+4. **Cloud E2E Testing**: Runs Playwright tests against real AWS services
+5. **Push Allow/Block**: Only allows push if all tests pass
+
+#### Manual Cloud Testing:
+```bash
+# Test against existing deployment
+make e2e-cloud
+
+# Full deployment + test cycle
+make e2e-serverless
+
+# Get current API Gateway URL
+make get-api-url
+```
+
+This approach ensures that:
+- Lambda functions work correctly in AWS environment
+- DynamoDB integration functions properly
+- API Gateway routing is configured correctly
+- Real network latency and AWS service behavior is tested
 
 ## Deployment Policy (CRITICAL)
 

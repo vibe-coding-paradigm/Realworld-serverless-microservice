@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug e2e-cloud e2e-serverless get-api-url load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env
 
 # 기본 타겟
 help:
@@ -22,6 +22,8 @@ help:
 	@echo "  test-watch     - 테스트 watch 모드"
 	@echo "  e2e            - E2E 테스트 실행"
 	@echo "  e2e-local      - E2E 테스트 완전 자동화 로컬 모드 (프로세스 정리+백엔드 시작+테스트+정리)"
+	@echo "  e2e-cloud      - 클라우드 환경에서 E2E 테스트 실행 (서버리스용)"
+	@echo "  e2e-serverless - CDK 배포 후 서버리스 환경에서 E2E 테스트"
 	@echo "  e2e-ui         - E2E 테스트 UI 모드"
 	@echo "  e2e-debug      - E2E 테스트 디버그 모드"
 	@echo "  load-test-local - 로컬 부하 테스트"
@@ -457,6 +459,37 @@ e2e-ui:
 e2e-debug:
 	@echo "🧪 E2E 테스트 디버그 모드 시작..."
 	@cd frontend && npx playwright test --debug
+
+# 클라우드 E2E 테스트 (서버리스 환경용)
+e2e-cloud:
+	@echo "☁️ 클라우드 E2E 테스트 시작..."
+	@echo "🔍 AWS 배포 상태 확인 중..."
+	@make verify-deployment || (echo "❌ AWS 배포 상태 확인 실패"; exit 1)
+	@echo "🔗 API Gateway URL 추출 중..."
+	@API_URL=$$(make get-api-url); \
+	if [ -z "$$API_URL" ]; then \
+		echo "❌ API Gateway URL을 찾을 수 없습니다"; \
+		exit 1; \
+	fi; \
+	echo "🌐 Using API URL: $$API_URL"; \
+	echo "🧪 클라우드 환경에서 E2E 테스트 실행 중..."; \
+	cd frontend && PLAYWRIGHT_BASE_URL="https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/" VITE_API_URL="$$API_URL" npm run test:e2e
+	@echo "✅ 클라우드 E2E 테스트 완료"
+
+# 서버리스 배포 후 E2E 테스트 (CDK 배포 + 테스트)
+e2e-serverless:
+	@echo "🚀 서버리스 배포 및 E2E 테스트 시작..."
+	@echo "📦 CDK 배포 중..."
+	@cd infra && npx cdk deploy --require-approval never || (echo "❌ CDK 배포 실패"; exit 1)
+	@echo "⏳ 배포 완료 대기 중..."
+	@sleep 30
+	@echo "🧪 배포된 서버리스 환경에서 E2E 테스트 실행..."
+	@make e2e-cloud
+	@echo "✅ 서버리스 배포 및 E2E 테스트 완료"
+
+# API URL 추출 (CDK 출력에서)
+get-api-url:
+	@cd infra && aws cloudformation describe-stacks --stack-name ConduitStack --query 'Stacks[0].Outputs[?OutputKey==`AuthApiUrl`].OutputValue' --output text 2>/dev/null || echo ""
 
 # 로컬 부하 테스트
 load-test-local:
