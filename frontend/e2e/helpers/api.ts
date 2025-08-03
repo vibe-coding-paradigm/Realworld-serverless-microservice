@@ -34,6 +34,15 @@ export class ApiHelper {
     };
   }
 
+  async getArticle(slug: string) {
+    const response = await this.request.get(`${this.apiBaseURL}/articles/${slug}`);
+    
+    return {
+      response,
+      data: response.ok() ? await response.json() : null
+    };
+  }
+
   async createUser(userData: { username: string; email: string; password: string }) {
     const response = await this.request.post(`${this.apiBaseURL}/users`, {
       data: { user: userData }
@@ -91,9 +100,38 @@ export class ApiHelper {
     };
   }
 
+  async getComments(slug: string) {
+    const response = await this.request.get(`${this.apiBaseURL}/articles/${slug}/comments`);
+    
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (error) {
+      console.warn('Failed to parse comments response as JSON:', error);
+    }
+    
+    return {
+      response,
+      data
+    };
+  }
+
   async createComment(slug: string, commentData: any, token: string) {
     const response = await this.request.post(`${this.apiBaseURL}/articles/${slug}/comments`, {
       data: { comment: commentData },
+      headers: {
+        'Authorization': `Token ${token}`
+      }
+    });
+    
+    return {
+      response,
+      data: response.ok() ? await response.json() : null
+    };
+  }
+
+  async deleteComment(slug: string, commentId: string, token: string) {
+    const response = await this.request.delete(`${this.apiBaseURL}/articles/${slug}/comments/${commentId}`, {
       headers: {
         'Authorization': `Token ${token}`
       }
