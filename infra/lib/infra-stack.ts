@@ -19,16 +19,15 @@ export class ConduitStack extends cdk.Stack {
       vpc: vpc
     });
 
-    // Serverless Articles Stack (API Gateway + Lambda + DynamoDB + Auth)
-    const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {});
-
-    // Serverless Comments Stack (API Gateway + Lambda + DynamoDB)
-    const serverlessCommentsStack = new ServerlessCommentsStack(this, 'ServerlessComments', {
-      existingApi: serverlessArticlesStack.api, // Use the same API Gateway as articles/auth
-      articlesTable: serverlessArticlesStack.articlesTable, // Reference to articles table for validation
-      existingArticlesResource: serverlessArticlesStack.articlesResource, // Existing /articles resource
-      existingSlugResource: serverlessArticlesStack.articleBySlugResource, // Existing /articles/{slug} resource
-    });
+    // Temporarily disable serverless stacks to focus on API Gateway proxy
+    // TODO: Re-enable after fixing Go 1.23 toolchain issue
+    // const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {});
+    // const serverlessCommentsStack = new ServerlessCommentsStack(this, 'ServerlessComments', {
+    //   existingApi: serverlessArticlesStack.api,
+    //   articlesTable: serverlessArticlesStack.articlesTable,
+    //   existingArticlesResource: serverlessArticlesStack.articlesResource,
+    //   existingSlugResource: serverlessArticlesStack.articleBySlugResource,
+    // });
 
     // API Gateway Proxy Stack (Proxy to ECS backend)
     const apiGatewayProxyStack = new ApiGatewayProxyStack(this, 'ApiGatewayProxy', {
@@ -46,22 +45,20 @@ export class ConduitStack extends cdk.Stack {
       description: 'ECS Service Name'
     });
 
-    // Serverless Articles Stack Outputs  
-    new cdk.CfnOutput(this, 'CombinedApiUrl', {
-      value: serverlessArticlesStack.api.url,
-      description: 'Serverless API Gateway URL (Articles + Auth + Comments)'
-    });
-
-    new cdk.CfnOutput(this, 'ArticlesTableName', {
-      value: serverlessArticlesStack.articlesTable.tableName,
-      description: 'DynamoDB Articles Table Name'
-    });
-
-    // Serverless Comments Stack Outputs
-    new cdk.CfnOutput(this, 'CommentsTableName', {
-      value: serverlessCommentsStack.commentsTable.tableName,
-      description: 'DynamoDB Comments Table Name'
-    });
+    // Temporarily disabled serverless outputs
+    // TODO: Re-enable after fixing Go 1.23 toolchain issue
+    // new cdk.CfnOutput(this, 'CombinedApiUrl', {
+    //   value: serverlessArticlesStack.api.url,
+    //   description: 'Serverless API Gateway URL (Articles + Auth + Comments)'
+    // });
+    // new cdk.CfnOutput(this, 'ArticlesTableName', {
+    //   value: serverlessArticlesStack.articlesTable.tableName,
+    //   description: 'DynamoDB Articles Table Name'
+    // });
+    // new cdk.CfnOutput(this, 'CommentsTableName', {
+    //   value: serverlessCommentsStack.commentsTable.tableName,
+    //   description: 'DynamoDB Comments Table Name'
+    // });
 
     // API Gateway Proxy Stack Outputs
     new cdk.CfnOutput(this, 'ProxyApiUrl', {
