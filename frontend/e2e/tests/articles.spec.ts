@@ -46,7 +46,7 @@ test.describe('Articles Management', () => {
       expect(articleData.article.title).toBe(testArticle.title);
       expect(articleData.article.slug).toBeDefined();
       
-      // 3. Wait for DynamoDB eventual consistency
+      // 3. Wait for DynamoDB eventual consistency (GSI SlugIndex requires eventual consistency)
       await api.waitForConsistency();
       
       // 4. Verify article exists in article list

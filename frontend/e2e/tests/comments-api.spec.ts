@@ -69,8 +69,7 @@ test.describe('Comments API Tests', () => {
     const { response: createResponse } = await api.createComment(articleSlug, commentData, userToken);
     expect(createResponse.status()).toBe(201);
     
-    // Wait for DynamoDB eventual consistency
-    await api.waitForConsistency();
+    // Comments use Primary Key queries (Strong Consistency) - no wait needed
     
     // Get comments list
     const { response, data } = await api.getComments(articleSlug);
@@ -100,8 +99,7 @@ test.describe('Comments API Tests', () => {
     const { response: deleteResponse } = await api.deleteComment(articleSlug, commentId, userToken);
     expect(deleteResponse.status()).toBe(200);
     
-    // Wait for DynamoDB eventual consistency
-    await api.waitForConsistency();
+    // Comments use Primary Key queries (Strong Consistency) - no wait needed
     
     // Verify comment is removed from list
     const { response: getResponse, data: getData } = await api.getComments(articleSlug);
@@ -165,8 +163,7 @@ test.describe('Comments API Tests', () => {
       createdCommentIds.push(data.comment.id);
     }
     
-    // Wait for DynamoDB eventual consistency
-    await api.waitForConsistency();
+    // Comments use Primary Key queries (Strong Consistency) - no wait needed
     
     // Verify all comments exist
     const { response: getResponse, data: getData } = await api.getComments(articleSlug);
@@ -181,8 +178,7 @@ test.describe('Comments API Tests', () => {
       expect(deleteResponse.status()).toBe(200);
     }
     
-    // Wait for DynamoDB eventual consistency
-    await api.waitForConsistency();
+    // Comments use Primary Key queries (Strong Consistency) - no wait needed
     
     // Verify all comments are gone
     const { response: finalResponse, data: finalData } = await api.getComments(articleSlug);

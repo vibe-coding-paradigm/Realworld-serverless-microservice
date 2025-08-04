@@ -42,7 +42,7 @@ test.describe('Authentication Flow', () => {
       const { response: createResponse } = await api.createUser(testUser);
       expect(createResponse.status()).toBe(201);
       
-      // Wait for DynamoDB eventual consistency
+      // Login uses GSI EmailIndex (Eventual Consistency) - wait needed for email lookup
       await api.waitForConsistency();
       
       // Then login with same credentials
@@ -104,7 +104,7 @@ test.describe('Authentication Flow', () => {
       
       console.log(`User created successfully: ${createData.user.email}`);
       
-      // Wait for DynamoDB eventual consistency
+      // Login uses GSI EmailIndex (Eventual Consistency) - wait needed for email lookup
       await api.waitForConsistency();
       
       // 1.5. Verify we can login via API immediately after creation

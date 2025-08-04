@@ -18,11 +18,18 @@ export class ApiHelper {
   }
 
   /**
-   * Wait for DynamoDB eventual consistency
-   * AWS DynamoDB may take 1-2 seconds to reflect changes across all nodes
+   * Wait for DynamoDB eventual consistency (GSI queries only)
+   * 
+   * Use only for operations that rely on Global Secondary Indexes:
+   * - Articles by slug (SlugIndex)
+   * - Articles by author (AuthorIndex) 
+   * - Users by email (EmailIndex)
+   * - Users by username (UsernameIndex)
+   * 
+   * Primary Key queries use Strong Consistency and don't need this wait.
    */
   async waitForConsistency(ms: number = 2000) {
-    console.log(`⏳ Waiting ${ms}ms for DynamoDB eventual consistency...`);
+    console.log(`⏳ Waiting ${ms}ms for DynamoDB GSI eventual consistency...`);
     await new Promise(resolve => setTimeout(resolve, ms));
   }
 
