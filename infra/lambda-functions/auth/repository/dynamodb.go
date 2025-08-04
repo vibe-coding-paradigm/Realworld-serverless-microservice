@@ -127,7 +127,7 @@ func (r *DynamoDBRepository) GetByUsername(username string) (*models.User, error
 	return &user, nil
 }
 
-// GetByID retrieves a user by ID
+// GetByID retrieves a user by ID with strong consistency
 func (r *DynamoDBRepository) GetByID(userID string) (*models.User, error) {
 	result, err := r.dynamoClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
@@ -135,6 +135,7 @@ func (r *DynamoDBRepository) GetByID(userID string) (*models.User, error) {
 			"PK": {S: aws.String("USER#" + userID)},
 			"SK": {S: aws.String("PROFILE")},
 		},
+		ConsistentRead: aws.Bool(true), // Enable strong consistency for immediate read after write
 	})
 
 	if err != nil {

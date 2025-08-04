@@ -29,7 +29,7 @@ func NewDynamoDBRepository(tableName string) (*DynamoDBRepository, error) {
 	}, nil
 }
 
-// ListCommentsByArticle retrieves all comments for a specific article
+// ListCommentsByArticle retrieves all comments for a specific article with strong consistency
 func (r *DynamoDBRepository) ListCommentsByArticle(articleSlug string) ([]models.Comment, error) {
 	input := &dynamodb.QueryInput{
 		TableName: aws.String(r.tableName),
@@ -43,6 +43,7 @@ func (r *DynamoDBRepository) ListCommentsByArticle(articleSlug string) ([]models
 			},
 		},
 		ScanIndexForward: aws.Bool(true), // Sort by SK ascending (oldest first)
+		ConsistentRead: aws.Bool(true),   // Enable strong consistency for immediate read after write
 	}
 
 	result, err := r.db.Query(input)
@@ -84,7 +85,7 @@ func (r *DynamoDBRepository) CreateComment(comment *models.Comment) error {
 	return nil
 }
 
-// GetComment retrieves a specific comment by article slug and comment ID
+// GetComment retrieves a specific comment by article slug and comment ID with strong consistency
 func (r *DynamoDBRepository) GetComment(articleSlug, commentID string) (*models.Comment, error) {
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
@@ -96,6 +97,7 @@ func (r *DynamoDBRepository) GetComment(articleSlug, commentID string) (*models.
 				S: aws.String("COMMENT#" + commentID),
 			},
 		},
+		ConsistentRead: aws.Bool(true), // Enable strong consistency for immediate read after write
 	}
 
 	result, err := r.db.GetItem(input)

@@ -431,7 +431,7 @@ func (r *DynamoDBRepository) getSimilarSlugs(baseSlug string) ([]string, error) 
 	return slugs, nil
 }
 
-// isArticleFavorited checks if a user has favorited an article
+// isArticleFavorited checks if a user has favorited an article with strong consistency
 func (r *DynamoDBRepository) isArticleFavorited(userID, articleID string) (bool, error) {
 	favorite := &models.Favorite{
 		UserID:    userID,
@@ -445,6 +445,7 @@ func (r *DynamoDBRepository) isArticleFavorited(userID, articleID string) (bool,
 			"PK": {S: aws.String(favorite.PK)},
 			"SK": {S: aws.String(favorite.SK)},
 		},
+		ConsistentRead: aws.Bool(true), // Enable strong consistency for favorite status check
 	})
 	
 	if err != nil {
@@ -454,11 +455,13 @@ func (r *DynamoDBRepository) isArticleFavorited(userID, articleID string) (bool,
 	return err == nil, nil
 }
 
-// incrementFavoritesCount increments or decrements the favorites count for an article
+// incrementFavoritesCount increments or decrements the favorites count for an article with strong consistency
 func (r *DynamoDBRepository) incrementFavoritesCount(articleID string, delta int) error {
 	article := &models.Article{ArticleID: articleID}
 	article.SetPrimaryKey()
 	
+	// Note: UpdateItem doesn't support ConsistentRead, but it provides strong consistency by default
+	// The update operation will be immediately consistent for subsequent reads
 	_, err := r.dynamoClient.UpdateItem(&dynamodb.UpdateItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]*dynamodb.AttributeValue{
