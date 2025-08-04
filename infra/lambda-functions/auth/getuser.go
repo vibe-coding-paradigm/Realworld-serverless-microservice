@@ -37,12 +37,16 @@ func HandleGetUser(ctx context.Context, request events.APIGatewayProxyRequest) (
 		return utils.ErrorResponse(401, "token", "Authorization header required"), nil
 	}
 
-	// Parse Bearer token
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return utils.ErrorResponse(401, "token", "Invalid token format"), nil
+	// Parse token (support both "Token " and "Bearer " prefixes)
+	var tokenString string
+	if strings.HasPrefix(authHeader, "Token ") {
+		tokenString = strings.TrimPrefix(authHeader, "Token ")
+	} else if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		return utils.ErrorResponse(401, "token", "Invalid authorization header format"), nil
 	}
 
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 	if tokenString == "" {
 		return utils.ErrorResponse(401, "token", "Invalid token format"), nil
 	}
@@ -69,7 +73,7 @@ func HandleGetUser(ctx context.Context, request events.APIGatewayProxyRequest) (
 	}
 
 	// Generate new token (refresh the token)
-	newToken, err := auth.GenerateToken(user.UserID, user.Email)
+	newToken, err := auth.GenerateToken(user.UserID, user.Email, user.Username)
 	if err != nil {
 		log.Printf("Failed to generate token: %v", err)
 		return utils.ErrorResponse(500, "token", "Failed to generate token"), nil

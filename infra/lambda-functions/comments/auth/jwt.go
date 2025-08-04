@@ -16,15 +16,16 @@ var (
 
 // Claims represents JWT claims
 type Claims struct {
-	Username string `json:"username"`
+	UserID   string `json:"user_id"`
 	Email    string `json:"email"`
+	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
-// ExtractUsernameFromAuth extracts username from Authorization header
-func ExtractUsernameFromAuth(authHeader, jwtSecret string) (string, error) {
+// ExtractClaimsFromAuth extracts claims from Authorization header
+func ExtractClaimsFromAuth(authHeader, jwtSecret string) (*Claims, error) {
 	if authHeader == "" {
-		return "", ErrMissingToken
+		return nil, ErrMissingToken
 	}
 
 	// Check if header starts with "Token " or "Bearer "
@@ -34,11 +35,11 @@ func ExtractUsernameFromAuth(authHeader, jwtSecret string) (string, error) {
 	} else if strings.HasPrefix(authHeader, "Bearer ") {
 		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
 	} else {
-		return "", ErrInvalidFormat
+		return nil, ErrInvalidFormat
 	}
 
 	if tokenString == "" {
-		return "", ErrMissingToken
+		return nil, ErrMissingToken
 	}
 
 	// Parse the token
@@ -51,13 +52,22 @@ func ExtractUsernameFromAuth(authHeader, jwtSecret string) (string, error) {
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrInvalidToken, err)
+		return nil, fmt.Errorf("%w: %v", ErrInvalidToken, err)
 	}
 
 	// Extract claims
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return claims.Username, nil
+		return claims, nil
 	}
 
-	return "", ErrInvalidToken
+	return nil, ErrInvalidToken
+}
+
+// ExtractUsernameFromAuth extracts username from Authorization header
+func ExtractUsernameFromAuth(authHeader, jwtSecret string) (string, error) {
+	claims, err := ExtractClaimsFromAuth(authHeader, jwtSecret)
+	if err != nil {
+		return "", err
+	}
+	return claims.Username, nil
 }

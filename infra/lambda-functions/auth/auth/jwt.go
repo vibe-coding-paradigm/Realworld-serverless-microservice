@@ -11,21 +11,23 @@ import (
 
 // Claims represents the JWT token claims
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
+	UserID   string `json:"user_id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken generates a JWT token for the given user
-func GenerateToken(userID, email string) (string, error) {
-	return generateTokenWithExpiration(userID, email, time.Now().Add(24*time.Hour))
+func GenerateToken(userID, email, username string) (string, error) {
+	return generateTokenWithExpiration(userID, email, username, time.Now().Add(24*time.Hour))
 }
 
 // generateTokenWithExpiration generates a JWT token with custom expiration (for testing)
-func generateTokenWithExpiration(userID, email string, expirationTime time.Time) (string, error) {
+func generateTokenWithExpiration(userID, email, username string, expirationTime time.Time) (string, error) {
 	claims := Claims{
-		UserID: userID,
-		Email:  email,
+		UserID:   userID,
+		Email:    email,
+		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

@@ -69,7 +69,7 @@ func HandleLogin(ctx context.Context, request events.APIGatewayProxyRequest) (ev
 	}
 
 	// Generate JWT token
-	token, err := auth.GenerateToken(user.UserID, user.Email)
+	token, err := auth.GenerateToken(user.UserID, user.Email, user.Username)
 	if err != nil {
 		log.Printf("Failed to generate token: %v", err)
 		return utils.ErrorResponse(500, "token", "Failed to generate token"), nil
