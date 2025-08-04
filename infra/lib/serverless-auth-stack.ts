@@ -184,7 +184,7 @@ export class ServerlessAuthStack extends cdk.NestedStack {
             'X-Api-Key',
             'X-Amz-Security-Token',
           ],
-          allowCredentials: true,
+          allowCredentials: false,
         },
       });
     }
