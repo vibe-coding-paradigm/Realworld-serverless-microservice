@@ -26,8 +26,14 @@ const API_BASE_URL = (() => {
       console.log('🧪 E2E Test (Local): Using localhost backend');
       return 'http://localhost:8080/api';
     } else {
-      console.log('🧪 E2E Test (Cloud): Using CloudFront backend');
-      return 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+      // Use VITE_API_URL for cloud E2E tests if available
+      if (import.meta.env.VITE_API_URL) {
+        console.log('🧪 E2E Test (Cloud): Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+        return import.meta.env.VITE_API_URL;
+      } else {
+        console.log('🧪 E2E Test (Cloud): Using default API Gateway URL');
+        return 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1';
+      }
     }
   }
   
