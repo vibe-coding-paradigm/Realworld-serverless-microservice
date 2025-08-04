@@ -312,32 +312,32 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Outputs for integration with existing infrastructure
     // Note: URL is not available for imported APIs, use Auth stack's URL instead
     
-    new cdk.CfnOutput(scope, 'ServerlessArticlesApiId', {
+    new cdk.CfnOutput(this, 'ServerlessArticlesApiId', {
       value: this.api.restApiId,
       description: 'Articles API Gateway ID (shared with Auth)',
       exportName: 'ConduitArticlesApiId',
     });
 
-    new cdk.CfnOutput(scope, 'ArticlesTableName', {
+    new cdk.CfnOutput(this, 'ArticlesTableName', {
       value: this.articlesTable.tableName,
       description: 'DynamoDB Articles Table Name',
       exportName: 'ConduitArticlesTableName',
     });
 
-    new cdk.CfnOutput(scope, 'ArticlesTableArn', {
+    new cdk.CfnOutput(this, 'ArticlesTableArn', {
       value: this.articlesTable.tableArn,
       description: 'DynamoDB Articles Table ARN',
       exportName: 'ConduitArticlesTableArn',
     });
 
     // Export resource IDs for Comments stack integration
-    new cdk.CfnOutput(scope, 'ArticlesResourceId', {
+    new cdk.CfnOutput(this, 'ArticlesResourceId', {
       value: this.articlesResource.resourceId,
       description: 'Articles Resource ID for integration',  
       exportName: 'ConduitArticlesResourceId',
     });
 
-    new cdk.CfnOutput(scope, 'ArticleBySlugResourceId', {
+    new cdk.CfnOutput(this, 'ArticleBySlugResourceId', {
       value: this.articleBySlugResource.resourceId,
       description: 'Article by Slug Resource ID for integration',
       exportName: 'ConduitArticleBySlugResourceId',

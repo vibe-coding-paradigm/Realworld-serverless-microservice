@@ -210,19 +210,19 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
     // Outputs for integration with existing infrastructure
     // Note: URL is not available for imported APIs, use Auth stack's URL instead
     
-    new cdk.CfnOutput(scope, 'ServerlessCommentsApiId', {
+    new cdk.CfnOutput(this, 'ServerlessCommentsApiId', {
       value: this.api.restApiId,
       description: 'Comments API Gateway ID (shared with existing services)',
       exportName: 'ConduitCommentsApiId',
     });
 
-    new cdk.CfnOutput(scope, 'CommentsTableName', {
+    new cdk.CfnOutput(this, 'CommentsTableName', {
       value: this.commentsTable.tableName,
       description: 'DynamoDB Comments Table Name',
       exportName: 'ConduitCommentsTableName',
     });
 
-    new cdk.CfnOutput(scope, 'CommentsTableArn', {
+    new cdk.CfnOutput(this, 'CommentsTableArn', {
       value: this.commentsTable.tableArn,
       description: 'DynamoDB Comments Table ARN',
       exportName: 'ConduitCommentsTableArn',

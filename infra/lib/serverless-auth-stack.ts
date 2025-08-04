@@ -221,31 +221,31 @@ export class ServerlessAuthStack extends cdk.NestedStack {
     }));
 
     // Outputs for integration with existing infrastructure
-    new cdk.CfnOutput(scope, 'ServerlessAuthApiUrl', {
+    new cdk.CfnOutput(this, 'ServerlessAuthApiUrl', {
       value: this.api.url,
       description: 'Auth API Gateway URL (shared with other services)',
       exportName: 'ConduitAuthApiUrl',
     });
 
-    new cdk.CfnOutput(scope, 'ServerlessAuthApiId', {
+    new cdk.CfnOutput(this, 'ServerlessAuthApiId', {
       value: this.api.restApiId,
       description: 'Auth API Gateway ID (shared with other services)',
       exportName: 'ConduitAuthApiId',
     });
 
-    new cdk.CfnOutput(scope, 'ServerlessAuthApiRootResourceId', {
+    new cdk.CfnOutput(this, 'ServerlessAuthApiRootResourceId', {
       value: this.api.restApiRootResourceId,
       description: 'Auth API Gateway Root Resource ID (shared with other services)',
       exportName: 'ConduitAuthApiRootResourceId',
     });
 
-    new cdk.CfnOutput(scope, 'UsersTableName', {
+    new cdk.CfnOutput(this, 'AuthUsersTableName', {
       value: this.usersTable.tableName,
       description: 'DynamoDB Users Table Name',
       exportName: 'ConduitUsersTableName',
     });
 
-    new cdk.CfnOutput(scope, 'UsersTableArn', {
+    new cdk.CfnOutput(this, 'AuthUsersTableArn', {
       value: this.usersTable.tableArn,
       description: 'DynamoDB Users Table ARN',
       exportName: 'ConduitUsersTableArn',

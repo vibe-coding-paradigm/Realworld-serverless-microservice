@@ -62,17 +62,17 @@ export class ConduitStack extends cdk.Stack {
     });
 
     // DynamoDB Tables
-    new cdk.CfnOutput(this, 'UsersTableName', {
+    new cdk.CfnOutput(this, 'MainUsersTableName', {
       value: serverlessAuthStack.usersTable.tableName,
       description: 'DynamoDB Users Table Name'
     });
 
-    new cdk.CfnOutput(this, 'ArticlesTableName', {
+    new cdk.CfnOutput(this, 'MainArticlesTableName', {
       value: serverlessArticlesStack.articlesTable.tableName,
       description: 'DynamoDB Articles Table Name'
     });
 
-    new cdk.CfnOutput(this, 'CommentsTableName', {
+    new cdk.CfnOutput(this, 'MainCommentsTableName', {
       value: serverlessCommentsStack.commentsTable.tableName,
       description: 'DynamoDB Comments Table Name'
     });
