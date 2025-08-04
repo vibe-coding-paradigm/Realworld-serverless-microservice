@@ -43,21 +43,21 @@ jobs:
       - name: Get backend URL dynamically
         id: get-backend-url
         run: |
-          # Get CloudFront distribution domain name for HTTPS support
-          CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
+          # Get API Gateway URL for serverless backend
+          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
             --stack-name ConduitStack \
-            --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' \
+            --query 'Stacks[0].Outputs[?OutputKey==`ServerlessApiUrl`].OutputValue' \
             --output text \
             --region ${{ vars.AWS_REGION }})
           
-          if [ "$CLOUDFRONT_DOMAIN" = "None" ] || [ -z "$CLOUDFRONT_DOMAIN" ]; then
-            echo "❌ Error: Could not retrieve CloudFront domain name"
-            echo "Make sure the backend infrastructure with CloudFront is deployed first"
+          if [ "$API_GATEWAY_URL" = "None" ] || [ -z "$API_GATEWAY_URL" ]; then
+            echo "❌ Error: Could not retrieve API Gateway URL"
+            echo "Make sure the serverless infrastructure is deployed first"
             exit 1
           fi
           
-          # CloudFront domain already includes https:// prefix from CDK output
-          BACKEND_URL="$CLOUDFRONT_DOMAIN/api"
+          # Remove trailing slash from API Gateway URL
+          BACKEND_URL=$(echo "$API_GATEWAY_URL" | sed 's/\/$//')
           echo "✅ Using Backend URL: $BACKEND_URL"
           echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
 
