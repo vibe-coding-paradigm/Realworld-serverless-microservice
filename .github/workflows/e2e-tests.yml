@@ -13,10 +13,10 @@ on:
   workflow_dispatch:
     inputs:
       backend_url:
-        description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
+        description: 'Backend base URL (e.g., https://xxx.execute-api.ap-northeast-2.amazonaws.com/v1)'
         required: false
         type: string
-        default: 'http://conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com'
+        default: 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1'
       frontend_url:
         description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
         required: false
@@ -31,7 +31,7 @@ on:
   workflow_call:
     inputs:
       backend_url:
-        description: 'Backend base URL without /api (e.g., http://conduit-alb-xxx.elb.amazonaws.com)'
+        description: 'Backend base URL (e.g., https://xxx.execute-api.ap-northeast-2.amazonaws.com/v1)'
         required: true
         type: string
       frontend_url:
@@ -196,28 +196,28 @@ jobs:
           
           echo "🔍 Debug: workflow_run URLs - BACKEND_URL='$BACKEND_URL', FRONTEND_URL='$FRONTEND_URL'"
           
-          # If URLs are empty (check-deployment-status was skipped), use ECS backend
+          # If URLs are empty (check-deployment-status was skipped), use serverless backend
           if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
-            echo "⚠️ URLs from check-deployment-status are empty, using ECS backend"
-            BACKEND_URL="$VARS_BACKEND_URL_ECS"
+            echo "⚠️ URLs from check-deployment-status are empty, using serverless backend"
+            BACKEND_URL="$VARS_BACKEND_URL"
             FRONTEND_URL="$VARS_FRONTEND_URL"
           fi
         elif [ "${{ github.event_name }}" = "schedule" ]; then
-          # Use ECS backend for scheduled runs (for monolithic API testing)
-          echo "📅 Scheduled run detected, using ECS backend for monolithic API"
-          BACKEND_URL="$VARS_BACKEND_URL_ECS"
+          # Use serverless backend for scheduled runs
+          echo "📅 Scheduled run detected, using serverless backend"
+          BACKEND_URL="$VARS_BACKEND_URL"
           FRONTEND_URL="$VARS_FRONTEND_URL"
         else
-          # Use inputs for workflow_call and workflow_dispatch, fallback to ECS backend
+          # Use inputs for workflow_call and workflow_dispatch, fallback to serverless backend
           BACKEND_URL="$INPUT_BACKEND_URL"
           FRONTEND_URL="$INPUT_FRONTEND_URL"
           
           echo "🔍 Debug: inputs URLs - BACKEND_URL='$BACKEND_URL', FRONTEND_URL='$FRONTEND_URL'"
           
-          # If inputs are empty, use ECS backend
+          # If inputs are empty, use serverless backend
           if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
-            echo "⚠️ Input URLs are empty, using ECS backend for monolithic API"
-            BACKEND_URL="$VARS_BACKEND_URL_ECS"
+            echo "⚠️ Input URLs are empty, using serverless backend"
+            BACKEND_URL="$VARS_BACKEND_URL"
             FRONTEND_URL="$VARS_FRONTEND_URL"
           fi
         fi
