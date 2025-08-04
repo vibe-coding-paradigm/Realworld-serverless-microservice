@@ -59,20 +59,20 @@ jobs:
               echo "${STACK}=true" >> $GITHUB_OUTPUT
             fi
           else
-            # Automatic detection
-            if git diff --name-only HEAD~1 | grep -E '^infra/lib/compute-stack\.ts$' > /dev/null; then
+            # Automatic detection (include added files)
+            if git diff --name-only --diff-filter=ACMR HEAD~1 | grep -E '^infra/lib/compute-stack\.ts$' > /dev/null; then
               echo "compute=true" >> $GITHUB_OUTPUT
             else
               echo "compute=false" >> $GITHUB_OUTPUT
             fi
             
-            if git diff --name-only HEAD~1 | grep -E '^infra/lib/storage-stack\.ts$' > /dev/null; then
+            if git diff --name-only --diff-filter=ACMR HEAD~1 | grep -E '^infra/lib/storage-stack\.ts$' > /dev/null; then
               echo "storage=true" >> $GITHUB_OUTPUT
             else
               echo "storage=false" >> $GITHUB_OUTPUT
             fi
             
-            if git diff --name-only HEAD~1 | grep -E '^infra/lib/serverless-.*-stack\.ts$|^infra/bin/|^infra/cdk\.json$|^infra/package.*\.json$' > /dev/null; then
+            if git diff --name-only --diff-filter=ACMR HEAD~1 | grep -E '^infra/lib/(serverless-.*-stack\.ts|infra-stack\.ts|.*-stack\.ts)$|^infra/bin/|^infra/cdk\.json$|^infra/package.*\.json$' > /dev/null; then
               echo "serverless=true" >> $GITHUB_OUTPUT
               echo "deploy-all=true" >> $GITHUB_OUTPUT
             else
