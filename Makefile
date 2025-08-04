@@ -1,4 +1,4 @@
-.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug e2e-cloud e2e-serverless get-api-url load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env deploy-serverless deploy-serverless-auth deploy-serverless-articles deploy-serverless-comments deploy-infra deploy-infra-destroy deploy-logs-serverless deploy-logs-infra get-serverless-api-url verify-serverless
+.PHONY: help dev build test clean lint fmt migrate deps install-deps check-deps deploy debug deploy-check deploy-logs deploy-logs-frontend deploy-logs-backend deploy-logs-failed deploy-logs-e2e deploy-logs-load deploy-debug cdk-deploy deploy-initial cdk-destroy cdk-diff cdk-synth gh-login-check gh-workflow-run status verify-deployment verify-deployment-install verify-all quick-start setup-dev watch test-watch lint-fix git-hooks install-hooks e2e e2e-local e2e-local-cleanup e2e-ui e2e-debug e2e-cloud e2e-cloud-noreport e2e-serverless get-api-url load-test-local api-test frontend-build frontend-dev backend-dev backend-build seed-db reset-env deploy-serverless deploy-serverless-auth deploy-serverless-articles deploy-serverless-comments deploy-infra deploy-infra-destroy deploy-logs-serverless deploy-logs-infra get-serverless-api-url verify-serverless
 
 # 기본 타겟
 help:
@@ -500,6 +500,45 @@ e2e-cloud:
 	AWS_REGION="$$AWS_REGION" \
 	npm run test:e2e
 	@echo "✅ 클라우드 E2E 테스트 완료"
+
+# 클라우드 E2E 테스트 (서버리스 환경용, HTML 리포트 없음)
+e2e-cloud-noreport:
+	@echo "☁️ 클라우드 E2E 테스트 시작 (리포트 서버 없음)..."
+	@echo "🔍 GitHub CLI 인증 확인 중..."
+	@gh auth status > /dev/null 2>&1 || (echo "❌ GitHub CLI 인증이 필요합니다. 'gh auth login' 실행하세요"; exit 1)
+	@echo "📦 GitHub Variables 가져오는 중..."
+	@set -e; \
+	BACKEND_URL=$$(gh variable get BACKEND_URL 2>/dev/null || echo ""); \
+	BACKEND_URL_ECS=$$(gh variable get BACKEND_URL_ECS 2>/dev/null || echo ""); \
+	FRONTEND_URL=$$(gh variable get FRONTEND_URL 2>/dev/null || echo ""); \
+	AWS_REGION=$$(gh variable get AWS_REGION 2>/dev/null || echo "ap-northeast-2"); \
+	echo "🌐 GitHub Variables:"; \
+	echo "  BACKEND_URL: $$BACKEND_URL"; \
+	echo "  BACKEND_URL_ECS: $$BACKEND_URL_ECS"; \
+	echo "  FRONTEND_URL: $$FRONTEND_URL"; \
+	echo "  AWS_REGION: $$AWS_REGION"; \
+	if [ -z "$$BACKEND_URL" ]; then \
+		echo "⚠️  BACKEND_URL이 설정되지 않음, CDK에서 API URL 추출 시도..."; \
+		API_URL=$$(make get-api-url); \
+		if [ -z "$$API_URL" ]; then \
+			echo "❌ API URL을 찾을 수 없습니다"; \
+			exit 1; \
+		fi; \
+		BACKEND_URL="$$API_URL"; \
+		echo "🔗 CDK에서 추출한 API URL: $$BACKEND_URL"; \
+	fi; \
+	echo "🧪 클라우드 환경에서 E2E 테스트 실행 중 (터미널 출력만)..."; \
+	cd frontend && \
+	PLAYWRIGHT_BASE_URL="$$FRONTEND_URL" \
+	BACKEND_URL="$$BACKEND_URL" \
+	BACKEND_URL_ECS="$$BACKEND_URL_ECS" \
+	CLOUD_BACKEND_URL="$$BACKEND_URL" \
+	API_URL="$$BACKEND_URL" \
+	VITE_API_URL="$$BACKEND_URL" \
+	E2E_ENVIRONMENT=cloud \
+	AWS_REGION="$$AWS_REGION" \
+	npx playwright test --reporter=line
+	@echo "✅ 클라우드 E2E 테스트 완료 (리포트 서버 없음)"
 
 # 서버리스 배포 후 E2E 테스트 (CDK 배포 + 테스트)
 e2e-serverless:
