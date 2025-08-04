@@ -42,6 +42,9 @@ test.describe('Authentication Flow', () => {
       const { response: createResponse } = await api.createUser(testUser);
       expect(createResponse.status()).toBe(201);
       
+      // Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
+      
       // Then login with same credentials
       const { response: loginResponse, data: loginData } = await api.loginUser({
         email: testUser.email,
@@ -100,6 +103,9 @@ test.describe('Authentication Flow', () => {
       expect(createResponse.status()).toBe(201);
       
       console.log(`User created successfully: ${createData.user.email}`);
+      
+      // Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
       
       // 1.5. Verify we can login via API immediately after creation
       console.log('\n=== API DIRECT LOGIN TEST ===');

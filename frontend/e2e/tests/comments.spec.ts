@@ -72,6 +72,9 @@ test.describe('Comments System E2E Tests', () => {
       const { response: create2Response } = await api.createComment(articleSlug, comment2, userToken);
       expect(create2Response.status()).toBe(201);
       
+      // Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
+      
       // Get comments list
       const { response, data } = await api.getComments(articleSlug);
       
@@ -99,6 +102,9 @@ test.describe('Comments System E2E Tests', () => {
       // Delete the comment
       const { response: deleteResponse } = await api.deleteComment(articleSlug, commentId, userToken);
       expect(deleteResponse.status()).toBe(200);
+      
+      // Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
       
       // Verify comment is removed from list
       const { response: getResponse, data: getData } = await api.getComments(articleSlug);
@@ -350,6 +356,9 @@ test.describe('Comments System E2E Tests', () => {
       const { response: commentResponse, data: commentResponseData } = await api.createComment(articleSlug, commentData, userToken);
       expect(commentResponse.status()).toBe(201);
       
+      // Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
+      
       // Navigate to article page
       await navigateToPage(page, `/article/${articleSlug}`);
       await page.waitForLoadState('networkidle');
@@ -387,6 +396,9 @@ test.describe('Comments System E2E Tests', () => {
       const commentData = generateTestComment();
       const { response: commentResponse } = await api.createComment(articleSlug, commentData, userToken);
       expect(commentResponse.status()).toBe(201);
+      
+      // Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
       
       // Navigate to article page
       await navigateToPage(page, `/article/${articleSlug}`);

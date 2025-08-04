@@ -493,8 +493,10 @@ e2e-cloud:
 	PLAYWRIGHT_BASE_URL="$$FRONTEND_URL" \
 	BACKEND_URL="$$BACKEND_URL" \
 	BACKEND_URL_ECS="$$BACKEND_URL_ECS" \
+	CLOUD_BACKEND_URL="$$BACKEND_URL" \
 	API_URL="$$BACKEND_URL" \
 	VITE_API_URL="$$BACKEND_URL" \
+	E2E_ENVIRONMENT=cloud \
 	AWS_REGION="$$AWS_REGION" \
 	npm run test:e2e
 	@echo "✅ 클라우드 E2E 테스트 완료"
@@ -512,7 +514,7 @@ e2e-serverless:
 
 # API URL 추출 (CDK 출력에서)
 get-api-url:
-	@cd infra && aws cloudformation describe-stacks --stack-name ConduitStack --query 'Stacks[0].Outputs[?OutputKey==`AuthApiUrl`].OutputValue' --output text 2>/dev/null || echo ""
+	@aws cloudformation describe-stacks --stack-name ConduitStack --query 'Stacks[0].Outputs[?OutputKey==`ServerlessApiUrl`].OutputValue' --output text 2>/dev/null || echo ""
 
 # 로컬 부하 테스트
 load-test-local:

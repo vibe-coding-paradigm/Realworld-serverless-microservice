@@ -17,6 +17,15 @@ export class ApiHelper {
     console.log(`❤️ Health URL: ${this.healthURL}`);
   }
 
+  /**
+   * Wait for DynamoDB eventual consistency
+   * AWS DynamoDB may take 1-2 seconds to reflect changes across all nodes
+   */
+  async waitForConsistency(ms: number = 2000) {
+    console.log(`⏳ Waiting ${ms}ms for DynamoDB eventual consistency...`);
+    await new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   async healthCheck() {
     // For serverless API Gateway, use articles endpoint as health check
     const response = await this.request.get(`${this.healthURL}/articles`);

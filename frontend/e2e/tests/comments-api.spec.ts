@@ -69,6 +69,9 @@ test.describe('Comments API Tests', () => {
     const { response: createResponse } = await api.createComment(articleSlug, commentData, userToken);
     expect(createResponse.status()).toBe(201);
     
+    // Wait for DynamoDB eventual consistency
+    await api.waitForConsistency();
+    
     // Get comments list
     const { response, data } = await api.getComments(articleSlug);
     
@@ -96,6 +99,9 @@ test.describe('Comments API Tests', () => {
     // Delete the comment
     const { response: deleteResponse } = await api.deleteComment(articleSlug, commentId, userToken);
     expect(deleteResponse.status()).toBe(200);
+    
+    // Wait for DynamoDB eventual consistency
+    await api.waitForConsistency();
     
     // Verify comment is removed from list
     const { response: getResponse, data: getData } = await api.getComments(articleSlug);
@@ -159,6 +165,9 @@ test.describe('Comments API Tests', () => {
       createdCommentIds.push(data.comment.id);
     }
     
+    // Wait for DynamoDB eventual consistency
+    await api.waitForConsistency();
+    
     // Verify all comments exist
     const { response: getResponse, data: getData } = await api.getComments(articleSlug);
     expect(getResponse.status()).toBe(200);
@@ -171,6 +180,9 @@ test.describe('Comments API Tests', () => {
       const { response: deleteResponse } = await api.deleteComment(articleSlug, commentId, userToken);
       expect(deleteResponse.status()).toBe(200);
     }
+    
+    // Wait for DynamoDB eventual consistency
+    await api.waitForConsistency();
     
     // Verify all comments are gone
     const { response: finalResponse, data: finalData } = await api.getComments(articleSlug);

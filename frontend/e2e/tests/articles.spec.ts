@@ -46,7 +46,10 @@ test.describe('Articles Management', () => {
       expect(articleData.article.title).toBe(testArticle.title);
       expect(articleData.article.slug).toBeDefined();
       
-      // 3. Verify article exists in article list
+      // 3. Wait for DynamoDB eventual consistency
+      await api.waitForConsistency();
+      
+      // 4. Verify article exists in article list
       const { response: articlesResponse, data: articlesData } = await api.getArticles();
       expect(articlesResponse.status()).toBe(200);
       const createdArticle = articlesData.articles.find(
