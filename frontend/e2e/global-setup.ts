@@ -42,17 +42,30 @@ async function globalSetup(config: FullConfig) {
   console.log('⏳ Waiting for services to be ready...');
   
   try {
-    // Check if backend is healthy
-    const healthUrl = env.apiUrl.endsWith('/api') ? env.apiUrl.slice(0, -4) : env.apiUrl;
-    const response = await fetch(`${healthUrl}/health`);
-    if (response.ok) {
-      const health = await response.json();
-      console.log(`✅ Backend healthy: ${health.service} v${health.version}`);
+    // Check if backend API is reachable using login endpoint (serverless API)
+    const apiUrl = env.apiUrl.endsWith('/api') ? env.apiUrl.slice(0, -4) : env.apiUrl;
+    const response = await fetch(`${apiUrl}/users/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user: {
+          email: 'health-check@test.com',
+          password: 'health-check'
+        }
+      })
+    });
+    
+    // 401/422 responses indicate API is working (authentication failed as expected)
+    // 200 would be unexpected but also indicates API is working
+    if (response.status === 401 || response.status === 422 || response.status === 200) {
+      console.log(`✅ Backend API is responding (status: ${response.status})`);
     } else {
-      console.warn(`⚠️ Backend health check failed: ${response.status}`);
+      console.warn(`⚠️ Backend API responded with unexpected status: ${response.status}`);
     }
   } catch (error) {
-    console.warn(`⚠️ Cannot reach backend: ${error}`);
+    console.warn(`⚠️ Cannot reach backend API: ${error}`);
   }
 
   // Check if frontend is ready
