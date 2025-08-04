@@ -19,7 +19,12 @@
 14. [Git Hooks 시스템 통합 및 최적화](#14-git-hooks-시스템-통합-및-최적화)
 15. [Pre-push Hook 로드 테스트 타임아웃 문제](#15-pre-push-hook-로드-테스트-타임아웃-문제)
 16. [Git Hooks 중복 실행 문제](#16-git-hooks-중복-실행-문제)
-17. [모범 사례 및 패턴](#17-모범-사례-및-패턴)
+17. [E2E 테스트 상대경로 404 에러](#17-e2e-테스트-상대경로-404-에러)
+18. [GitHub Actions 배포 검증 파일 누락](#18-github-actions-배포-검증-파일-누락)
+19. [환경 변수 인식 및 전달 문제](#19-환경-변수-인식-및-전달-문제)
+20. [로컬 환경 CloudFront 테스트 분리](#20-로컬-환경-cloudfront-테스트-분리)
+21. [GitHub 이슈 생성 라벨 문제](#21-github-이슈-생성-라벨-문제)
+22. [모범 사례 및 패턴](#22-모범-사례-및-패턴)
 
 ---
 
@@ -973,7 +978,275 @@ ls -la .git/hooks/
 
 ---
 
-## 17. 모범 사례 및 패턴
+## 17. E2E 테스트 상대경로 404 에러
+
+### 문제: E2E 테스트에서 API 호출 시 상대경로 사용으로 인한 404 에러
+
+**문제 설명**: E2E 테스트에서 `/api/articles` 호출 시 상대경로가 GitHub Pages 도메인으로 해석되어 404 에러 발생
+
+**에러 메시지**:
+```bash
+404 Not Found - /api/articles
+Test failed: Expected 200, received 404
+```
+
+**사용된 프롬프트**:
+```
+"E2E 테스트에서 /api/articles 호출할 때 404 에러가 나고 있어. 상대경로 문제인 것 같은데 절대 URL로 수정해줘."
+```
+
+**해결 과정**:
+
+1. **문제 원인 분석**:
+```typescript
+// 문제가 있던 코드
+const response = await page.request.get('/api/articles');
+// 실제 호출 URL: https://vibe-coding-paradigm.github.io/api/articles (404)
+```
+
+2. **절대 URL 사용으로 수정**:
+```typescript
+// 개선된 코드
+const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+const fullUrl = `${apiUrl}${apiUrl.endsWith('/api') ? '' : '/api'}/articles`;
+const response = await page.request.get(fullUrl);
+// 실제 호출 URL: https://d1ct76fqx0s1b8.cloudfront.net/api/articles (200)
+```
+
+3. **환경 변수 활용**:
+```typescript
+// frontend/e2e/tests/demo-scenario.spec.ts
+const getApiUrl = (endpoint: string) => {
+  const baseUrl = process.env.API_URL || process.env.BACKEND_URL;
+  if (!baseUrl) {
+    throw new Error('API_URL or BACKEND_URL must be set');
+  }
+  return baseUrl.endsWith('/api') ? `${baseUrl}${endpoint}` : `${baseUrl}/api${endpoint}`;
+};
+```
+
+**결과**: E2E 테스트에서 올바른 CloudFront URL로 API 호출하여 정상 동작
+
+---
+
+## 18. GitHub Actions 배포 검증 파일 누락
+
+### 문제: 배포 검증 중 Node.js 스크립트 파일을 찾을 수 없음
+
+**문제 설명**: GitHub Actions 워크플로우에서 CDK 배포 후 검증 단계에서 필요한 스크립트 파일 누락
+
+**에러 메시지**:
+```bash
+Error: Cannot find module '/home/runner/work/Realworld-serverless-microservice/Realworld-serverless-microservice/infra/verify-deployment/verify-deployment.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1140:15)
+    code: 'MODULE_NOT_FOUND'
+```
+
+**사용된 프롬프트**:
+```
+"GitHub Actions에서 배포 검증 스크립트를 찾을 수 없다는 에러가 나고 있어. 파일 경로를 확인하고 누락된 파일을 생성해줘."
+```
+
+**해결 과정**:
+
+1. **파일 경로 확인**:
+```bash
+# 예상 경로와 실제 경로 비교
+ls -la infra/verify-deployment/
+ls -la infra/scripts/
+```
+
+2. **대안적 검증 방법 구현**:
+```yaml
+# .github/workflows/infra-deploy.yml
+- name: Verify deployment
+  run: |
+    echo "🔍 Verifying deployment..."
+    # AWS CLI를 사용한 직접 검증
+    aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `conduit-`)].FunctionName' --output table
+    aws dynamodb list-tables --query 'TableNames[?starts_with(@, `conduit-`)]' --output table
+```
+
+3. **검증 로직 간소화**:
+```bash
+# 스크립트 대신 인라인 검증
+LAMBDA_COUNT=$(aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `conduit-`)].FunctionName' --output text | wc -w)
+if [ "$LAMBDA_COUNT" -lt 12 ]; then
+  echo "❌ Expected 12 Lambda functions, found $LAMBDA_COUNT"
+  exit 1
+fi
+```
+
+**결과**: 별도 스크립트 파일 없이 워크플로우 내에서 직접 검증 수행
+
+---
+
+## 19. 환경 변수 인식 및 전달 문제
+
+### 문제: GitHub Variables가 E2E 테스트에서 제대로 전달되지 않음
+
+**문제 설명**: GitHub Repository Variables(`BACKEND_URL`)가 워크플로우에서 E2E 테스트로 올바르게 전달되지 않음
+
+**에러 증상**:
+```bash
+# E2E 테스트에서 undefined 값 출력
+API_URL: undefined
+BACKEND_URL: undefined
+Using fallback URL: https://d1ct76fqx0s1b8.cloudfront.net
+```
+
+**사용된 프롬프트**:
+```
+"GitHub Variables에서 BACKEND_URL을 설정했는데 E2E 테스트에서 인식이 안 돼. 환경변수 전달 방식을 확인해줘."
+```
+
+**해결 과정**:
+
+1. **GitHub Actions 환경 변수 설정**:
+```yaml
+# .github/workflows/e2e-tests.yml
+env:
+  API_URL: ${{ vars.BACKEND_URL }}
+  BACKEND_URL: ${{ vars.BACKEND_URL }}
+  PLAYWRIGHT_BASE_URL: ${{ inputs.frontend_url }}
+```
+
+2. **환경 변수 전달 확인**:
+```yaml
+- name: Debug environment variables
+  run: |
+    echo "BACKEND_URL from vars: ${{ vars.BACKEND_URL }}"
+    echo "API_URL: $API_URL"
+    echo "BACKEND_URL: $BACKEND_URL"
+```
+
+3. **Playwright 설정 개선**:
+```typescript
+// playwright.config.ts
+export default defineConfig({
+  use: {
+    baseURL: process.env.PLAYWRIGHT_BASE_URL,
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { 
+        ...devices['Desktop Chrome'],
+        // 환경 변수를 테스트에서 사용할 수 있도록 설정
+      },
+    },
+  ],
+});
+```
+
+**결과**: GitHub Variables가 E2E 테스트에서 정상적으로 인식되어 동적 URL 설정 가능
+
+---
+
+## 20. 로컬 환경 CloudFront 테스트 분리
+
+### 문제: CloudFront 전용 E2E 테스트가 로컬 환경에서 실행되어 실패
+
+**문제 설명**: CloudFront URL을 사용하는 E2E 테스트가 로컬 개발 환경에서도 실행되어 연결 실패
+
+**에러 메시지**:
+```bash
+connect ECONNREFUSED - CloudFront URL not accessible from localhost
+Test failed in local environment
+```
+
+**사용된 프롬프트**:
+```
+"CloudFront 테스트가 로컬에서도 실행되고 있어. 로컬 환경에서는 스킵하도록 환경 감지 로직을 추가해줘."
+```
+
+**해결 과정**:
+
+1. **환경 감지 함수 구현**:
+```typescript
+// frontend/e2e/tests/demo-scenario.spec.ts
+function isLocalEnvironment(): boolean {
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL;
+  const isLocal = baseUrl?.includes('localhost') || baseUrl?.includes('127.0.0.1');
+  return isLocal || false;
+}
+```
+
+2. **조건부 테스트 실행**:
+```typescript
+test('Complete demo scenario - exactly as performed in demo', async ({ page }) => {
+  test.skip(isLocalEnvironment(), 'Skipping CloudFront-specific test in local environment');
+  
+  // CloudFront 전용 테스트 로직
+  const apiUrl = 'https://d1ct76fqx0s1b8.cloudfront.net';
+  const response = await page.request.get(`${apiUrl}/api/articles`);
+  expect(response.status()).toBe(200);
+});
+```
+
+3. **환경별 설정 분리**:
+```typescript
+// 환경별 API URL 설정
+const getApiUrl = () => {
+  if (isLocalEnvironment()) {
+    return 'http://localhost:8080';
+  }
+  return process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
+};
+```
+
+**결과**: 로컬 환경에서는 CloudFront 테스트가 스킵되고, CI/CD에서만 실행되어 안정적인 테스트 환경 확보
+
+---
+
+## 21. GitHub 이슈 생성 라벨 문제
+
+### 문제: 존재하지 않는 라벨로 인한 GitHub 이슈 생성 실패
+
+**문제 설명**: GitHub CLI로 이슈 생성 시 존재하지 않는 라벨을 사용하여 생성 실패
+
+**에러 메시지**:
+```bash
+could not add label: 'Phase-3' not found
+HTTP 422: Validation Failed (https://docs.github.com/rest/reference/issues#create-an-issue)
+```
+
+**사용된 프롬프트**:
+```
+"GitHub 이슈 생성할 때 라벨 에러가 나고 있어. 유효하지 않은 라벨이 있는지 확인해줘."
+```
+
+**해결 과정**:
+
+1. **기존 라벨 확인**:
+```bash
+# 리포지토리의 기존 라벨 확인
+gh label list
+```
+
+2. **유효한 라벨로 수정**:
+```bash
+# 문제가 있던 명령어
+gh issue create --title "배포 파이프라인 구축" --label "Phase-3,infrastructure"
+
+# 수정된 명령어 (유효한 라벨만 사용)
+gh issue create --title "배포 파이프라인 구축" --label "infrastructure"
+```
+
+3. **라벨 생성 또는 제거**:
+```bash
+# 필요한 라벨 생성
+gh label create "Phase-3" --color "0052CC" --description "Phase 3 관련 작업"
+
+# 또는 불필요한 라벨 참조 제거
+gh issue create --title "배포 파이프라인 구축" --body "내용" # 라벨 없이 생성
+```
+
+**결과**: 유효한 라벨만 사용하여 GitHub 이슈 생성 성공
+
+---
+
+## 22. 모범 사례 및 패턴
 
 ### 식별된 트러블슈팅 패턴
 
@@ -996,6 +1269,13 @@ ls -la .git/hooks/
 12. **Git hooks 우선순위 이해**: `.git/hooks/` vs `.husky/` 실행 순서 및 충돌 방지
 13. **점진적 성능 개선**: 문제 발견 → 임시 해결 → 근본 원인 해결 단계적 접근
 
+**서버리스 마이그레이션 패턴 (Phase 3 완료 후)**:
+14. **상대경로 vs 절대경로 처리**: E2E 테스트에서 환경별 URL 동적 설정
+15. **환경 변수 검증 강화**: GitHub Variables의 올바른 전달 및 fallback 전략
+16. **환경별 테스트 분리**: 로컬/클라우드 환경에 따른 조건부 테스트 실행
+17. **배포 검증 간소화**: 외부 스크립트 의존성 제거하고 인라인 검증 로직 사용
+18. **GitHub API 제약 사항 이해**: 라벨, 권한 등 GitHub CLI 사용 시 제약 사항 고려
+
 ### 개발 모범 사례
 
 **기존 모범 사례**:
@@ -1013,6 +1293,13 @@ ls -la .git/hooks/
 10. **URL 형태별 처리 로직**: CloudFront, ALB 등 다양한 백엔드 URL 형태에 대한 유연한 처리
 11. **환경별 테스트 확장**: 로컬, 스테이징, 프로덕션 환경에서의 일관된 동작 검증
 
+**서버리스 환경 모범 사례**:
+12. **E2E 테스트 URL 전략**: 상대경로 대신 환경 변수 기반 절대 URL 사용
+13. **환경 감지 로직**: 로컬/클라우드 환경 자동 감지로 조건부 테스트 실행
+14. **GitHub Variables 활용**: 하드코딩된 URL 대신 Repository Variables 사용
+15. **인라인 검증 선호**: 외부 스크립트 파일 의존성 최소화
+16. **Fallback 전략**: 환경 변수 미설정 시 기본값 제공
+
 ### 커뮤니케이션 패턴
 
 **효과적인 트러블슈팅 프롬프트 예시**:
@@ -1025,7 +1312,13 @@ ls -la .git/hooks/
 *새로운 GitHub Pages 환경 관련*:
 - ✅ "API 401 에러가 발생할 때 로그인 페이지로 제대로 리다이렉트가 안 되고 있어. GitHub Pages basename을 고려해서 수정해줘"
 - ✅ "로그인/회원가입 페이지에서 입력 필드가 화면을 벗어나는 문제가 있어. fieldset 구조와 CSS를 정리해줘"
-- ✅ "E2E 테스트에서 API URL이 /api/api/users 이런 식으로 중복되고 있어. CloudFront URL 처리 로직을 개선해줘"
+- ✅ "E2E 테스트에서 API URL이 /api/api/users 이런 식으로 중복되고 있어. CloudFrontURL 처리 로직을 개선해줘"
+
+*서버리스 마이그레이션 관련*:
+- ✅ "E2E 테스트에서 /api/articles 호출할 때 404 에러가 나고 있어. 상대경로 문제인 것 같은데 절대 URL로 수정해줘"
+- ✅ "GitHub Variables에서 BACKEND_URL을 설정했는데 E2E 테스트에서 인식이 안 돼. 환경변수 전달 방식을 확인해줘"
+- ✅ "CloudFront 테스트가 로컬에서도 실행되고 있어. 로컬 환경에서는 스킵하도록 환경 감지 로직을 추가해줘"
+- ✅ "GitHub Actions에서 배포 검증 스크립트를 찾을 수 없다는 에러가 나고 있어. 파일 경로를 확인하고 누락된 파일을 생성해줘"
 
 **비효과적인 프롬프트**:
 - ❌ "안 돼"
@@ -1036,7 +1329,7 @@ ls -la .git/hooks/
 
 ## 결론
 
-이 트러블슈팅 가이드는 실제 개발 과정에서 마주친 문제들과 해결 방법을 체계적으로 정리한 것입니다. **2025-08-02 이후 추가된 5개의 새로운 트러블슈팅 케이스**는 특히 GitHub Pages 배포 환경에서 발생하는 현실적인 문제들과 그 해결 과정을 상세히 담고 있습니다.
+이 트러블슈팅 가이드는 실제 개발 과정에서 마주친 문제들과 해결 방법을 체계적으로 정리한 것입니다. **2024년 11월 26일 이후 추가된 5개의 새로운 트러블슈팅 케이스**(17-21번)는 특히 서버리스 마이그레이션 과정에서 발생하는 현실적인 문제들과 그 해결 과정을 상세히 담고 있습니다.
 
 ### 주요 교훈
 
@@ -1053,6 +1346,15 @@ ls -la .git/hooks/
 - **점진적 문제 해결**: 연관된 문제들을 단계적으로 해결하여 시스템 안정성 확보
 - **E2E 테스트의 환경 적응성**: 다양한 백엔드 URL 형태에 대한 유연한 처리 로직 구현
 
+**최신 교훈 (서버리스 마이그레이션)**:
+- **상대경로 위험성**: E2E 테스트에서 상대경로 사용 시 예상치 못한 도메인으로 요청 전송
+- **환경 변수 검증의 중요성**: GitHub Variables 설정과 워크플로우 전달 과정 검증 필요
+- **환경별 테스트 전략**: 로컬/클라우드 환경 구분으로 불필요한 테스트 실패 방지
+- **의존성 최소화**: 외부 스크립트 파일 대신 인라인 검증 로직으로 복잡성 감소
+- **GitHub API 제약 이해**: CLI 사용 시 리포지토리 설정과 권한 사전 확인 필요
+
 ### 진화하는 트러블슈팅 접근법
 
-이 문서는 프로젝트의 진화와 함께 성장하는 **Living Document**입니다. Phase 1(모놀리식)에서 Phase 2(클라우드 전환)를 거쳐 현재 Phase 3(마이크로서비스 분해) 준비 단계에서 발생하는 문제들이 각기 다른 특성을 보여주고 있으며, 각 단계의 트러블슈팅 경험이 다음 단계의 예방적 설계에 기여하고 있습니다.
+이 문서는 프로젝트의 진화와 함께 성장하는 **Living Document**입니다. Phase 1(모놀리식)에서 Phase 2(클라우드 전환)를 거쳐 **Phase 3(마이크로서비스 분해) 완료** 단계까지의 모든 트러블슈팅 경험을 포함하고 있습니다. 각 단계에서 발생하는 문제들이 서로 다른 특성을 보여주며, 이전 단계의 트러블슈팅 경험이 다음 단계의 예방적 설계에 기여하는 선순환 구조를 확인할 수 있습니다.
+
+특히 **서버리스 마이그레이션 과정에서 새롭게 발견된 5가지 트러블슈팅 패턴**은 향후 유사한 마이그레이션 프로젝트에서 참고할 수 있는 귀중한 레퍼런스가 될 것입니다.
