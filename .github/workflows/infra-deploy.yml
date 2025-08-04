@@ -6,6 +6,7 @@ on:
     paths:
       - 'infra/lib/**'
       - 'infra/bin/**'
+      - 'infra/lambda-functions/**'  # Lambda 함수 코드 변경도 배포 트리거
       - 'infra/cdk.json'
       - 'infra/package*.json'
       - '.github/workflows/infra-deploy.yml'
