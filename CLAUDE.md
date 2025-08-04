@@ -20,26 +20,30 @@ This is a **RealWorld application implementation** demonstrating **monolithic to
 
 ## Architecture
 
-### Current State (Phase 2 Complete)
-- **Backend**: Go with standard `net/http` library, Clean Architecture pattern
+### Current State (Phase 3 Complete - Serverless Migration)
+- **Backend**: AWS Lambda functions (Go 1.23.6) with microservices architecture
+- **API Gateway**: Lambda Proxy Integration with unified API endpoints
 - **Frontend**: React 19 + TypeScript, deployed to GitHub Pages
-- **Database**: SQLite with raw SQL queries (no ORM)
-- **Authentication**: JWT token-based stateless authentication (fully functional)  
-- **Infrastructure**: AWS ECS/Fargate + Application Load Balancer (ALB)
-- **Deployment**: Full CI/CD via GitHub Actions with automatic E2E testing
+- **Database**: DynamoDB with optimized table design (Users, Articles, Comments)
+- **Authentication**: JWT token-based stateless authentication (Lambda shared layer)
+- **Infrastructure**: Fully serverless (Lambda + API Gateway + DynamoDB)
+- **Deployment**: Full CI/CD via GitHub Actions with automatic Lambda deployment
 - **Testing**: Comprehensive E2E (Playwright) + Load Testing (k6) infrastructure
 
 ### Deployment Architecture
 - **Frontend**: Automatically deployed to GitHub Pages via GitHub Actions
   - URL: https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/
   - Triggered on changes to `frontend/**` directory
-- **Backend**: AWS ECS/Fargate with Docker containers
-  - **Phase 2**: Cloud deployment completed ✅
-  - **ALB**: conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com 
-  - **Initial Deployment**: Must be done locally (`make deploy-initial`)
-  - **Updates**: Automated via GitHub Actions after initial deployment
-- **Infrastructure**: AWS CDK (TypeScript) - ECS, ECR, ALB, VPC
-- **CI/CD**: GitHub Actions workflows with automatic E2E testing
+- **Backend**: AWS Lambda functions with serverless architecture ✅
+  - **Phase 3**: Serverless migration completed ✅
+  - **API Gateway**: Unified endpoint with Lambda Proxy Integration
+  - **Lambda Functions**: 
+    - Auth Service: `conduit-auth-register`, `conduit-auth-login`, `conduit-auth-getuser`
+    - Articles Service: `conduit-articles-list`, `conduit-articles-get`, `conduit-articles-create`, `conduit-articles-update`, `conduit-articles-delete`, `conduit-articles-favorite`
+    - Comments Service: `conduit-comments-list`, `conduit-comments-create`, `conduit-comments-delete`
+  - **Updates**: Automated via GitHub Actions on infrastructure changes
+- **Infrastructure**: AWS CDK (TypeScript) - Lambda, API Gateway, DynamoDB, CloudWatch
+- **CI/CD**: GitHub Actions workflows with automatic Lambda deployment and E2E testing
 - **Testing**: E2E tests run on all deployments, load tests manual trigger
 
 ## Development Commands
@@ -298,19 +302,33 @@ These comprehensive Makefile scripts provide automated workflows for all develop
 
 ## Architecture Implementation
 
-### Backend Structure (Clean Architecture)
+### Backend Structure (Serverless Microservices)
 ```
-backend/
-  cmd/
-    server/main.go              # HTTP server entry point
-    migrate/main.go             # Database migration runner
-  internal/
-    handlers/                   # HTTP handlers (user, article, comment)
-    models/                     # Domain models (User, Article, Comment)
-    auth/                      # JWT authentication and middleware
-    db/                        # Repository pattern database access
-    utils/                     # Utilities (slug generation, etc.)
-  migrations/                   # SQL migration files
+infra/lambda-functions/
+  auth/                        # Authentication microservice
+    register.go                # User registration Lambda
+    login.go                   # User login Lambda  
+    getuser.go                 # Get user profile Lambda
+    auth/jwt.go               # JWT utilities
+    models/user.go            # User domain model
+    repository/dynamodb.go    # DynamoDB user repository
+    
+  articles/                    # Articles microservice
+    list_articles.go          # List articles Lambda
+    get_article.go            # Get single article Lambda
+    create_article.go         # Create article Lambda
+    update_article.go         # Update article Lambda
+    delete_article.go         # Delete article Lambda
+    favorite_article.go       # Favorite/unfavorite Lambda
+    models/article.go         # Article domain model
+    repository/dynamodb.go    # DynamoDB articles repository
+    
+  comments/                    # Comments microservice
+    list_comments.go          # List comments Lambda
+    create_comment.go         # Create comment Lambda
+    delete_comment.go         # Delete comment Lambda
+    models/comment.go         # Comment domain model
+    repository/dynamodb.go    # DynamoDB comments repository
 ```
 
 ### Frontend Structure (Feature-based)
@@ -328,9 +346,11 @@ frontend/src/
 ```
 
 ### Key Architecture Patterns
-- **Clean Architecture**: Domain models separate from infrastructure
-- **Repository Pattern**: Database access abstraction with interfaces
-- **Middleware Chain**: CORS → Logging → Auth → Business Logic
+- **Microservices Architecture**: Domain-driven service separation (Auth, Articles, Comments)
+- **Serverless First**: AWS Lambda functions with event-driven processing
+- **API Gateway Integration**: Unified API endpoint with Lambda Proxy integration
+- **DynamoDB Single Table**: Optimized NoSQL design with GSI for efficient queries
+- **JWT Authentication**: Stateless authentication shared across Lambda functions
 - **React Query**: Server state management with optimistic updates
 - **Component Composition**: UI built with composable shadcn/ui components
 
@@ -344,15 +364,18 @@ frontend/src/
 - **Dependencies**: React Query, Tailwind CSS, shadcn/ui components
 
 ### Backend Deployment
-- **Current**: Docker container for local development
-- **Target**: AWS ECS/Fargate (Phase 2 migration)
-- **Database**: SQLite file mounted as volume
-- **Health Check**: `GET /health` endpoint
+- **Current**: AWS Lambda functions (Phase 3 complete)
+- **Architecture**: Serverless microservices with API Gateway
+- **Database**: DynamoDB with pay-per-request billing
+- **Health Check**: API Gateway `/health` endpoint
 
 ### Environment Configuration
-- **Frontend**: `VITE_API_URL` environment variable for API endpoint
-- **Backend**: `DATABASE_URL`, `JWT_SECRET`, `PORT` environment variables
-- **Development**: Backend runs on localhost:8080, Frontend served from GitHub Pages
+- **Frontend**: `VITE_API_URL` environment variable for API Gateway endpoint
+- **Lambda Functions**: Environment variables for each service
+  - `USERS_TABLE_NAME`, `ARTICLES_TABLE_NAME`, `COMMENTS_TABLE_NAME`
+  - `JWT_SECRET` (shared across all functions)
+  - `NODE_ENV=production`
+- **Development**: Local development uses Docker Compose for backend simulation
 
 ## API Design
 
@@ -367,11 +390,11 @@ All responses follow standard RealWorld JSON format with consistent error handli
 ## Implementation Constraints
 
 ### Backend Constraints
-- **No external frameworks**: Use Go standard library only
-- **SQLite only**: No PostgreSQL/MySQL complexity (until Phase 3)
-- **JWT client-side storage**: No session management
-- **Prepared statements**: Prevent SQL injection
-- **Clean Architecture**: Strict layer separation
+- **Serverless First**: AWS Lambda functions only, no traditional servers
+- **DynamoDB Only**: NoSQL database with optimized table design
+- **JWT Stateless Authentication**: No session management, shared JWT utilities
+- **Go Standard Library**: Minimal external dependencies for Lambda optimization
+- **Microservices Architecture**: Domain-driven service separation
 
 ### Frontend Constraints
 - **No complex state management**: Context API + React Query only
@@ -381,11 +404,12 @@ All responses follow standard RealWorld JSON format with consistent error handli
 
 ## Development Methodology
 
-### Backend Development (TDD Required)
-- **Test-Driven Development**: Write failing tests first
-- **Clean Architecture**: Domain → Application → Infrastructure → Presentation
-- **Repository Pattern**: Database access abstraction
-- **SOLID Principles**: Especially Single Responsibility and Dependency Inversion
+### Backend Development (Serverless TDD)
+- **Test-Driven Development**: Write failing tests first for Lambda functions
+- **Microservices Architecture**: Auth → Articles → Comments service separation
+- **DynamoDB Repository Pattern**: NoSQL database access abstraction
+- **Lambda Optimization**: Fast cold starts, minimal memory usage
+- **SOLID Principles**: Single Responsibility per Lambda function
 
 ### Issue Management (Critical)
 - **GitHub CLI Required**: Use `gh` for all GitHub operations
@@ -403,11 +427,11 @@ When closing issues, include:
 ## Testing Strategy
 
 ### Backend Testing
-- **Unit Tests**: All business logic in `internal/` packages
-- **Integration Tests**: API endpoints with test database
-- **TDD Implementation**: Tests written before implementation
+- **Unit Tests**: All Lambda functions with mock DynamoDB
+- **Integration Tests**: API Gateway + Lambda integration testing
+- **TDD Implementation**: Tests written before Lambda implementation
 - **Coverage Target**: 80% minimum for core business logic
-- **Test Database**: Separate SQLite files for isolation
+- **Test Environment**: Local DynamoDB or DynamoDB Local for isolation
 
 ### Frontend Testing
 - **Component Tests**: Vitest + Testing Library
@@ -440,10 +464,11 @@ When closing issues, include:
 
 ## Tech Stack
 
-### Backend
+### Backend (Serverless)
 - **Language**: Go 1.23.6
-- **HTTP**: Standard `net/http` library
-- **Database**: SQLite with `github.com/mattn/go-sqlite3`
+- **Runtime**: AWS Lambda
+- **API**: API Gateway with Lambda Proxy Integration
+- **Database**: DynamoDB with AWS SDK for Go
 - **Auth**: JWT with `github.com/golang-jwt/jwt/v5`
 - **Password**: bcrypt with `golang.org/x/crypto/bcrypt`
 
@@ -457,25 +482,26 @@ When closing issues, include:
 
 ### Deployment
 - **Frontend**: GitHub Actions → GitHub Pages ✅
-- **Backend**: Docker → AWS ECS/Fargate with ALB ✅
-- **Database**: SQLite file storage (local, MVP approach)
-- **Infrastructure**: AWS CDK for cloud resources ✅
+- **Backend**: AWS Lambda functions with API Gateway ✅
+- **Database**: DynamoDB with pay-per-request billing ✅
+- **Infrastructure**: AWS CDK for serverless resources ✅
 - **Testing**: Playwright E2E + k6 Load Testing ✅
 
 ## Migration Planning
 
-**Phase 2 Complete** ✅ - Cloud migration successfully completed. Current focus is Phase 3 preparation. Key files for migration planning:
+**Phase 3 Complete** ✅ - Serverless migration successfully completed. Current focus is Phase 4 optimization. Key files for migration planning:
 - `docs/migration/PRD.md` - Migration requirements
 - `docs/migration/github-issue-guidelines.md` - Issue management process
 - `docs/github-variables.md` - CI/CD environment configuration guide
 - GitHub Issues track all migration progress with evidence-based completion
 
-### Completed Infrastructure:
-- **ECS/Fargate**: Container orchestration with Auto Scaling
-- **Application Load Balancer**: conduit-alb-1192151049.ap-northeast-2.elb.amazonaws.com
-- **JWT Authentication**: Fully functional with proper secret management
-- **CI/CD Pipeline**: Automated deployments with E2E testing
-- **Monitoring**: Comprehensive testing and verification infrastructure
+### Completed Serverless Infrastructure:
+- **Lambda Functions**: All microservices (Auth, Articles, Comments) deployed
+- **API Gateway**: Unified endpoint with Lambda Proxy Integration
+- **DynamoDB**: Optimized table design with GSI for performance
+- **JWT Authentication**: Fully functional across all Lambda functions
+- **CI/CD Pipeline**: Automated Lambda deployments with E2E testing
+- **Monitoring**: CloudWatch Logs and comprehensive testing infrastructure
 
 ## Workflow Management
 Do not manually trigger workflows; only start workflows through PR merges to avoid duplicate executions and failures.

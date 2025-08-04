@@ -17,7 +17,8 @@
 [![Go Version](https://img.shields.io/badge/Go-1.23.6-00ADD8?logo=go&logoColor=white)](https://golang.org/)
 [![React Version](https://img.shields.io/badge/React-19+-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![Vite Version](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![AWS](https://img.shields.io/badge/AWS-ECS/Fargate-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![AWS](https://img.shields.io/badge/AWS-Lambda%20%2B%20DynamoDB-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![Serverless](https://img.shields.io/badge/Architecture-Serverless-FD5750?logo=serverless&logoColor=white)](https://serverless.com/)
 
 > **"The mother of all demo apps"** — 실제 운영 가능한 수준의 Medium.com 클론 구축
 
@@ -41,15 +42,16 @@
    - CI/CD 파이프라인 구축 ✅
    - E2E/부하 테스트 인프라 구축 ✅
 
-3. **Phase 3: 마이크로서비스 분해** 📋 **계획됨**
-   - 도메인별 서비스 분리 (Auth, Articles, Comments)
-   - API Gateway + Lambda 함수
-   - DynamoDB/RDS 데이터 분산
+3. **Phase 3: 마이크로서비스 분해** ✅ **완료**
+   - 도메인별 서비스 분리 (Auth, Articles, Comments) ✅
+   - API Gateway + Lambda 함수 ✅
+   - DynamoDB 데이터 분산 및 최적화 ✅
+   - Lambda Proxy Integration 구현 ✅
 
-4. **Phase 4: 서버리스 최적화** 📋 **계획됨**
-   - 완전한 서버리스 아키텍처
-   - 이벤트 기반 아키텍처
-   - 모니터링 및 관찰성 구현
+4. **Phase 4: 서버리스 최적화** 📋 **진행 중**
+   - 완전한 서버리스 아키텍처 ✅
+   - 이벤트 기반 아키텍처 🔄
+   - CloudWatch 모니터링 및 알람 🔄
 
 ## 📚 목차
 
@@ -82,9 +84,9 @@
 
 ### 배포된 애플리케이션
 - **[현재 프론트엔드 데모](https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/)** - GitHub Pages 배포된 React 앱
-- **백엔드 API** - AWS ECS/Fargate 배포 완료 (ALB: `conduit-alb-*.ap-northeast-2.elb.amazonaws.com`)
+- **백엔드 API** - **AWS Lambda + API Gateway** 서버리스 아키텍처 ✅
 - **인증 시스템** - JWT 기반 완전 기능 인증 (회원가입, 로그인, 보호된 API 접근)
-- **데이터베이스** - 영구 데이터 저장 (SQLite 파일 시스템)
+- **데이터베이스** - **DynamoDB 분산 스토리지** (Users, Articles, Comments 테이블)
 
 ### 참고 자료
 - **[RealWorld 공식 데모](https://demo.realworld.io/)** - 완성된 애플리케이션 미리보기
@@ -130,12 +132,13 @@
 
 ## 🛠️ 기술 스택
 
-### 백엔드 (아르민 로나허 추천 스택)
+### 백엔드 (서버리스 마이크로서비스)
 - **언어**: Go 1.23.6
-- **웹 프레임워크**: net/http 표준 라이브러리 + 커스텀 미들웨어
-- **데이터베이스**: SQLite (순수 SQL 사용, ORM 없음)
-- **인증**: JWT 토큰 기반
-- **빌드 도구**: Makefile
+- **아키텍처**: AWS Lambda 함수 기반 마이크로서비스
+- **API**: API Gateway + Lambda Proxy Integration  
+- **데이터베이스**: DynamoDB (NoSQL, 서버리스)
+- **인증**: JWT 토큰 기반 (Lambda 레이어 공유)
+- **빌드 도구**: AWS CDK + Makefile
 
 ### 프론트엔드
 - **프레임워크**: React 19 + TypeScript
@@ -145,10 +148,11 @@
 - **빌드 도구**: Vite 7
 
 ### 배포 및 인프라
-- **컨테이너**: Docker & Docker Compose
-- **클라우드**: AWS (ECS/Fargate, ECR, EFS, VPC)
+- **서버리스**: AWS Lambda + API Gateway + DynamoDB
+- **클라우드**: AWS (Lambda, DynamoDB, API Gateway, CloudWatch)
 - **인프라 코드**: AWS CDK (TypeScript)
-- **CI/CD**: GitHub Actions
+- **CI/CD**: GitHub Actions (자동 Lambda 배포)
+- **모니터링**: CloudWatch Logs + CloudWatch Alarms
 
 ### 개발 도구
 - **AI 도구**: Claude Code
@@ -166,6 +170,125 @@
 - **👥 소셜 기능**: 사용자 팔로우, 게시글 좋아요
 - **🏷️ 태그 시스템**: 게시글 분류 및 필터링
 - **📱 반응형 디자인**: 모바일, 태블릿, 데스크톱 지원
+
+## 🏗️ 서버리스 마이크로서비스 아키텍처
+
+### 📊 아키텍처 개요
+
+이 프로젝트는 **모노리식 애플리케이션에서 서버리스 마이크로서비스로의 완전한 마이그레이션**을 완료했습니다.
+
+```mermaid
+graph TB
+    subgraph "Frontend (GitHub Pages)"
+        FE[React 19 + TypeScript<br/>Tailwind CSS + shadcn/ui]
+    end
+    
+    subgraph "AWS Serverless Infrastructure"
+        subgraph "API Layer"
+            AG[API Gateway<br/>Lambda Proxy Integration]
+        end
+        
+        subgraph "Compute Layer (Lambda Functions)"
+            AUTH[Auth Service<br/>register, login, getuser]
+            ART[Articles Service<br/>CRUD, favorites]
+            COM[Comments Service<br/>CRUD, validation]
+        end
+        
+        subgraph "Data Layer (DynamoDB)"
+            UT[Users Table<br/>GSI: email, username]
+            AT[Articles Table<br/>GSI: slug, author]
+            CT[Comments Table<br/>GSI: author, timestamp]
+        end
+        
+        subgraph "Monitoring"
+            CW[CloudWatch<br/>Logs + Alarms]
+        end
+    end
+    
+    FE --> AG
+    AG --> AUTH
+    AG --> ART
+    AG --> COM
+    
+    AUTH --> UT
+    ART --> AT
+    COM --> CT
+    COM --> AT
+    
+    AUTH --> CW
+    ART --> CW
+    COM --> CW
+```
+
+### 🔧 마이크로서비스 구성
+
+#### 1. **인증 서비스 (Auth Service)**
+- **Lambda 함수**: `conduit-auth-register`, `conduit-auth-login`, `conduit-auth-getuser`
+- **기능**: 사용자 등록/로그인, JWT 토큰 발급/검증, 프로필 관리
+- **DynamoDB**: `conduit-users` 테이블 (이메일/사용자명 GSI)
+
+#### 2. **게시글 서비스 (Articles Service)**  
+- **Lambda 함수**: `conduit-articles-list`, `conduit-articles-get`, `conduit-articles-create`, `conduit-articles-update`, `conduit-articles-delete`, `conduit-articles-favorite`
+- **기능**: 게시글 CRUD, 좋아요/북마크, 태그 관리, 슬러그 생성
+- **DynamoDB**: `conduit-articles` 테이블 (슬러그/작성자 GSI)
+
+#### 3. **댓글 서비스 (Comments Service)**
+- **Lambda 함수**: `conduit-comments-list`, `conduit-comments-create`, `conduit-comments-delete`
+- **기능**: 댓글 CRUD, 권한 검증, 게시글 연관 관리
+- **DynamoDB**: `conduit-comments` 테이블 (작성자/시간 GSI)
+
+### ⚡ 서버리스 아키텍처의 장점
+
+#### **확장성**
+- **자동 스케일링**: 트래픽에 따른 Lambda 자동 확장
+- **무제한 동시 실행**: 서비스별 독립적 확장
+
+#### **비용 효율성**
+- **사용량 기반 과금**: 실제 실행 시간만 과금
+- **서버 관리 불필요**: 인프라 관리 비용 제거
+
+#### **성능**
+- **콜드 스타트 최적화**: Go 1.23.6 + 최적화된 바이너리
+- **지역별 배포**: API Gateway 멀티 리전 지원
+
+#### **운영**
+- **무서버 운영**: 서버 패치/관리 불필요
+- **자동 장애 복구**: AWS 관리형 서비스 활용
+- **통합 모니터링**: CloudWatch 기반 로그/메트릭
+
+### 🛠️ DynamoDB 설계
+
+#### **Single Table Design**
+각 서비스별 독립적인 테이블 구조로 마이크로서비스 간 데이터 격리 보장:
+
+```yaml
+Users Table (conduit-users):
+  PK: USER#{user_id}
+  SK: METADATA | EMAIL#{email} | USERNAME#{username}
+  GSI: EmailIndex, UsernameIndex
+
+Articles Table (conduit-articles):  
+  PK: ARTICLE#{article_id} | USER#{user_id}
+  SK: METADATA | FAVORITE#{article_id}
+  GSI: SlugIndex, AuthorIndex
+
+Comments Table (conduit-comments):
+  PK: ARTICLE#{article_slug}
+  SK: COMMENT#{comment_id}
+  GSI: AuthorIndex
+```
+
+### 📈 성능 최적화
+
+#### **Lambda 최적화**
+- **런타임**: Go 1.23.6 (빠른 콜드 스타트)
+- **메모리**: 256MB (비용/성능 최적화)
+- **타임아웃**: 30초 (충분한 처리 시간)
+
+#### **DynamoDB 최적화**
+- **Pay-per-request**: 트래픽 변동에 따른 자동 확장
+- **글로벌 보조 인덱스**: 쿼리 성능 최적화
+- **프로젝션**: 필요한 속성만 인덱스에 포함
 
 ## 🧪 테스트 인프라
 
