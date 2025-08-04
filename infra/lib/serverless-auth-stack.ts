@@ -6,12 +6,12 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
-export interface ServerlessAuthStackProps {
+export interface ServerlessAuthStackProps extends cdk.NestedStackProps {
   // 기존 API Gateway와의 통합을 위한 props
   existingApi?: apigateway.RestApi;
 }
 
-export class ServerlessAuthStack extends Construct {
+export class ServerlessAuthStack extends cdk.NestedStack {
   public readonly api: apigateway.RestApi;
   public readonly usersTable: dynamodb.Table;
   public readonly registerFunction: lambda.Function;
@@ -231,6 +231,12 @@ export class ServerlessAuthStack extends Construct {
       value: this.api.restApiId,
       description: 'Auth API Gateway ID (shared with other services)',
       exportName: 'ConduitAuthApiId',
+    });
+
+    new cdk.CfnOutput(scope, 'ServerlessAuthApiRootResourceId', {
+      value: this.api.restApiRootResourceId,
+      description: 'Auth API Gateway Root Resource ID (shared with other services)',
+      exportName: 'ConduitAuthApiRootResourceId',
     });
 
     new cdk.CfnOutput(scope, 'UsersTableName', {
