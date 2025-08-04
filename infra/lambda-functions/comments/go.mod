@@ -1,6 +1,6 @@
 module github.com/vibe-coding-paradigm/conduit-comments
 
-go 1.23
+go 1.23.6
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
