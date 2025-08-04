@@ -82,15 +82,15 @@ export class ServerlessAuthStack extends cdk.NestedStack {
     // Register Lambda Function (Go)
     this.registerFunction = new lambda.Function(this, 'RegisterFunction', {
       functionName: 'conduit-auth-register',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'register',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/auth', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/register register.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap register.go'
           ],
         },
       }),
@@ -108,15 +108,15 @@ export class ServerlessAuthStack extends cdk.NestedStack {
     // Login Lambda Function (Go)
     this.loginFunction = new lambda.Function(this, 'LoginFunction', {
       functionName: 'conduit-auth-login',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'login',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/auth', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/login login.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap login.go'
           ],
         },
       }),
@@ -134,15 +134,15 @@ export class ServerlessAuthStack extends cdk.NestedStack {
     // Get User Lambda Function (Go)
     this.getUserFunction = new lambda.Function(this, 'GetUserFunction', {
       functionName: 'conduit-auth-getuser',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'getuser',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/auth', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/getuser getuser.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap getuser.go'
           ],
         },
       }),

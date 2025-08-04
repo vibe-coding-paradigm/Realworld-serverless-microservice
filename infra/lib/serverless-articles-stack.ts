@@ -99,15 +99,15 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // List Articles Lambda Function (Go)
     this.listArticlesFunction = new lambda.Function(this, 'ListArticlesFunction', {
       functionName: 'conduit-articles-list',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'list_articles',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/articles', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/list_articles list_articles.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap list_articles.go'
           ],
         },
       }),
@@ -125,15 +125,15 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Get Article Lambda Function (Go)
     this.getArticleFunction = new lambda.Function(this, 'GetArticleFunction', {
       functionName: 'conduit-articles-get',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'get_article',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/articles', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/get_article get_article.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap get_article.go'
           ],
         },
       }),
@@ -151,15 +151,15 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Create Article Lambda Function (Go)
     this.createArticleFunction = new lambda.Function(this, 'CreateArticleFunction', {
       functionName: 'conduit-articles-create',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'create_article',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/articles', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/create_article create_article.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap create_article.go'
           ],
         },
       }),
@@ -177,15 +177,15 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Update Article Lambda Function (Go)
     this.updateArticleFunction = new lambda.Function(this, 'UpdateArticleFunction', {
       functionName: 'conduit-articles-update',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'update_article',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/articles', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/update_article update_article.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap update_article.go'
           ],
         },
       }),
@@ -203,15 +203,15 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Delete Article Lambda Function (Go)
     this.deleteArticleFunction = new lambda.Function(this, 'DeleteArticleFunction', {
       functionName: 'conduit-articles-delete',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'delete_article',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/articles', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/delete_article delete_article.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap delete_article.go'
           ],
         },
       }),
@@ -229,15 +229,15 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Favorite Article Lambda Function (Go)
     this.favoriteArticleFunction = new lambda.Function(this, 'FavoriteArticleFunction', {
       functionName: 'conduit-articles-favorite',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'favorite_article',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/articles', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/favorite_article favorite_article.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap favorite_article.go'
           ],
         },
       }),

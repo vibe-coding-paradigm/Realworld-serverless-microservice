@@ -98,15 +98,15 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
     // List Comments Lambda Function (Go)
     this.listCommentsFunction = new lambda.Function(this, 'ListCommentsFunction', {
       functionName: 'conduit-comments-list',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'list_comments',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/comments', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/list_comments list_comments.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap list_comments.go'
           ],
         },
       }),
@@ -124,15 +124,15 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
     // Create Comment Lambda Function (Go)
     this.createCommentFunction = new lambda.Function(this, 'CreateCommentFunction', {
       functionName: 'conduit-comments-create',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'create_comment',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/comments', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/create_comment create_comment.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap create_comment.go'
           ],
         },
       }),
@@ -150,15 +150,15 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
     // Delete Comment Lambda Function (Go)
     this.deleteCommentFunction = new lambda.Function(this, 'DeleteCommentFunction', {
       functionName: 'conduit-comments-delete',
-      runtime: lambda.Runtime.GO_1_X,
-      handler: 'delete_comment',
+      runtime: lambda.Runtime.PROVIDED_AL2,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset('lambda-functions/comments', {
         bundling: {
-          image: lambda.Runtime.GO_1_X.bundlingImage,
+          image: lambda.Runtime.PROVIDED_AL2.bundlingImage,
           user: "root",
           command: [
             'bash', '-c',
-            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/delete_comment delete_comment.go'
+            'cd /asset-input && GOOS=linux GOARCH=amd64 go build -o /asset-output/bootstrap delete_comment.go'
           ],
         },
       }),
