@@ -8,11 +8,17 @@ function detectEnvironment() {
   const isCI = !!process.env.CI;
   const isLocal = frontendUrl?.includes('localhost') || (!frontendUrl && !isCI);
   
+  // Use environment variable API_URL first, then BACKEND_URL, then fallback to API Gateway URL
+  const apiUrl = process.env.API_URL || 
+                 process.env.BACKEND_URL || 
+                 process.env.VITE_API_URL ||
+                 'https://5hlad3iru9.execute-api.ap-northeast-2.amazonaws.com/prod/api';
+  
   return {
     isCI,
     isLocal,
     frontendUrl: frontendUrl || (isLocal ? 'http://localhost:3000' : 'https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice/'),
-    apiUrl: process.env.API_URL || 'https://d1ct76fqx0s1b8.cloudfront.net'
+    apiUrl
   };
 }
 

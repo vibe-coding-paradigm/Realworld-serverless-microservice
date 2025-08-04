@@ -31,7 +31,14 @@ export class ApiHelper {
     if (this.environment === 'local') {
       return 'http://localhost:8080/api';
     } else {
-      return 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+      // Use environment variable API_URL first, then BACKEND_URL, then fallback to API Gateway URL
+      const apiUrl = process.env.API_URL || 
+                     process.env.BACKEND_URL || 
+                     process.env.VITE_API_URL ||
+                     'https://5hlad3iru9.execute-api.ap-northeast-2.amazonaws.com/prod/api';
+      
+      // Ensure the URL ends with /api for consistency
+      return apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
     }
   }
 
@@ -39,7 +46,14 @@ export class ApiHelper {
     if (this.environment === 'local') {
       return 'http://localhost:8080';
     } else {
-      return 'https://d1ct76fqx0s1b8.cloudfront.net';
+      // Use environment variable API_URL first, then BACKEND_URL, then fallback to API Gateway URL
+      const apiUrl = process.env.API_URL || 
+                     process.env.BACKEND_URL || 
+                     process.env.VITE_API_URL ||
+                     'https://5hlad3iru9.execute-api.ap-northeast-2.amazonaws.com/prod/api';
+      
+      // Remove /api suffix for health check URL
+      return apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
     }
   }
 
