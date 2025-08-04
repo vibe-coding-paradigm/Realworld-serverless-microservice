@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ComputeStack } from './compute-stack';
+import { ServerlessAuthStack } from './serverless-auth-stack';
 import { ServerlessArticlesStack } from './serverless-articles-stack';
 import { ServerlessCommentsStack } from './serverless-comments-stack';
 import { ApiGatewayProxyStack } from './api-gateway-proxy-stack';
@@ -14,56 +15,76 @@ export class ConduitStack extends cdk.Stack {
       isDefault: true
     });
 
-    // Compute Stack (ECS/Fargate)
+    // Serverless Auth Stack
+    const serverlessAuthStack = new ServerlessAuthStack(this, 'ServerlessAuth', {});
+
+    // Serverless Articles Stack (integrated with Auth API)
+    const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {
+      authApi: serverlessAuthStack.api
+    });
+
+    // Serverless Comments Stack (integrated with shared API)
+    const serverlessCommentsStack = new ServerlessCommentsStack(this, 'ServerlessComments', {
+      existingApi: serverlessAuthStack.api,
+      articlesTable: serverlessArticlesStack.articlesTable,
+      existingArticlesResource: serverlessArticlesStack.articlesResource,
+      existingSlugResource: serverlessArticlesStack.articleBySlugResource,
+    });
+
+    // Keep ECS infrastructure for backward compatibility during migration
     const computeStack = new ComputeStack(this, 'Compute', {
       vpc: vpc
     });
 
-    // Temporarily disable serverless stacks to focus on API Gateway proxy
-    // TODO: Re-enable after fixing Go 1.23 toolchain issue
-    // const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {});
-    // const serverlessCommentsStack = new ServerlessCommentsStack(this, 'ServerlessComments', {
-    //   existingApi: serverlessArticlesStack.api,
-    //   articlesTable: serverlessArticlesStack.articlesTable,
-    //   existingArticlesResource: serverlessArticlesStack.articlesResource,
-    //   existingSlugResource: serverlessArticlesStack.articleBySlugResource,
-    // });
-
-    // API Gateway Proxy Stack (Proxy to ECS backend)
+    // API Gateway Proxy Stack (now proxies to Lambda instead of ECS)
     const apiGatewayProxyStack = new ApiGatewayProxyStack(this, 'ApiGatewayProxy', {
       loadBalancer: computeStack.loadBalancer
     });
 
     // Output important values
-    new cdk.CfnOutput(this, 'ClusterName', {
+    
+    // Primary Serverless API (Main API Gateway for Lambda functions)
+    new cdk.CfnOutput(this, 'ServerlessApiUrl', {
+      value: serverlessAuthStack.api.url,
+      description: 'Primary Serverless API Gateway URL (Auth + Articles + Comments)'
+    });
+
+    new cdk.CfnOutput(this, 'ServerlessApiId', {
+      value: serverlessAuthStack.api.restApiId,
+      description: 'Primary Serverless API Gateway ID'
+    });
+
+    // DynamoDB Tables
+    new cdk.CfnOutput(this, 'UsersTableName', {
+      value: serverlessAuthStack.usersTable.tableName,
+      description: 'DynamoDB Users Table Name'
+    });
+
+    new cdk.CfnOutput(this, 'ArticlesTableName', {
+      value: serverlessArticlesStack.articlesTable.tableName,
+      description: 'DynamoDB Articles Table Name'
+    });
+
+    new cdk.CfnOutput(this, 'CommentsTableName', {
+      value: serverlessCommentsStack.commentsTable.tableName,
+      description: 'DynamoDB Comments Table Name'
+    });
+
+    // Legacy ECS infrastructure (kept for backward compatibility)
+    new cdk.CfnOutput(this, 'LegacyClusterName', {
       value: computeStack.cluster.clusterName,
-      description: 'ECS Cluster Name'
+      description: 'Legacy ECS Cluster Name (for backward compatibility)'
     });
 
-    new cdk.CfnOutput(this, 'ServiceName', {
+    new cdk.CfnOutput(this, 'LegacyServiceName', {
       value: computeStack.service.serviceName,
-      description: 'ECS Service Name'
+      description: 'Legacy ECS Service Name (for backward compatibility)'
     });
 
-    // Temporarily disabled serverless outputs
-    // TODO: Re-enable after fixing Go 1.23 toolchain issue
-    // new cdk.CfnOutput(this, 'CombinedApiUrl', {
-    //   value: serverlessArticlesStack.api.url,
-    //   description: 'Serverless API Gateway URL (Articles + Auth + Comments)'
-    // });
-    // new cdk.CfnOutput(this, 'ArticlesTableName', {
-    //   value: serverlessArticlesStack.articlesTable.tableName,
-    //   description: 'DynamoDB Articles Table Name'
-    // });
-    // new cdk.CfnOutput(this, 'CommentsTableName', {
-    //   value: serverlessCommentsStack.commentsTable.tableName,
-    //   description: 'DynamoDB Comments Table Name'
-    // });
-
-    // API Gateway Proxy Stack Outputs
-    new cdk.CfnOutput(this, 'ProxyApiUrl', {
+    // Legacy API Gateway Proxy (now secondary)
+    new cdk.CfnOutput(this, 'LegacyProxyApiUrl', {
       value: apiGatewayProxyStack.restApi.url,
-      description: 'API Gateway Proxy URL for ECS backend'
+      description: 'Legacy API Gateway Proxy URL (for ECS fallback)'
     });
 
   }
