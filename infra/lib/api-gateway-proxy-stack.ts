@@ -173,8 +173,7 @@ export class ApiGatewayProxyStack extends Construct {
       }]
     });
 
-    // Health check endpoint (/health)
-    const healthResource = this.restApi.root.addResource('health');
+    // Health check endpoint integration with ALB (reusing existing healthResource)
     const healthIntegration = new apigateway.HttpIntegration(
       `http://${props.loadBalancer.loadBalancerDnsName}/health`,
       {
@@ -194,8 +193,8 @@ export class ApiGatewayProxyStack extends Construct {
       }
     );
 
-    // Add health check method
-    healthResource.addMethod('GET', healthIntegration, {
+    // Add additional health check method via ALB integration 
+    healthResource.addMethod('POST', healthIntegration, {
       methodResponses: [{
         statusCode: '200',
         responseParameters: {
@@ -205,30 +204,6 @@ export class ApiGatewayProxyStack extends Construct {
         }
       }, {
         statusCode: '500'
-      }]
-    });
-
-    // Add OPTIONS method for health endpoint CORS preflight
-    healthResource.addMethod('OPTIONS', new apigateway.MockIntegration({
-      integrationResponses: [{
-        statusCode: '200',
-        responseParameters: {
-          'method.response.header.Access-Control-Allow-Origin': "'*'",
-          'method.response.header.Access-Control-Allow-Headers': "'Content-Type,Authorization'",
-          'method.response.header.Access-Control-Allow-Methods': "'GET,OPTIONS'"
-        }
-      }],
-      requestTemplates: {
-        'application/json': '{"statusCode": 204}'
-      }
-    }), {
-      methodResponses: [{
-        statusCode: '200',
-        responseParameters: {
-          'method.response.header.Access-Control-Allow-Origin': true,
-          'method.response.header.Access-Control-Allow-Headers': true,
-          'method.response.header.Access-Control-Allow-Methods': true
-        }
       }]
     });
 
