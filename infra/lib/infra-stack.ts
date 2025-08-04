@@ -4,6 +4,7 @@ import { ComputeStack } from './compute-stack';
 import { ServerlessAuthStack } from './serverless-auth-stack';
 import { ServerlessArticlesStack } from './serverless-articles-stack';
 import { ServerlessCommentsStack } from './serverless-comments-stack';
+import { ApiGatewayProxyStack } from './api-gateway-proxy-stack';
 
 export class ConduitStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -33,6 +34,11 @@ export class ConduitStack extends cdk.Stack {
       articlesTable: serverlessArticlesStack.articlesTable, // Reference to articles table for validation
       existingArticlesResource: serverlessArticlesStack.articlesResource, // Existing /articles resource
       existingSlugResource: serverlessArticlesStack.articleBySlugResource, // Existing /articles/{slug} resource
+    });
+
+    // API Gateway Proxy Stack (Proxy to ECS backend)
+    const apiGatewayProxyStack = new ApiGatewayProxyStack(this, 'ApiGatewayProxy', {
+      loadBalancer: computeStack.loadBalancer
     });
 
     // Output important values
@@ -72,6 +78,12 @@ export class ConduitStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CommentsTableName', {
       value: serverlessCommentsStack.commentsTable.tableName,
       description: 'DynamoDB Comments Table Name'
+    });
+
+    // API Gateway Proxy Stack Outputs
+    new cdk.CfnOutput(this, 'ProxyApiUrl', {
+      value: apiGatewayProxyStack.restApi.url,
+      description: 'API Gateway Proxy URL for ECS backend'
     });
 
   }
