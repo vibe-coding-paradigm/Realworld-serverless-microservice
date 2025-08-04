@@ -1,9 +1,9 @@
 name: E2E Tests
 
 on:
-  # 백엔드와 프론트엔드 배포 워크플로우 완료 시 트리거
+  # 백엔드, 프론트엔드, 인프라 배포 워크플로우 완료 시 트리거
   workflow_run:
-    workflows: ["Deploy Backend to AWS", "Deploy Frontend to GitHub Pages"]
+    workflows: ["Deploy Backend to AWS", "Deploy Frontend to GitHub Pages", "Deploy Infrastructure"]
     types: [completed]
     branches: [main]
   # 스케줄 기반으로 주기적 실행 (매 시간 15분에 실행)
