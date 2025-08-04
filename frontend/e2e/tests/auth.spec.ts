@@ -201,7 +201,7 @@ test.describe('Authentication Flow', () => {
       
       // Monitor network requests
       const responsePromise = page.waitForResponse(response => 
-        response.url().includes('/api/users/login') && response.status() !== 0
+        response.url().includes('/users/login') && response.status() !== 0
       );
       
       await page.click('button[type="submit"]:has-text("Sign in")');

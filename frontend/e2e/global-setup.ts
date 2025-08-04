@@ -12,7 +12,7 @@ function detectEnvironment() {
   const apiUrl = process.env.API_URL || 
                  process.env.BACKEND_URL || 
                  process.env.VITE_API_URL ||
-                 'https://5hlad3iru9.execute-api.ap-northeast-2.amazonaws.com/prod/api';
+                 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1';
   
   return {
     isCI,

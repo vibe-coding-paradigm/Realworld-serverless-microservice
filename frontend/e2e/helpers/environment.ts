@@ -52,8 +52,8 @@ const ENVIRONMENT_CONFIGS: Record<Environment, EnvironmentConfig> = {
       basePath: '/Realworld-serverless-microservice'
     },
     backend: {
-      apiUrl: 'https://d1ct76fqx0s1b8.cloudfront.net/api',
-      healthUrl: 'https://d1ct76fqx0s1b8.cloudfront.net'
+      apiUrl: 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1',
+      healthUrl: 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1'
     },
     testing: {
       strategy: 'full-flow',
@@ -75,22 +75,27 @@ export function detectEnvironment(): Environment {
     return process.env.E2E_ENVIRONMENT as Environment;
   }
   
-  // Priority 2: CI environment detection
+  // Priority 2: Cloud backend URL presence
+  if (process.env.CLOUD_BACKEND_URL) {
+    return 'cloud';
+  }
+  
+  // Priority 3: CI environment detection
   if (process.env.CI) {
     return 'cloud';
   }
   
-  // Priority 3: API URL pattern detection
+  // Priority 4: API URL pattern detection
   if (process.env.API_URL && process.env.API_URL.includes('localhost')) {
     return 'local';
   }
   
-  // Priority 4: Playwright base URL detection
+  // Priority 5: Playwright base URL detection
   if (process.env.PLAYWRIGHT_BASE_URL && process.env.PLAYWRIGHT_BASE_URL.includes('localhost')) {
     return 'local';
   }
   
-  // Priority 5: Default to cloud for production testing
+  // Priority 6: Default to cloud for production testing
   return 'cloud';
 }
 
@@ -99,7 +104,35 @@ export function detectEnvironment(): Environment {
  */
 export function getEnvironmentConfig(): EnvironmentConfig {
   const environment = detectEnvironment();
-  const config = ENVIRONMENT_CONFIGS[environment];
+  const config = { ...ENVIRONMENT_CONFIGS[environment] };
+  
+  // Override with environment variables if available (for cloud environment)
+  if (environment === 'cloud') {
+    // Override backend API URL if environment variables are set
+    const dynamicApiUrl = process.env.CLOUD_BACKEND_URL ||
+                         process.env.BACKEND_URL ||
+                         process.env.API_URL ||
+                         process.env.VITE_API_URL;
+    
+    if (dynamicApiUrl) {
+      config.backend.apiUrl = dynamicApiUrl;
+      config.backend.healthUrl = dynamicApiUrl;
+    }
+    
+    // Override frontend URL if environment variables are set
+    const dynamicFrontendUrl = process.env.PLAYWRIGHT_BASE_URL ||
+                              process.env.FRONTEND_URL;
+    
+    if (dynamicFrontendUrl) {
+      if (dynamicFrontendUrl.includes('github.io')) {
+        config.frontend.baseUrl = 'https://vibe-coding-paradigm.github.io';
+        config.frontend.basePath = '/Realworld-serverless-microservice';
+      } else {
+        config.frontend.baseUrl = dynamicFrontendUrl;
+        config.frontend.basePath = '';
+      }
+    }
+  }
   
   // Only log during actual test execution, not during import
   if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
