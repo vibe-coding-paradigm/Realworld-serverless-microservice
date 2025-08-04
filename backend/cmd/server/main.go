@@ -99,7 +99,7 @@ func main() {
 	// Default API route
 	mux.HandleFunc("/api/", apiHandler)
 
-	fmt.Printf("🚀 RealWorld Conduit API server starting on port %s - ALB Health Check Fix Test\n", port)
+	fmt.Printf("🚀 RealWorld Conduit API server starting on port %s - API Gateway Integration Ready\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, handlers.CORSMiddleware(mux)))
 }
 
