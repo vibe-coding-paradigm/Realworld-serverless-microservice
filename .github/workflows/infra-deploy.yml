@@ -169,16 +169,67 @@ jobs:
             LB_URL=""
           fi
           
+          # Get API Gateway URL (Serverless)
+          API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+            --stack-name ConduitStack \
+            --query 'Stacks[0].Outputs[?OutputKey==`ServerlessApiUrl`].OutputValue' \
+            --output text --region ${{ vars.AWS_REGION }} 2>/dev/null || echo "")
+          
+          # Use API Gateway URL directly (no /api suffix needed)
+          if [ ! -z "$API_GATEWAY_URL" ] && [ "$API_GATEWAY_URL" != "None" ]; then
+            # Remove trailing slash
+            BACKEND_URL=$(echo "$API_GATEWAY_URL" | sed 's/\/$//')
+          else
+            BACKEND_URL=""
+          fi
+          
           echo "Cluster: $CLUSTER_NAME"
           echo "Load Balancer: $LB_URL"
+          echo "API Gateway: $API_GATEWAY_URL"
+          echo "Backend URL: $BACKEND_URL"
           
           # Set outputs
           echo "cluster-name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
           echo "load-balancer-url=$LB_URL" >> $GITHUB_OUTPUT
+          echo "api-gateway-url=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
+          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
           echo "deployment-status=completed" >> $GITHUB_OUTPUT
 
-  verify-infrastructure:
+  update-github-variables:
     needs: deploy-infrastructure
+    runs-on: ubuntu-latest
+    if: needs.deploy-infrastructure.outputs.backend-url != ''
+    
+    steps:
+      - name: Update GitHub Variables
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const backendUrl = '${{ needs.deploy-infrastructure.outputs.backend-url }}';
+            
+            if (backendUrl && backendUrl !== '') {
+              console.log(`🔧 Updating BACKEND_URL to: ${backendUrl}`);
+              
+              try {
+                await github.rest.actions.updateRepoVariable({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'BACKEND_URL',
+                  value: backendUrl
+                });
+                
+                console.log('✅ BACKEND_URL updated successfully');
+              } catch (error) {
+                console.error('❌ Failed to update BACKEND_URL:', error.message);
+                throw error;
+              }
+            } else {
+              console.log('⚠️ No backend URL found, skipping variable update');
+            }
+
+  verify-infrastructure:
+    needs: [deploy-infrastructure, update-github-variables]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -265,7 +316,7 @@ jobs:
           echo "  - Run E2E tests: gh workflow run e2e-tests.yml"
 
   trigger-e2e-tests:
-    needs: [verify-infrastructure]
+    needs: [verify-infrastructure, update-github-variables]
     runs-on: ubuntu-latest
     if: needs.deploy-infrastructure.outputs.deployment-status == 'completed'
     
