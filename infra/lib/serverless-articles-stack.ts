@@ -6,13 +6,12 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
-export interface ServerlessArticlesStackProps {
-  // 기존 인증 API Gateway와의 통합을 위한 props
-  authApi?: apigateway.RestApi;
+export interface ServerlessArticlesStackProps extends cdk.NestedStackProps {
+  // Parameters passed from parent stack
 }
 
-export class ServerlessArticlesStack extends Construct {
-  public readonly api: apigateway.RestApi;
+export class ServerlessArticlesStack extends cdk.NestedStack {
+  public readonly api: apigateway.IRestApi;
   public readonly articlesTable: dynamodb.Table;
   public readonly listArticlesFunction: lambda.Function;
   public readonly getArticleFunction: lambda.Function;
@@ -24,7 +23,18 @@ export class ServerlessArticlesStack extends Construct {
   public readonly articleBySlugResource: apigateway.Resource;
 
   constructor(scope: Construct, id: string, props?: ServerlessArticlesStackProps) {
-    super(scope, id);
+    super(scope, id, props);
+
+    // Parameters for cross-stack references
+    const authApiIdParam = new cdk.CfnParameter(this, 'AuthApiId', {
+      type: 'String',
+      description: 'Auth API Gateway ID from Auth Stack'
+    });
+
+    const authApiRootResourceIdParam = new cdk.CfnParameter(this, 'AuthApiRootResourceId', {
+      type: 'String', 
+      description: 'Auth API Gateway Root Resource ID from Auth Stack'
+    });
 
     // DynamoDB Articles Table with optimized design for both articles and favorites
     this.articlesTable = new dynamodb.Table(this, 'ArticlesTable', {
@@ -242,37 +252,11 @@ export class ServerlessArticlesStack extends Construct {
       }),
     });
 
-    // Use existing auth API or create new one
-    if (props?.authApi) {
-      this.api = props.authApi;
-    } else {
-      // Create new API Gateway REST API if no auth API provided
-      this.api = new apigateway.RestApi(this, 'ArticlesApi', {
-        restApiName: 'conduit-articles-api',
-        description: 'Conduit Articles Microservice API',
-        deployOptions: {
-          stageName: 'v1',
-          loggingLevel: apigateway.MethodLoggingLevel.INFO,
-          dataTraceEnabled: true,
-          metricsEnabled: true,
-        },
-        defaultCorsPreflightOptions: {
-          allowOrigins: [
-            'https://vibe-coding-paradigm.github.io',
-            'http://localhost:3000',
-          ],
-          allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-          allowHeaders: [
-            'Content-Type',
-            'Authorization',
-            'X-Amz-Date',
-            'X-Api-Key',
-            'X-Amz-Security-Token',
-          ],
-          allowCredentials: true,
-        },
-      });
-    }
+    // Import existing API Gateway from Auth Stack using parameters
+    this.api = apigateway.RestApi.fromRestApiAttributes(this, 'ImportedAuthApi', {
+      restApiId: authApiIdParam.valueAsString,
+      rootResourceId: authApiRootResourceIdParam.valueAsString,
+    });
 
     // Articles resource (/articles)
     this.articlesResource = this.api.root.addResource('articles');
@@ -326,12 +310,8 @@ export class ServerlessArticlesStack extends Construct {
     }));
 
     // Outputs for integration with existing infrastructure
-    new cdk.CfnOutput(scope, 'ServerlessArticlesApiUrl', {
-      value: this.api.url,
-      description: 'Articles API Gateway URL (shared with Auth)',
-      exportName: 'ConduitArticlesApiUrl',
-    });
-
+    // Note: URL is not available for imported APIs, use Auth stack's URL instead
+    
     new cdk.CfnOutput(scope, 'ServerlessArticlesApiId', {
       value: this.api.restApiId,
       description: 'Articles API Gateway ID (shared with Auth)',
@@ -348,6 +328,19 @@ export class ServerlessArticlesStack extends Construct {
       value: this.articlesTable.tableArn,
       description: 'DynamoDB Articles Table ARN',
       exportName: 'ConduitArticlesTableArn',
+    });
+
+    // Export resource IDs for Comments stack integration
+    new cdk.CfnOutput(scope, 'ArticlesResourceId', {
+      value: this.articlesResource.resourceId,
+      description: 'Articles Resource ID for integration',  
+      exportName: 'ConduitArticlesResourceId',
+    });
+
+    new cdk.CfnOutput(scope, 'ArticleBySlugResourceId', {
+      value: this.articleBySlugResource.resourceId,
+      description: 'Article by Slug Resource ID for integration',
+      exportName: 'ConduitArticleBySlugResourceId',
     });
   }
 }
