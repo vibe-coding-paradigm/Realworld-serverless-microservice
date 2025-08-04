@@ -1,13 +1,13 @@
 module github.com/vibe-coding-paradigm/realworld-serverless-articles
 
-go 1.21
+go 1.23.6
 
 require (
-	github.com/aws/aws-lambda-go v1.41.0
-	github.com/aws/aws-sdk-go v1.48.0
-	github.com/golang-jwt/jwt/v5 v5.2.0
-	github.com/google/uuid v1.5.0
-	github.com/stretchr/testify v1.8.4
+	github.com/aws/aws-lambda-go v1.47.0
+	github.com/aws/aws-sdk-go v1.55.5
+	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/google/uuid v1.6.0
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
