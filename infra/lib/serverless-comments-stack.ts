@@ -36,6 +36,16 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
       description: 'Articles Table Name from Articles Stack'
     });
 
+    const articlesResourceIdParam = new cdk.CfnParameter(this, 'ArticlesResourceId', {
+      type: 'String',
+      description: 'Articles Resource ID from Articles Stack'
+    });
+
+    const articleBySlugResourceIdParam = new cdk.CfnParameter(this, 'ArticleBySlugResourceId', {
+      type: 'String',
+      description: 'Article by Slug Resource ID from Articles Stack'
+    });
+
     // DynamoDB Comments Table with optimized design
     this.commentsTable = new dynamodb.Table(this, 'CommentsTable', {
       tableName: 'conduit-comments',
@@ -179,9 +189,12 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
       rootResourceId: authApiRootResourceIdParam.valueAsString,
     });
 
-    // Create articles resource hierarchy for comments
-    const articlesResource = this.api.root.addResource('articles');
-    const articleBySlugResource = articlesResource.addResource('{slug}');
+    // Import existing article by slug resource from Articles Stack
+    const articleBySlugResource = apigateway.Resource.fromResourceAttributes(this, 'ImportedArticleBySlugResource', {
+      resourceId: articleBySlugResourceIdParam.valueAsString,
+      restApi: this.api,
+      path: '/articles/{slug}'
+    });
 
     // Comments resource (/articles/{slug}/comments)
     const commentsResource = articleBySlugResource.addResource('comments');

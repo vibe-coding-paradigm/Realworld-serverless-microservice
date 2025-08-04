@@ -28,6 +28,8 @@ export class ConduitStack extends cdk.Stack {
         AuthApiId: serverlessAuthStack.api.restApiId,
         AuthApiRootResourceId: serverlessAuthStack.api.restApiRootResourceId,
         ArticlesTableName: serverlessArticlesStack.articlesTable.tableName,
+        ArticlesResourceId: serverlessArticlesStack.articlesResource.resourceId,
+        ArticleBySlugResourceId: serverlessArticlesStack.articleBySlugResource.resourceId,
       }
     });
     serverlessCommentsStack.addDependency(serverlessAuthStack);
