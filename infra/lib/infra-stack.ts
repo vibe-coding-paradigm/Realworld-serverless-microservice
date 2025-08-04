@@ -1,19 +1,14 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ComputeStack } from './compute-stack';
+// import { ComputeStack } from './compute-stack';  // DISABLED: ECS infrastructure removed after serverless migration
 import { ServerlessAuthStack } from './serverless-auth-stack';
 import { ServerlessArticlesStack } from './serverless-articles-stack';
 import { ServerlessCommentsStack } from './serverless-comments-stack';
-import { ApiGatewayProxyStack } from './api-gateway-proxy-stack';
+// import { ApiGatewayProxyStack } from './api-gateway-proxy-stack';  // DISABLED: ALB proxy no longer needed
 
 export class ConduitStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-
-    // Get default VPC
-    const vpc = cdk.aws_ec2.Vpc.fromLookup(this, 'DefaultVpc', {
-      isDefault: true
-    });
 
     // Serverless Auth Stack - Creates shared API Gateway
     const serverlessAuthStack = new ServerlessAuthStack(this, 'ServerlessAuth', {});
@@ -38,15 +33,10 @@ export class ConduitStack extends cdk.Stack {
     serverlessCommentsStack.addDependency(serverlessAuthStack);
     serverlessCommentsStack.addDependency(serverlessArticlesStack);
 
-    // Keep ECS infrastructure for backward compatibility during migration
-    const computeStack = new ComputeStack(this, 'Compute', {
-      vpc: vpc
-    });
-
-    // API Gateway Proxy Stack (now proxies to Lambda instead of ECS)
-    const apiGatewayProxyStack = new ApiGatewayProxyStack(this, 'ApiGatewayProxy', {
-      loadBalancer: computeStack.loadBalancer
-    });
+    // MIGRATION COMPLETE: ECS infrastructure has been fully replaced by serverless Lambda functions
+    // - No more compute-stack (ECS cluster, ALB, containers)
+    // - No more api-gateway-proxy-stack (ALB proxy)
+    // - Direct Lambda function integration via API Gateway
 
     // Output important values
     
@@ -77,22 +67,8 @@ export class ConduitStack extends cdk.Stack {
       description: 'DynamoDB Comments Table Name'
     });
 
-    // Legacy ECS infrastructure (kept for backward compatibility)
-    new cdk.CfnOutput(this, 'LegacyClusterName', {
-      value: computeStack.cluster.clusterName,
-      description: 'Legacy ECS Cluster Name (for backward compatibility)'
-    });
-
-    new cdk.CfnOutput(this, 'LegacyServiceName', {
-      value: computeStack.service.serviceName,
-      description: 'Legacy ECS Service Name (for backward compatibility)'
-    });
-
-    // Legacy API Gateway Proxy (now secondary)
-    new cdk.CfnOutput(this, 'LegacyProxyApiUrl', {
-      value: apiGatewayProxyStack.restApi.url,
-      description: 'Legacy API Gateway Proxy URL (for ECS fallback)'
-    });
+    // MIGRATION COMPLETED: All outputs now point to serverless infrastructure
+    // Legacy ECS and ALB infrastructure has been fully removed
 
   }
 }
