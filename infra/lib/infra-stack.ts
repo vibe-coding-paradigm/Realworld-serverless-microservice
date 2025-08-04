@@ -15,21 +15,28 @@ export class ConduitStack extends cdk.Stack {
       isDefault: true
     });
 
-    // Serverless Auth Stack
+    // Serverless Auth Stack - Creates shared API Gateway
     const serverlessAuthStack = new ServerlessAuthStack(this, 'ServerlessAuth', {});
 
-    // Serverless Articles Stack (integrated with Auth API)
+    // Serverless Articles Stack (uses exports from Auth stack)
     const serverlessArticlesStack = new ServerlessArticlesStack(this, 'ServerlessArticles', {
-      authApi: serverlessAuthStack.api
+      parameters: {
+        AuthApiId: serverlessAuthStack.api.restApiId,
+        AuthApiRootResourceId: serverlessAuthStack.api.restApiRootResourceId,
+      }
     });
+    serverlessArticlesStack.addDependency(serverlessAuthStack);
 
-    // Serverless Comments Stack (integrated with shared API)
+    // Serverless Comments Stack (uses exports from Auth and Articles stacks)  
     const serverlessCommentsStack = new ServerlessCommentsStack(this, 'ServerlessComments', {
-      existingApi: serverlessAuthStack.api,
-      articlesTable: serverlessArticlesStack.articlesTable,
-      existingArticlesResource: serverlessArticlesStack.articlesResource,
-      existingSlugResource: serverlessArticlesStack.articleBySlugResource,
+      parameters: {
+        AuthApiId: serverlessAuthStack.api.restApiId,
+        AuthApiRootResourceId: serverlessAuthStack.api.restApiRootResourceId,
+        ArticlesTableName: serverlessArticlesStack.articlesTable.tableName,
+      }
     });
+    serverlessCommentsStack.addDependency(serverlessAuthStack);
+    serverlessCommentsStack.addDependency(serverlessArticlesStack);
 
     // Keep ECS infrastructure for backward compatibility during migration
     const computeStack = new ComputeStack(this, 'Compute', {

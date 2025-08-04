@@ -140,32 +140,9 @@ jobs:
           
           echo "🚀 Deploying infrastructure..."
           
-          if [ "${{ needs.detect-changes.outputs.deploy-all }}" = "true" ]; then
-            echo "Deploying complete infrastructure..."
-            npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
-          else
-            # Deploy specific stacks
-            STACKS_TO_DEPLOY=""
-            
-            if [ "${{ needs.detect-changes.outputs.compute }}" = "true" ]; then
-              STACKS_TO_DEPLOY="$STACKS_TO_DEPLOY ConduitStack/Compute"
-            fi
-            
-            if [ "${{ needs.detect-changes.outputs.storage }}" = "true" ]; then
-              STACKS_TO_DEPLOY="$STACKS_TO_DEPLOY ConduitStack/Storage"
-            fi
-            
-            if [ "${{ needs.detect-changes.outputs.serverless }}" = "true" ]; then
-              STACKS_TO_DEPLOY="$STACKS_TO_DEPLOY ConduitStack/ServerlessAuth ConduitStack/ServerlessArticles ConduitStack/ServerlessComments"
-            fi
-            
-            if [ ! -z "$STACKS_TO_DEPLOY" ]; then
-              echo "Deploying stacks:$STACKS_TO_DEPLOY"
-              npx cdk deploy $STACKS_TO_DEPLOY --require-approval never --outputs-file cdk-outputs.json
-            else
-              echo "No infrastructure changes detected"
-            fi
-          fi
+          # Deploy single stack with nested stacks
+          echo "Deploying ConduitStack with nested serverless stacks..."
+          npx cdk deploy ConduitStack --require-approval never --outputs-file cdk-outputs.json
 
       - name: Get deployment outputs
         id: outputs
