@@ -1,9 +1,9 @@
 name: E2E Tests
 
 on:
-  # 백엔드, 프론트엔드, 인프라 배포 워크플로우 완료 시 트리거
+  # 프론트엔드, 인프라 배포 워크플로우 완료 시 트리거 (백엔드는 인프라에 포함)
   workflow_run:
-    workflows: ["Deploy Backend to AWS", "Deploy Frontend to GitHub Pages", "Deploy Infrastructure"]
+    workflows: ["Deploy Frontend to GitHub Pages", "Deploy Infrastructure"]
     types: [completed]
     branches: [main]
   # 스케줄 기반으로 주기적 실행 (매 시간 15분에 실행)
@@ -66,10 +66,11 @@ jobs:
             await new Promise(resolve => setTimeout(resolve, 10000));
             
             // Get recent workflow runs for both deployments for this specific commit
+            // Note: Backend deployments happen via infra-deploy.yml (Lambda functions)
             const backendRuns = await github.rest.actions.listWorkflowRunsForRepo({
               owner,
               repo,
-              workflow_id: 'backend-deploy.yml',
+              workflow_id: 'infra-deploy.yml',
               branch: 'main',
               per_page: 20
             });
