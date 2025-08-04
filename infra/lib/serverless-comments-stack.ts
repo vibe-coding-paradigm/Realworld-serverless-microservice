@@ -6,23 +6,35 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
-export interface ServerlessCommentsStackProps {
-  // 기존 API Gateway와의 통합을 위한 props
-  existingApi?: apigateway.RestApi;
-  articlesTable?: dynamodb.ITable;
-  existingArticlesResource?: apigateway.Resource;
-  existingSlugResource?: apigateway.Resource;
+export interface ServerlessCommentsStackProps extends cdk.NestedStackProps {
+  // Parameters passed from parent stack  
 }
 
-export class ServerlessCommentsStack extends Construct {
-  public readonly api: apigateway.RestApi;
+export class ServerlessCommentsStack extends cdk.NestedStack {
+  public readonly api: apigateway.IRestApi;
   public readonly commentsTable: dynamodb.Table;
   public readonly listCommentsFunction: lambda.Function;
   public readonly createCommentFunction: lambda.Function;
   public readonly deleteCommentFunction: lambda.Function;
 
   constructor(scope: Construct, id: string, props?: ServerlessCommentsStackProps) {
-    super(scope, id);
+    super(scope, id, props);
+
+    // Parameters for cross-stack references
+    const authApiIdParam = new cdk.CfnParameter(this, 'AuthApiId', {
+      type: 'String',
+      description: 'Auth API Gateway ID from Auth Stack'
+    });
+
+    const authApiRootResourceIdParam = new cdk.CfnParameter(this, 'AuthApiRootResourceId', {
+      type: 'String',
+      description: 'Auth API Gateway Root Resource ID from Auth Stack'
+    });
+
+    const articlesTableNameParam = new cdk.CfnParameter(this, 'ArticlesTableName', {
+      type: 'String',
+      description: 'Articles Table Name from Articles Stack'
+    });
 
     // DynamoDB Comments Table with optimized design
     this.commentsTable = new dynamodb.Table(this, 'CommentsTable', {
@@ -55,10 +67,15 @@ export class ServerlessCommentsStack extends Construct {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // Import existing Articles Table using parameter
+    const articlesTable = dynamodb.Table.fromTableName(this, 'ImportedArticlesTable', 
+      articlesTableNameParam.valueAsString
+    );
+
     // Common Lambda environment variables
     const commonEnv = {
       COMMENTS_TABLE_NAME: this.commentsTable.tableName,
-      ARTICLES_TABLE_NAME: props?.articlesTable?.tableName || 'conduit-articles',
+      ARTICLES_TABLE_NAME: articlesTableNameParam.valueAsString,
       JWT_SECRET: 'your-super-secure-jwt-secret-key-for-conduit-app-2025', // TODO: Move to AWS Secrets Manager
       NODE_ENV: 'production',
     };
@@ -75,10 +92,8 @@ export class ServerlessCommentsStack extends Construct {
     // Add DynamoDB permissions for comments table
     this.commentsTable.grantReadWriteData(lambdaRole);
     
-    // Add read permissions for articles table if provided
-    if (props?.articlesTable) {
-      props.articlesTable.grantReadData(lambdaRole);
-    }
+    // Add read permissions for articles table
+    articlesTable.grantReadData(lambdaRole);
 
     // List Comments Lambda Function (Go)
     this.listCommentsFunction = new lambda.Function(this, 'ListCommentsFunction', {
@@ -158,50 +173,15 @@ export class ServerlessCommentsStack extends Construct {
       }),
     });
 
-    // Use existing API Gateway or create new one
-    if (props?.existingApi) {
-      this.api = props.existingApi;
-    } else {
-      // Create new API Gateway REST API if no existing API provided
-      this.api = new apigateway.RestApi(this, 'CommentsApi', {
-        restApiName: 'conduit-comments-api',
-        description: 'Conduit Comments Microservice API',
-        deployOptions: {
-          stageName: 'v1',
-          loggingLevel: apigateway.MethodLoggingLevel.INFO,
-          dataTraceEnabled: true,
-          metricsEnabled: true,
-        },
-        defaultCorsPreflightOptions: {
-          allowOrigins: [
-            'https://vibe-coding-paradigm.github.io',
-            'http://localhost:3000',
-          ],
-          allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-          allowHeaders: [
-            'Content-Type',
-            'Authorization',
-            'X-Amz-Date',
-            'X-Api-Key',
-            'X-Amz-Security-Token',
-          ],
-          allowCredentials: true,
-        },
-      });
-    }
+    // Import existing API Gateway from Auth Stack using parameters
+    this.api = apigateway.RestApi.fromRestApiAttributes(this, 'ImportedAuthApi', {
+      restApiId: authApiIdParam.valueAsString,
+      rootResourceId: authApiRootResourceIdParam.valueAsString,
+    });
 
-    // Use existing resources if provided, otherwise create new ones
-    let articlesResource: apigateway.Resource;
-    let articleBySlugResource: apigateway.Resource;
-    
-    if (props?.existingArticlesResource && props?.existingSlugResource) {
-      articlesResource = props.existingArticlesResource;
-      articleBySlugResource = props.existingSlugResource;
-    } else {
-      // Create new resources for standalone API
-      articlesResource = this.api.root.addResource('articles');
-      articleBySlugResource = articlesResource.addResource('{slug}');
-    }
+    // Create articles resource hierarchy for comments
+    const articlesResource = this.api.root.addResource('articles');
+    const articleBySlugResource = articlesResource.addResource('{slug}');
 
     // Comments resource (/articles/{slug}/comments)
     const commentsResource = articleBySlugResource.addResource('comments');
@@ -228,12 +208,8 @@ export class ServerlessCommentsStack extends Construct {
     }));
 
     // Outputs for integration with existing infrastructure
-    new cdk.CfnOutput(scope, 'ServerlessCommentsApiUrl', {
-      value: this.api.url,
-      description: 'Comments API Gateway URL (shared with existing services)',
-      exportName: 'ConduitCommentsApiUrl',
-    });
-
+    // Note: URL is not available for imported APIs, use Auth stack's URL instead
+    
     new cdk.CfnOutput(scope, 'ServerlessCommentsApiId', {
       value: this.api.restApiId,
       description: 'Comments API Gateway ID (shared with existing services)',
