@@ -51,7 +51,8 @@ func (r *DynamoDBRepository) ListCommentsByArticle(articleSlug string) ([]models
 		return nil, fmt.Errorf("failed to query comments: %w", err)
 	}
 
-	var comments []models.Comment
+	// Initialize with empty slice to ensure JSON serialization returns [] not null
+	comments := make([]models.Comment, 0)
 	for _, item := range result.Items {
 		var comment models.Comment
 		err := dynamodbattribute.UnmarshalMap(item, &comment)

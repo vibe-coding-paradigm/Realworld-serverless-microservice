@@ -52,8 +52,8 @@ const ENVIRONMENT_CONFIGS: Record<Environment, EnvironmentConfig> = {
       basePath: '/Realworld-serverless-microservice'
     },
     backend: {
-      apiUrl: 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1',
-      healthUrl: 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1'
+      apiUrl: 'https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1',
+      healthUrl: 'https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1'
     },
     testing: {
       strategy: 'full-flow',

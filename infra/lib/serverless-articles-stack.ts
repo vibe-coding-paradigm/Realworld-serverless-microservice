@@ -264,13 +264,11 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // List articles endpoint (GET /articles)
     this.articlesResource.addMethod('GET', new apigateway.LambdaIntegration(this.listArticlesFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Create article endpoint (POST /articles)
     this.articlesResource.addMethod('POST', new apigateway.LambdaIntegration(this.createArticleFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Article by slug resource (/articles/{slug})
@@ -279,19 +277,16 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Get article endpoint (GET /articles/{slug})
     this.articleBySlugResource.addMethod('GET', new apigateway.LambdaIntegration(this.getArticleFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Update article endpoint (PUT /articles/{slug})
     this.articleBySlugResource.addMethod('PUT', new apigateway.LambdaIntegration(this.updateArticleFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Delete article endpoint (DELETE /articles/{slug})
     this.articleBySlugResource.addMethod('DELETE', new apigateway.LambdaIntegration(this.deleteArticleFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Favorite/unfavorite resource (/articles/{slug}/favorite)
@@ -300,13 +295,11 @@ export class ServerlessArticlesStack extends cdk.NestedStack {
     // Favorite article endpoint (POST /articles/{slug}/favorite)
     favoriteResource.addMethod('POST', new apigateway.LambdaIntegration(this.favoriteArticleFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Unfavorite article endpoint (DELETE /articles/{slug}/favorite)
     favoriteResource.addMethod('DELETE', new apigateway.LambdaIntegration(this.favoriteArticleFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Outputs for integration with existing infrastructure

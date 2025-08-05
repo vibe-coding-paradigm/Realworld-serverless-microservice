@@ -32,7 +32,7 @@ const API_BASE_URL = (() => {
         return import.meta.env.VITE_API_URL;
       } else {
         console.log('🧪 E2E Test (Cloud): Using default API Gateway URL');
-        return 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1';
+        return 'https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1';
       }
     }
   }
@@ -55,7 +55,7 @@ const API_BASE_URL = (() => {
   
   if (isProduction && isGitHubPages) {
     console.log('✅ Production (GitHub Pages): Using CloudFront backend');
-    return 'https://d1ct76fqx0s1b8.cloudfront.net/api';
+    return 'https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1';
   }
   
   // Priority 5: Local development fallback

@@ -202,13 +202,11 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
     // List comments endpoint (GET /articles/{slug}/comments)
     commentsResource.addMethod('GET', new apigateway.LambdaIntegration(this.listCommentsFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Create comment endpoint (POST /articles/{slug}/comments)
     commentsResource.addMethod('POST', new apigateway.LambdaIntegration(this.createCommentFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Comment by ID resource (/articles/{slug}/comments/{id})
@@ -217,7 +215,6 @@ export class ServerlessCommentsStack extends cdk.NestedStack {
     // Delete comment endpoint (DELETE /articles/{slug}/comments/{id})
     commentByIdResource.addMethod('DELETE', new apigateway.LambdaIntegration(this.deleteCommentFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Outputs for integration with existing infrastructure

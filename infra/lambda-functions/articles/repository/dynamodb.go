@@ -164,8 +164,8 @@ func (r *DynamoDBRepository) GetAll(filter models.ArticleFilter, userID string) 
 		items = result.Items
 	}
 	
-	// Convert to articles
-	var allArticles []models.Article
+	// Convert to articles - Initialize with empty slice to ensure JSON serialization returns [] not null
+	allArticles := make([]models.Article, 0)
 	for _, item := range items {
 		var article models.Article
 		err = dynamodbattribute.UnmarshalMap(item, &article)

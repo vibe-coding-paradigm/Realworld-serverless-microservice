@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
       __DEV_API_URL__: mode === 'development' 
         ? process.env.VITE_API_URL 
           ? 'undefined'  // Let VITE_API_URL take precedence in E2E tests
-          : '"https://d1ct76fqx0s1b8.cloudfront.net"'
+          : '"https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com"'
         : 'undefined'
     }
   };

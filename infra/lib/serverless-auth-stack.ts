@@ -172,10 +172,7 @@ export class ServerlessAuthStack extends cdk.NestedStack {
           metricsEnabled: true,
         },
         defaultCorsPreflightOptions: {
-          allowOrigins: [
-            'https://vibe-coding-paradigm.github.io',
-            'http://localhost:3000',
-          ],
+          allowOrigins: ['*'],  // Allow all origins for E2E testing (Playwright, null origin, file://)
           allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
           allowHeaders: [
             'Content-Type',
@@ -195,14 +192,12 @@ export class ServerlessAuthStack extends cdk.NestedStack {
     // Register endpoint (POST /users)
     this.usersResource.addMethod('POST', new apigateway.LambdaIntegration(this.registerFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Login endpoint (POST /users/login)
     const loginResource = this.usersResource.addResource('login');
     loginResource.addMethod('POST', new apigateway.LambdaIntegration(this.loginFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // User resource (/user)
@@ -211,13 +206,11 @@ export class ServerlessAuthStack extends cdk.NestedStack {
     // Get user endpoint (GET /user)
     this.userResource.addMethod('GET', new apigateway.LambdaIntegration(this.getUserFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Update user endpoint (PUT /user)
     this.userResource.addMethod('PUT', new apigateway.LambdaIntegration(this.getUserFunction, {
       proxy: true,
-      allowTestInvoke: true,
     }));
 
     // Outputs for integration with existing infrastructure
