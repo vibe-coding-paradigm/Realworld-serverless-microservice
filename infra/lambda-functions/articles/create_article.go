@@ -106,16 +106,13 @@ func CreateArticleHandler(ctx context.Context, request events.APIGatewayProxyReq
 		return utils.ErrorResponse(500, "server", "Failed to create article")
 	}
 
-	// Get the created article with full details
-	createdArticle, err := repo.GetBySlug(article.Slug, claims.UserID)
-	if err != nil {
-		log.Printf("Failed to get created article: %v", err)
-		return utils.ErrorResponse(500, "server", "Article created but failed to retrieve")
-	}
+	// Use the created article directly (no GSI query needed)
+	// This avoids DynamoDB GSI eventual consistency issues
+	article.SetAuthorInfo() // Ensure author info is properly set
 
 	// Prepare response
 	response := models.ArticleResponse{
-		Article: *createdArticle,
+		Article: *article,
 	}
 
 	return utils.SuccessResponse(201, response)

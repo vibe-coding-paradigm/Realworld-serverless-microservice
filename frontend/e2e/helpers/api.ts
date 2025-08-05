@@ -28,7 +28,7 @@ export class ApiHelper {
    * 
    * Primary Key queries use Strong Consistency and don't need this wait.
    */
-  async waitForConsistency(ms: number = 2000) {
+  async waitForConsistency(ms: number = 5000) {
     console.log(`⏳ Waiting ${ms}ms for DynamoDB GSI eventual consistency...`);
     await new Promise(resolve => setTimeout(resolve, ms));
   }
