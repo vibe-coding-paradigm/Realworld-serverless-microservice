@@ -27,6 +27,9 @@ test.describe('Comments API Tests', () => {
     expect(articleData).toBeTruthy();
     expect(articleData.article.slug).toBeTruthy();
     articleSlug = articleData.article.slug;
+    
+    // Wait for DynamoDB GSI (SlugIndex) eventual consistency after article creation
+    await api.waitForConsistency();
   });
 
   test('should get comments list for existing article', async () => {

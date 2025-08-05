@@ -107,6 +107,9 @@ test.describe('Articles Management', () => {
       
       const articleSlug = articleData.article.slug;
       
+      // Wait for DynamoDB GSI (SlugIndex) eventual consistency after article creation
+      await api.waitForConsistency();
+      
       // 3. Skip frontend verification due to localhost referer issue
       // This is a known limitation in local development environment
       console.log('ℹ️ Skipping frontend verification due to localhost referer limitation');
