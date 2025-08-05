@@ -74,28 +74,28 @@ func (r *DynamoDBRepository) Create(article *models.Article, authorID string, au
 	return nil
 }
 
-// GetBySlug retrieves an article by its slug
+// GetBySlug retrieves an article by its slug using Primary Key (Strong Consistency)
 func (r *DynamoDBRepository) GetBySlug(slug string, userID string) (*models.Article, error) {
-	// Use GSI to find article by slug
-	result, err := r.dynamoClient.Query(&dynamodb.QueryInput{
-		TableName:              aws.String(r.tableName),
-		IndexName:              aws.String("SlugIndex"),
-		KeyConditionExpression: aws.String("slug = :slug"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":slug": {S: aws.String(slug)},
+	// Use Primary Key for strong consistency (no more GSI!)
+	result, err := r.dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String("ARTICLE#" + slug)},
+			"SK": {S: aws.String("METADATA")},
 		},
+		ConsistentRead: aws.Bool(true), // Strong consistency guaranteed
 	})
 	
 	if err != nil {
-		return nil, fmt.Errorf("failed to query article by slug: %w", err)
+		return nil, fmt.Errorf("failed to get article by slug: %w", err)
 	}
 	
-	if len(result.Items) == 0 {
+	if result.Item == nil {
 		return nil, fmt.Errorf("article not found")
 	}
 	
 	var article models.Article
-	err = dynamodbattribute.UnmarshalMap(result.Items[0], &article)
+	err = dynamodbattribute.UnmarshalMap(result.Item, &article)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal article: %w", err)
 	}
@@ -359,7 +359,7 @@ func (r *DynamoDBRepository) FavoriteArticle(slug string, userID string) (*model
 	}
 	
 	// Increment favorites count
-	err = r.incrementFavoritesCount(article.ArticleID, 1)
+	err = r.incrementFavoritesCount(article.Slug, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to increment favorites count: %w", err)
 	}
@@ -396,7 +396,7 @@ func (r *DynamoDBRepository) UnfavoriteArticle(slug string, userID string) (*mod
 	}
 	
 	// Decrement favorites count
-	err = r.incrementFavoritesCount(article.ArticleID, -1)
+	err = r.incrementFavoritesCount(article.Slug, -1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrement favorites count: %w", err)
 	}
@@ -456,8 +456,8 @@ func (r *DynamoDBRepository) isArticleFavorited(userID, articleID string) (bool,
 }
 
 // incrementFavoritesCount increments or decrements the favorites count for an article with strong consistency
-func (r *DynamoDBRepository) incrementFavoritesCount(articleID string, delta int) error {
-	article := &models.Article{ArticleID: articleID}
+func (r *DynamoDBRepository) incrementFavoritesCount(slug string, delta int) error {
+	article := &models.Article{Slug: slug}
 	article.SetPrimaryKey()
 	
 	// Note: UpdateItem doesn't support ConsistentRead, but it provides strong consistency by default

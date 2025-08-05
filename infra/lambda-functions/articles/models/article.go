@@ -7,7 +7,7 @@ import (
 // Article represents a blog article in DynamoDB
 type Article struct {
 	// DynamoDB Keys
-	PK string `json:"-" dynamodbav:"PK"` // ARTICLE#<article_id>
+	PK string `json:"-" dynamodbav:"PK"` // ARTICLE#<slug>
 	SK string `json:"-" dynamodbav:"SK"` // METADATA
 
 	// Article fields
@@ -91,7 +91,7 @@ type ArticleFilter struct {
 
 // SetPrimaryKey sets the DynamoDB primary key for an article
 func (a *Article) SetPrimaryKey() {
-	a.PK = "ARTICLE#" + a.ArticleID
+	a.PK = "ARTICLE#" + a.Slug
 	a.SK = "METADATA"
 }
 
