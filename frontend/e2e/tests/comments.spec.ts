@@ -523,54 +523,24 @@ test.describe('Comments System E2E Tests', () => {
       // Use smart login (environment-aware)
       await smartLogin(page, testUser, userToken);
       
-      // Step 1: Create article via UI
-      await page.click('a:has-text("New Article")');
-      await expect(page.locator('h1:has-text("New Article")')).toBeVisible();
-      
+      // Step 1: Create article via API (more reliable than UI in E2E environment)
       const testArticle = generateTestArticle();
-      await page.locator('input[name="title"]').fill(testArticle.title);
-      await page.locator('input[name="description"]').fill(testArticle.description);
-      await page.locator('textarea[name="body"]').fill(testArticle.body);
-      
-      const articleResponsePromise = page.waitForResponse(response => 
-        response.url().includes('/api/articles') && response.request().method() === 'POST'
-      );
-      
-      await page.click('button:has-text("Publish Article")');
-      
-      const articleResponse = await articleResponsePromise;
+      const { response: articleResponse, data: articleData } = await api.createArticle(testArticle, userToken);
       expect(articleResponse.status()).toBe(201);
+      expect(articleData.article.slug).toBeTruthy();
       
-      // Wait for redirect to article page
+      const articleSlug = articleData.article.slug;
+      
+      // Wait for article to be available for navigation (retry-based validation)
+      await api.waitForArticle(articleSlug, userToken);
+      
+      // Step 2: Navigate to article page
+      await navigateToPage(page, `/article/${articleSlug}`);
       await page.waitForLoadState('networkidle');
       
-      // Debug: log current URL
-      const currentUrl = page.url();
-      console.log(`Current URL after article creation: ${currentUrl}`);
-      
-      // If we're still on editor page, wait for potential delayed redirect
-      if (currentUrl.includes('/editor')) {
-        console.log('Still on editor page, waiting for redirect...');
-        await page.waitForTimeout(5000);
-        const finalUrl = page.url();
-        console.log(`Final URL after extended wait: ${finalUrl}`);
-        
-        // If we're still on editor, there's likely a frontend issue but API succeeded
-        // Let's navigate to the home page and find the article there
-        if (finalUrl.includes('/editor')) {
-          console.log('Redirect failed, navigating to home to find the article...');
-          await navigateToPage(page, '/');
-          
-          // Look for the article on the home page
-          const articleTitle = testArticle.title;
-          const articleLinkLocator = page.locator(`a:has-text("${articleTitle}")`);
-          await expect(articleLinkLocator).toBeVisible({ timeout: 10000 });
-          await articleLinkLocator.click();
-          await page.waitForLoadState('networkidle');
-        }
-      }
-      
-      expect(page.url()).toContain('/article/');
+      // Verify article page loaded correctly
+      await expect(page.locator(`h1:has-text("${testArticle.title}")`)).toBeVisible({ timeout: 10000 });
+      console.log(`✅ Article page loaded: ${testArticle.title}`);
       
       // Step 3: Add multiple comments
       const comments = [

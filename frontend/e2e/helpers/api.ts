@@ -73,15 +73,25 @@ export class ApiHelper {
   }
 
   async healthCheck() {
-    // For serverless API Gateway, use articles endpoint as health check
-    const response = await this.request.get(`${this.healthURL}/articles`);
-    // 403 or 401 is expected for unauthenticated requests, indicating the API is alive
-    expect([200, 401, 403].includes(response.status())).toBeTruthy();
-    if (response.ok()) {
-      return await response.json();
-    } else {
-      // Return status for debugging
-      return { status: response.status(), message: 'API is responsive' };
+    try {
+      // For serverless API Gateway, use articles endpoint as health check
+      const response = await this.request.get(`${this.healthURL}/articles`);
+      const status = response.status();
+      
+      // 200, 401, 403 are all acceptable - means API is responsive
+      if ([200, 401, 403].includes(status)) {
+        if (response.ok()) {
+          const data = await response.json();
+          return { status, message: 'API is responsive', data };
+        } else {
+          return { status, message: 'API is responsive' };
+        }
+      } else {
+        throw new Error(`Unexpected API response status: ${status}`);
+      }
+    } catch (error) {
+      console.error('Health check failed:', error);
+      throw error;
     }
   }
 

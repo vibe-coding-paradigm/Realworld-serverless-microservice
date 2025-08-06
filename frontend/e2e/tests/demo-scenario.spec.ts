@@ -67,8 +67,8 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     
     await test.step('백엔드 연결 및 기존 게시글 확인', async () => {
       // API 요청을 통한 백엔드 연결 확인 (GitHub Variables 사용)
-      const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://d1ct76fqx0s1b8.cloudfront.net';
-      const response = await page.request.get(`${apiUrl}${apiUrl.endsWith('/api') ? '' : '/api'}/articles`);
+      const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1';
+      const response = await page.request.get(`${apiUrl}/articles`);
       expect(response.status()).toBe(200);
       
       const data = await response.json();
