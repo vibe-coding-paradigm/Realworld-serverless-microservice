@@ -33,8 +33,6 @@ test.describe('Articles Management', () => {
       test.setTimeout(60000); // 60 second timeout
       
       const api = new ApiHelper(request);
-      const testUser = generateTestUser();
-      const testArticle = generateTestArticle();
       
       let retryCount = 0;
       const maxRetries = 3;
@@ -42,6 +40,10 @@ test.describe('Articles Management', () => {
       while (retryCount < maxRetries) {
         try {
           console.log(`🔄 Article creation test attempt ${retryCount + 1}/${maxRetries}`);
+          
+          // Generate new test data for each attempt to avoid conflicts
+          const testUser = generateTestUser();
+          const testArticle = generateTestArticle();
           
           // 1. Create user and get token
           const { response: createResponse, data: createData } = await api.createUser(testUser);
@@ -60,7 +62,11 @@ test.describe('Articles Management', () => {
           await api.waitForArticle(articleData.article.slug, token, 25, 1500);
           console.log(`✅ Article '${articleData.article.slug}' is available via API`);
           
-          // 4. Verify article exists in article list
+          // 4. Wait for DynamoDB Scan consistency (Articles list uses Scan)
+          console.log('⏳ Waiting for DynamoDB Scan consistency for Articles list...');
+          await api.waitForConsistency(8000); // 8 seconds for Scan operations
+          
+          // 5. Verify article exists in article list
           const { response: articlesResponse, data: articlesData } = await api.getArticles();
           expect(articlesResponse.status()).toBe(200);
           const createdArticle = articlesData.articles.find(

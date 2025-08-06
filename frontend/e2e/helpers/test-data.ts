@@ -4,30 +4,37 @@
 
 export const generateTestUser = () => {
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
+  const random = Math.random().toString(36).substring(2, 6); // 4 chars
+  const pid = (process.pid || Math.floor(Math.random() * 9999)).toString().slice(-3); // 3 chars max
+  
+  // Keep username under 30 chars: "u" + timestamp(13) + "_" + pid(3) + "_" + random(4) = max 22 chars
   return {
-    username: `testuser_${timestamp}_${random}`,
-    email: `test_${timestamp}_${random}@example.com`,
+    username: `u${timestamp}_${pid}_${random}`,
+    email: `test${timestamp}${pid}${random}@example.com`,
     password: 'testpassword123'
   };
 };
 
 export const generateTestArticle = () => {
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
+  const random = Math.random().toString(36).substring(2, 6);
+  const pid = (process.pid || Math.floor(Math.random() * 9999)).toString().slice(-3);
+  
   return {
-    title: `Test Article ${timestamp} ${random}`,
-    description: `Test article for E2E testing - ${random}`,
-    body: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Random: ${random}`,
-    tagList: ['test', 'e2e', 'automation', random]
+    title: `Test Article ${timestamp} ${pid} ${random}`,
+    description: `Test article for E2E testing - ${timestamp}_${pid}_${random}`,
+    body: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Unique ID: ${timestamp}_${pid}_${random}`,
+    tagList: ['test', 'e2e', 'automation', `tag${pid}${random}`]
   };
 };
 
 export const generateTestComment = () => {
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
+  const random = Math.random().toString(36).substring(2, 6);
+  const pid = (process.pid || Math.floor(Math.random() * 9999)).toString().slice(-3);
+  
   return {
-    body: `Test comment created at ${new Date().toISOString()} - ${random}`
+    body: `Test comment created at ${new Date().toISOString()} - Unique ID: ${timestamp}_${pid}_${random}`
   };
 };
 

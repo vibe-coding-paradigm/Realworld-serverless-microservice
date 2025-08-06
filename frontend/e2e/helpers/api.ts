@@ -96,11 +96,27 @@ export class ApiHelper {
   }
 
   async getArticles() {
-    const response = await this.request.get(`${this.apiBaseURL}/articles`);
+    console.log('📋 Getting articles list...');
+    // Use larger limit to find newly created articles (DynamoDB Scan has no default sorting)
+    const response = await this.request.get(`${this.apiBaseURL}/articles?limit=100`);
+    
+    let data = null;
+    if (response.ok()) {
+      data = await response.json();
+      console.log(`📋 Articles API response: ${response.status()}`);
+      console.log(`📋 Total articles count: ${data.articlesCount}`);
+      if (data.articles && data.articles.length > 0) {
+        console.log(`📋 Article slugs: ${data.articles.map((a: any) => a.slug).join(', ')}`);
+      } else {
+        console.log('📋 No articles found in response');
+      }
+    } else {
+      console.log(`❌ Articles API failed: ${response.status()} ${response.statusText()}`);
+    }
     
     return {
       response,
-      data: response.ok() ? await response.json() : null
+      data
     };
   }
 
@@ -114,13 +130,36 @@ export class ApiHelper {
   }
 
   async createUser(userData: { username: string; email: string; password: string }) {
-    const response = await this.request.post(`${this.apiBaseURL}/users`, {
-      data: { user: userData }
+    const url = `${this.apiBaseURL}/users`;
+    const requestData = { user: userData };
+    
+    console.log(`🔄 Creating user: ${userData.username} (${userData.email})`);
+    console.log(`API Helper Request: POST ${url}`);
+    console.log(`API Helper Body: ${JSON.stringify(requestData)}`);
+    
+    const response = await this.request.post(url, {
+      data: requestData
     });
+    
+    console.log(`API Helper Response: ${response.status()} ${response.statusText()}`);
+    
+    let data = null;
+    if (response.ok()) {
+      data = await response.json();
+      console.log(`✅ User created successfully: ${userData.username}`);
+    } else {
+      try {
+        const errorData = await response.json();
+        console.log(`❌ User creation failed: ${JSON.stringify(errorData)}`);
+      } catch (e) {
+        const errorText = await response.text();
+        console.log(`❌ User creation failed: ${errorText}`);
+      }
+    }
     
     return {
       response,
-      data: response.ok() ? await response.json() : null
+      data
     };
   }
 
