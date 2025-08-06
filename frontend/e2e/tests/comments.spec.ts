@@ -29,8 +29,8 @@ test.describe('Comments System E2E Tests', () => {
       expect(articleData.article.slug).toBeTruthy();
       articleSlug = articleData.article.slug;
       
-      // Wait for DynamoDB GSI (SlugIndex) eventual consistency after article creation
-      await api.waitForConsistency();
+      // Wait for article to be available for navigation (retry-based validation)
+      await api.waitForArticle(articleSlug, userToken);
     });
 
     test('should get empty comments list for new article', async () => {
@@ -176,8 +176,8 @@ test.describe('Comments System E2E Tests', () => {
       articleSlug = articleData.article.slug;
       console.log(`✅ Article created with slug: ${articleSlug}`);
       
-      // Wait for DynamoDB GSI (SlugIndex) eventual consistency after article creation
-      await api.waitForConsistency();
+      // Wait for article to be available for navigation (retry-based validation)
+      await api.waitForArticle(articleSlug, userToken);
       
       // Verify article exists by fetching it
       const { response: getResponse } = await api.getArticle(articleSlug);

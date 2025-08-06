@@ -46,8 +46,8 @@ test.describe('Articles Management', () => {
       expect(articleData.article.title).toBe(testArticle.title);
       expect(articleData.article.slug).toBeDefined();
       
-      // 3. Wait for DynamoDB eventual consistency (GSI SlugIndex requires eventual consistency)
-      await api.waitForConsistency();
+      // 3. Wait for article to be available (retry-based validation)
+      await api.waitForArticle(articleData.article.slug, token);
       
       // 4. Verify article exists in article list
       const { response: articlesResponse, data: articlesData } = await api.getArticles();
@@ -107,8 +107,8 @@ test.describe('Articles Management', () => {
       
       const articleSlug = articleData.article.slug;
       
-      // Wait for DynamoDB GSI (SlugIndex) eventual consistency after article creation
-      await api.waitForConsistency();
+      // Wait for article to be available for navigation (retry-based validation)
+      await api.waitForArticle(articleSlug, token);
       
       // 3. Skip frontend verification due to localhost referer issue
       // This is a known limitation in local development environment

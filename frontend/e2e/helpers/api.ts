@@ -33,6 +33,45 @@ export class ApiHelper {
     await new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /**
+   * Wait for article to be available by slug (with retry logic)
+   * This ensures the article is fully available before UI navigation
+   */
+  async waitForArticle(slug: string, token: string = '', maxRetries: number = 10, delayMs: number = 1000) {
+    console.log(`⏳ Waiting for article '${slug}' to be available...`);
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Token ${token}`;
+        }
+        
+        const response = await this.request.get(`${this.apiBaseURL}/articles/${slug}`, {
+          headers
+        });
+        
+        if (response.ok()) {
+          const data = await response.json();
+          if (data.article && data.article.slug === slug) {
+            console.log(`✅ Article '${slug}' is now available (attempt ${attempt}/${maxRetries})`);
+            return { response, data };
+          }
+        }
+        
+        console.log(`⏳ Article '${slug}' not available yet (attempt ${attempt}/${maxRetries}), retrying...`);
+      } catch (error) {
+        console.log(`⚠️ Error checking article '${slug}' (attempt ${attempt}/${maxRetries}):`, error);
+      }
+      
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+    
+    throw new Error(`Article '${slug}' is not available after ${maxRetries} attempts`);
+  }
+
   async healthCheck() {
     // For serverless API Gateway, use articles endpoint as health check
     const response = await this.request.get(`${this.healthURL}/articles`);
