@@ -16,7 +16,7 @@ on:
         description: 'Backend base URL (e.g., https://xxx.execute-api.ap-northeast-2.amazonaws.com/v1)'
         required: false
         type: string
-        default: 'https://9d81ipursj.execute-api.ap-northeast-2.amazonaws.com/v1'
+        default: 'https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1'
       frontend_url:
         description: 'Frontend URL (e.g., https://vibe-coding-paradigm.github.io/Realworld-serverless-microservice)'
         required: false
