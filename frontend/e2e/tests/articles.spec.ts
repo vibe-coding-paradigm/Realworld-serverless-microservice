@@ -29,40 +29,63 @@ test.describe('Articles Management', () => {
     });
 
     test('should create article with proper authentication', async ({ request }) => {
+      // Add retries for this flaky test due to Lambda cold starts
+      test.setTimeout(60000); // 60 second timeout
+      
       const api = new ApiHelper(request);
       const testUser = generateTestUser();
       const testArticle = generateTestArticle();
       
-      // 1. Create user and get token
-      const { response: createResponse, data: createData } = await api.createUser(testUser);
-      expect(createResponse.status()).toBe(201);
-      expect(createData.user.token).toBeDefined();
+      let retryCount = 0;
+      const maxRetries = 3;
       
-      const token = createData.user.token;
-      
-      // 2. Create article with token
-      const { response: articleResponse, data: articleData } = await api.createArticle(testArticle, token);
-      expect(articleResponse.status()).toBe(201);
-      expect(articleData.article.title).toBe(testArticle.title);
-      expect(articleData.article.slug).toBeDefined();
-      
-      // 3. Wait for article to be available (retry-based validation)
-      try {
-        await api.waitForArticle(articleData.article.slug, token);
-        console.log(`✅ Article '${articleData.article.slug}' is available via API`);
-      } catch (error) {
-        console.log(`⚠️ Article availability check failed: ${error.message}`);
-        console.log('Continuing test as this might be an E2E environment issue');
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`🔄 Article creation test attempt ${retryCount + 1}/${maxRetries}`);
+          
+          // 1. Create user and get token
+          const { response: createResponse, data: createData } = await api.createUser(testUser);
+          expect(createResponse.status()).toBe(201);
+          expect(createData.user.token).toBeDefined();
+          
+          const token = createData.user.token;
+          
+          // 2. Create article with token
+          const { response: articleResponse, data: articleData } = await api.createArticle(testArticle, token);
+          expect(articleResponse.status()).toBe(201);
+          expect(articleData.article.title).toBe(testArticle.title);
+          expect(articleData.article.slug).toBeDefined();
+          
+          // 3. Wait for article to be available (retry-based validation with increased timeout)
+          await api.waitForArticle(articleData.article.slug, token, 25, 1500);
+          console.log(`✅ Article '${articleData.article.slug}' is available via API`);
+          
+          // 4. Verify article exists in article list
+          const { response: articlesResponse, data: articlesData } = await api.getArticles();
+          expect(articlesResponse.status()).toBe(200);
+          const createdArticle = articlesData.articles.find(
+            (article: any) => article.slug === articleData.article.slug
+          );
+          expect(createdArticle).toBeDefined();
+          expect(createdArticle.title).toBe(testArticle.title);
+          
+          // Success - break out of retry loop
+          console.log(`✅ Article creation test succeeded on attempt ${retryCount + 1}`);
+          break;
+          
+        } catch (error) {
+          retryCount++;
+          console.log(`❌ Article creation test failed on attempt ${retryCount}: ${error.message}`);
+          
+          if (retryCount >= maxRetries) {
+            console.log(`💥 Article creation test failed after ${maxRetries} attempts`);
+            throw error;
+          }
+          
+          // Wait before retry to allow Lambda warmup
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
-      
-      // 4. Verify article exists in article list
-      const { response: articlesResponse, data: articlesData } = await api.getArticles();
-      expect(articlesResponse.status()).toBe(200);
-      const createdArticle = articlesData.articles.find(
-        (article: any) => article.slug === articleData.article.slug
-      );
-      expect(createdArticle).toBeDefined();
-      expect(createdArticle.title).toBe(testArticle.title);
     });
   });
 
