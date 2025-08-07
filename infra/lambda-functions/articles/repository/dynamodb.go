@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+    "sort"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -186,6 +187,12 @@ func (r *DynamoDBRepository) GetAll(filter models.ArticleFilter, userID string) 
 		allArticles = append(allArticles, article)
 	}
 	
+	// Ensure newest articles appear first for stable UX and E2E determinism
+	// DynamoDB Scan does not guarantee ordering; sort by created_at descending before pagination
+	sort.Slice(allArticles, func(i, j int) bool {
+		return allArticles[i].CreatedAt.After(allArticles[j].CreatedAt)
+	})
+
 	// Apply pagination
 	totalCount := len(allArticles)
 	start := filter.Offset
