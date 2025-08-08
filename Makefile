@@ -113,7 +113,7 @@ lint: lint-backend lint-frontend
 
 lint-backend:
 	@echo "🔍 백엔드 코드를 린팅하는 중..."
-	cd backend && golangci-lint run || echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+	@cd backend && golangci-lint run 2>/dev/null || (echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
 	@echo "✅ 백엔드 린팅 완료!"
 
 lint-frontend:
@@ -580,7 +580,7 @@ api-test:
 lint-fix:
 	@echo "🔧 린터 자동 수정 실행 중..."
 	@echo "🔍 백엔드 코드 자동 수정 중..."
-	@cd backend && golangci-lint run --fix || echo "⚠️ 백엔드 lint-fix 완료 (일부 수동 수정 필요할 수 있음)"
+	@cd backend && golangci-lint run --fix 2>/dev/null || (echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
 	@echo "🔍 프론트엔드 코드 자동 수정 중..."
 	@cd frontend && npm run lint -- --fix || echo "⚠️ 프론트엔드 lint-fix 완료"
 	@echo "✅ 모든 코드 자동 수정이 완료되었습니다!"
