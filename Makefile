@@ -60,6 +60,11 @@ help:
 	@echo "  deploy-debug   - 배포 디버깅"
 	@echo "  verify-all     - 전체 시스템 검증"
 	@echo ""
+	@echo "🔍 파이프라인 상태:"
+	@echo "  pipeline-status - 현재 브랜치 파이프라인 상태 확인"
+	@echo "  pipeline-check  - 전체 파이프라인 상태 상세 보기"
+	@echo "  pipeline-watch  - 실시간 파이프라인 상태 모니터링"
+	@echo ""
 	@echo "💡 자세한 사용법: make <command> 또는 CLAUDE.md 참조"
 
 # 개발 명령어
@@ -590,6 +595,17 @@ seed-db:
 	@echo "🌱 테스트 데이터 삽입 중..."
 	@echo "TODO: 테스트 데이터 생성 스크립트 구현 필요"
 	@echo "현재는 수동으로 API를 통해 데이터를 생성하세요"
+
+# 파이프라인 상태 체크 명령어
+pipeline-status:
+	@./scripts/pipeline-status.sh
+
+pipeline-check:
+	@./scripts/check-pipeline.sh
+
+pipeline-watch:
+	@echo "📡 실시간 파이프라인 모니터링 시작..."
+	@gh run watch
 
 # 전체 환경 초기화
 reset-env:
