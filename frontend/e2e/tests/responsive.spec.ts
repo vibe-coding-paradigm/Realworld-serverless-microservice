@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitTimes, navigateToPage } from '../helpers/test-data';
+import { navigateToPage } from '../helpers/test-data';
 
 test.describe('Responsive Design', () => {
   
@@ -12,11 +12,11 @@ test.describe('Responsive Design', () => {
   for (const viewport of viewports) {
     test.describe(`${viewport.name} viewport (${viewport.width}x${viewport.height})`, () => {
       
-      test.beforeEach(async ({ page }) => {
+      test('should set viewport size', async ({ page }) => {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
       });
 
-      test('should load and be responsive', async ({ page }) => {
+      test('should render responsive layout', async ({ page }) => {
         await navigateToPage(page, '/');
         await page.waitForLoadState('networkidle');
         
@@ -37,7 +37,7 @@ test.describe('Responsive Design', () => {
         }
       });
 
-      test('should handle touch interactions on mobile', async ({ page }) => {
+      test('should handle mobile interactions', async ({ page }) => {
         if (viewport.name === 'Mobile') {
           await navigateToPage(page, '/');
           
@@ -62,7 +62,7 @@ test.describe('Responsive Design', () => {
         }
       });
 
-      test('should display navigation appropriately', async ({ page }) => {
+      test('should have responsive navigation', async ({ page }) => {
         await navigateToPage(page, '/');
         
         // Check for navigation elements
@@ -87,7 +87,7 @@ test.describe('Responsive Design', () => {
 
   test.describe('Cross-browser Responsive Testing', () => {
     ['chromium', 'firefox', 'webkit'].forEach(browserName => {
-      test(`should be responsive in ${browserName}`, async ({ page }) => {
+      test(`should work on ${browserName}`, async ({ page }) => {
         // This test runs on different browsers automatically via playwright.config.ts projects
         await navigateToPage(page, '/');
         await page.waitForLoadState('networkidle');

@@ -94,7 +94,7 @@ export const getFullURL = (path: string = '/') => {
  * Safe navigation function that ensures correct URL resolution
  * Includes special handling for GitHub Pages SPA routing
  */
-export const navigateToPage = async (page: any, path: string = '/') => {
+export const navigateToPage = async (page: { goto: (url: string, options?: object) => Promise<unknown> }, path: string = '/') => {
   const fullURL = getFullURL(path);
   // Use fixed timeout for simplicity
   
