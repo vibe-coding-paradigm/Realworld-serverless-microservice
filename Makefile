@@ -109,24 +109,30 @@ test-integration:
 
 # 코드 품질 명령어
 lint: lint-backend lint-frontend
+	@echo "✅ 모든 린팅 검사가 완료되었습니다!"
 
 lint-backend:
 	@echo "🔍 백엔드 코드를 린팅하는 중..."
 	cd backend && golangci-lint run || echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+	@echo "✅ 백엔드 린팅 완료!"
 
 lint-frontend:
 	@echo "🔍 프론트엔드 코드를 린팅하는 중..."
 	cd frontend && npm run lint
+	@echo "✅ 프론트엔드 린팅 완료!"
 
 fmt: fmt-backend fmt-frontend
+	@echo "✅ 모든 코드 포맷팅이 완료되었습니다!"
 
 fmt-backend:
 	@echo "📝 백엔드 코드를 포맷팅하는 중..."
 	cd backend && go fmt ./...
+	@echo "✅ 백엔드 포맷팅 완료!"
 
 fmt-frontend:
 	@echo "📝 프론트엔드 코드를 포맷팅하는 중..."
 	cd frontend && npm run format || echo "⚠️  format 스크립트를 찾을 수 없습니다"
+	@echo "✅ 프론트엔드 포맷팅 완료!"
 
 # 데이터베이스 명령어
 migrate:
@@ -573,8 +579,11 @@ api-test:
 # 린터 자동 수정
 lint-fix:
 	@echo "🔧 린터 자동 수정 실행 중..."
+	@echo "🔍 백엔드 코드 자동 수정 중..."
 	@cd backend && golangci-lint run --fix || echo "⚠️ 백엔드 lint-fix 완료 (일부 수동 수정 필요할 수 있음)"
+	@echo "🔍 프론트엔드 코드 자동 수정 중..."
 	@cd frontend && npm run lint -- --fix || echo "⚠️ 프론트엔드 lint-fix 완료"
+	@echo "✅ 모든 코드 자동 수정이 완료되었습니다!"
 
 # 테스트 데이터 삽입
 seed-db:
