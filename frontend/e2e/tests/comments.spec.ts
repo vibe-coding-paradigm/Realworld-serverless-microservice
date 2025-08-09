@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ApiHelper } from '../helpers/api';
-import { generateTestUser, generateTestArticle, generateTestComment, waitTimes, navigateToPage } from '../helpers/test-data';
-import { smartLogin, verifyLoggedIn } from '../helpers/login';
+import { generateTestUser, generateTestArticle, generateTestComment } from '../helpers/test-data';
 
 test.describe('Comments System E2E Tests', () => {
   
@@ -9,7 +8,7 @@ test.describe('Comments System E2E Tests', () => {
     let api: ApiHelper;
     let testUser: { username: string; email: string; password: string };
     let userToken: string;
-    let testArticle: any;
+    let testArticle: { title: string; description: string; body: string; tagList: string[] };
     let articleSlug: string;
 
     test.beforeEach(async ({ request }) => {
@@ -151,10 +150,10 @@ test.describe('Comments System E2E Tests', () => {
 
   test.describe('Comments UI Tests @frontend', () => {
     let testUser: { username: string; email: string; password: string };
-    let testArticle: any;
+    let testArticle: { title: string; description: string; body: string; tagList: string[] };
     let articleSlug: string;
 
-    test.beforeEach(async ({ page, request }) => {
+    test.beforeEach(async ({ request }) => {
       const api = new ApiHelper(request);
       testUser = generateTestUser();
       
@@ -186,39 +185,39 @@ test.describe('Comments System E2E Tests', () => {
       }
     });
 
-    test('should display comments section on article page', async ({ page }) => {
+    test('should navigate to article page (skipped in E2E environment)', async () => {
       // Skip this test if article not available (E2E environment issue)
       test.skip(true, 'Comments UI tests require local frontend for article navigation');
     });
 
-    test('should show comment form when logged in', async ({ page, request }) => {
+    test('should show comment form when logged in', async () => {
       // Skip this test - requires local frontend for article navigation
       test.skip(true, 'Comments UI tests require local frontend for article navigation');
     });
 
-    test('should create and display comment', async ({ page, request }) => {
+    test('should create and display comment', async () => {
       // Skip this test - requires local frontend for article navigation
       test.skip(true, 'Comments UI tests require local frontend for article navigation');
     });
 
-    test('should show delete button only for own comments', async ({ page, request }) => {
+    test('should show delete button only for own comments', async () => {
       // Skip this test - requires local frontend for article navigation
       test.skip(true, 'Comments UI tests require local frontend for article navigation');
     });
 
-    test('should delete comment when delete button clicked', async ({ page, request }) => {
+    test('should delete comment when delete button clicked', async () => {
       // Skip this test - requires local frontend for article navigation
       test.skip(true, 'Comments UI tests require local frontend for article navigation');
     });
 
-    test('should update comment count after adding/removing comments', async ({ page, request }) => {
+    test('should update comment count after adding/removing comments', async () => {
       // Skip this test - requires local frontend for article navigation
       test.skip(true, 'Comments UI tests require local frontend for article navigation');
     });
   });
 
   test.describe('Comments Integration Tests', () => {
-    test('complete comment lifecycle: create article → add comments → delete comments → verify cleanup', async ({ page, request }) => {
+    test('complete comment lifecycle: create article → add comments → delete comments → verify cleanup', async () => {
       // Skip this test - requires local frontend for article navigation and UI interaction
       test.skip(true, 'Comments Integration tests require local frontend for article navigation and UI interaction');
     });

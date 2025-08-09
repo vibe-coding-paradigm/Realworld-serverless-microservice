@@ -110,7 +110,7 @@ async function globalSetup(config: FullConfig) {
         } else {
           console.log(`⏳ Attempt ${i + 1}: Frontend responded with ${frontendResponse.status}...`);
         }
-      } catch (error) {
+      } catch {
         if (isLocalhost) {
           console.log(`⏳ Attempt ${i + 1}: Waiting for local dev server to start...`);
         } else {

@@ -24,7 +24,7 @@ test.describe('Authentication Flow', () => {
     test('should reject login with invalid credentials', async ({ request }) => {
       const api = new ApiHelper(request);
       
-      const { response, data } = await api.loginUser({
+      const { response } = await api.loginUser({
         email: 'nonexistent@example.com',
         password: 'wrongpassword'
       });
@@ -178,8 +178,8 @@ test.describe('Authentication Flow', () => {
       console.log('Submitting login form through browser...');
       
       // Capture all network traffic for analysis
-      const requests: any[] = [];
-      const responses: any[] = [];
+      const requests: Array<{ url: string; method: string; headers: Record<string, string> }> = [];
+      const responses: Array<{ url: string; status: number; headers: Record<string, string> }> = [];
       
       page.on('request', request => {
         if (request.url().includes('/api/users/login')) {

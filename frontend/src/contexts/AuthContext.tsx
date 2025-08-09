@@ -60,6 +60,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
       } else {
+        // Handle registration response that doesn't include user data
+        console.log('Registration successful but no user data returned');
       }
       
       return response;

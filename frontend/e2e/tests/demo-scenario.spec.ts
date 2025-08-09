@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { generateTestUser, generateTestArticle, waitTimes, navigateToPage } from '../helpers/test-data';
-import { smartLogin } from '../helpers/login';
-import { ApiHelper } from '../helpers/api';
-import { isLocalEnvironment, isCloudEnvironment, detectEnvironment } from '../helpers/environment';
+import { generateTestUser, generateTestArticle } from '../helpers/test-data';
+import { isLocalEnvironment, detectEnvironment } from '../helpers/environment';
 
 /**
  * Phase 1 데모 시나리오 E2E 테스트
@@ -36,7 +34,7 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     }
   });
   
-  test('Complete demo scenario - exactly as performed in demo', async ({ page }) => {
+  test('Complete Demo Scenario (skipped in E2E environment)', async ({ page }) => {
     // Skip this test - requires local frontend for proper API integration
     test.skip(true, 'Demo scenario test requires local frontend for API integration and form submission');
     
@@ -364,7 +362,7 @@ test.describe('Phase 1 Demo Scenario - Production Environment', () => {
     // 따라서 일부 실패는 예상되며, 이를 통해 실제 문제를 식별
   });
   
-  test('Verify production environment configuration', async ({ page }) => {
+  test('Production environment configuration check', async ({ page }) => {
     // 로컬 환경에서는 스킵
     test.skip(isLocalEnvironment(), 'Skipping CloudFront-specific test in local environment');
     
@@ -430,7 +428,7 @@ test.describe('Demo Failure Edge Cases', () => {
     }
   });
   
-  test('Handle 401 authentication errors gracefully', async ({ page }) => {
+  test('Handle 401 error scenarios', async ({ page }) => {
     // 로컬 환경에서는 스킵
     test.skip(isLocalEnvironment(), 'Skipping CloudFront-specific test in local environment');
     
@@ -467,7 +465,7 @@ test.describe('Demo Failure Edge Cases', () => {
     console.log(`✅ 인증 에러 정상적으로 발생: ${response.status()}`);
   });
   
-  test('Handle JavaScript errors without crashing', async ({ page }) => {
+  test('Handle JavaScript errors', async ({ page }) => {
     
     console.log('\n🐛 JavaScript 에러 처리 테스트');
     

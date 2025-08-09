@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArticles } from '@/hooks/useArticles';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { Link } from 'react-router-dom';
+import { Article } from '@/types';
 import { ROUTES } from '@/lib/routes';
 
 const HomePage: React.FC = () => {
@@ -136,7 +137,7 @@ const HomePage: React.FC = () => {
 
               {articlesData && articlesData.articles && articlesData.articles.length > 0 && (
                 <div className="articles-list">
-                  {articlesData.articles.map((article: any) => (
+                  {articlesData.articles.map((article: Article) => (
                     <ArticleCard key={article.slug} article={article} />
                   ))}
                 </div>

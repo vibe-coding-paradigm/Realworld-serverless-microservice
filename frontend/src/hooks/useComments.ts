@@ -29,7 +29,7 @@ export function useCreateComment() {
   return useMutation({
     mutationFn: ({ slug, body }: { slug: string; body: string }) =>
       commentsAPI.createComment(slug, body),
-    onSuccess: (_: any, variables: { slug: string; body: string }) => {
+    onSuccess: (_: unknown, variables: { slug: string; body: string }) => {
       queryClient.invalidateQueries({ queryKey: commentKeys.list(variables.slug) });
     },
   });
@@ -42,7 +42,7 @@ export function useDeleteComment() {
   return useMutation({
     mutationFn: ({ slug, id }: { slug: string; id: string }) =>
       commentsAPI.deleteComment(slug, id),
-    onSuccess: (_: any, variables: { slug: string; id: string }) => {
+    onSuccess: (_: unknown, variables: { slug: string; id: string }) => {
       queryClient.invalidateQueries({ queryKey: commentKeys.list(variables.slug) });
     },
   });

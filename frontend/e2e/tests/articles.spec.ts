@@ -70,7 +70,7 @@ test.describe('Articles Management', () => {
           const { response: articlesResponse, data: articlesData } = await api.getArticles();
           expect(articlesResponse.status()).toBe(200);
           const createdArticle = articlesData.articles.find(
-            (article: any) => article.slug === articleData.article.slug
+            (article: { slug: string }) => article.slug === articleData.article.slug
           );
           expect(createdArticle).toBeDefined();
           expect(createdArticle.title).toBe(testArticle.title);
@@ -124,7 +124,7 @@ test.describe('Articles Management', () => {
   });
 
   test.describe('Article CRUD Operations', () => {
-    test('should handle full article lifecycle when authentication works', async ({ page, request }) => {
+    test('should handle full article lifecycle when authentication works', async ({ request }) => {
       const api = new ApiHelper(request);
       const testUser = generateTestUser();
       const testArticle = generateTestArticle();

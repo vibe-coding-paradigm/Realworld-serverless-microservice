@@ -1,4 +1,4 @@
-import { APIRequestContext, expect } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { getApiUrl, getHealthUrl, detectEnvironment } from './environment';
 
 export class ApiHelper {
@@ -106,7 +106,7 @@ export class ApiHelper {
       console.log(`📋 Articles API response: ${response.status()}`);
       console.log(`📋 Total articles count: ${data.articlesCount}`);
       if (data.articles && data.articles.length > 0) {
-        console.log(`📋 Article slugs: ${data.articles.map((a: any) => a.slug).join(', ')}`);
+        console.log(`📋 Article slugs: ${data.articles.map((a: { slug: string }) => a.slug).join(', ')}`);
       } else {
         console.log('📋 No articles found in response');
       }
@@ -151,7 +151,7 @@ export class ApiHelper {
       try {
         const errorData = await response.json();
         console.log(`❌ User creation failed: ${JSON.stringify(errorData)}`);
-      } catch (e) {
+      } catch {
         const errorText = await response.text();
         console.log(`❌ User creation failed: ${errorText}`);
       }
@@ -192,7 +192,7 @@ export class ApiHelper {
     };
   }
 
-  async createArticle(articleData: any, token: string) {
+  async createArticle(articleData: { title: string; description: string; body: string; tagList?: string[] }, token: string) {
     const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Token ${token}`;
@@ -225,7 +225,7 @@ export class ApiHelper {
     };
   }
 
-  async createComment(slug: string, commentData: any, token: string) {
+  async createComment(slug: string, commentData: { body: string }, token: string) {
     const response = await this.request.post(`${this.apiBaseURL}/articles/${slug}/comments`, {
       data: { comment: commentData },
       headers: {

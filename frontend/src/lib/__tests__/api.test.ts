@@ -44,7 +44,7 @@ describe('API Client', () => {
       
       // Mock window.location.href without actual navigation
       const locationSetter = vi.fn()
-      delete (window as any).location
+      delete (window as unknown as { location: unknown }).location
       Object.defineProperty(window, 'location', {
         value: {
           origin: 'http://localhost:3000',
