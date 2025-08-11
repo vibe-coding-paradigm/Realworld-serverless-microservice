@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { generateTestUser, generateTestArticle } from '../helpers/test-data';
+import { generateTestUser, generateTestArticle, navigateToPage } from '../helpers/test-data';
 import { isLocalEnvironment, detectEnvironment } from '../helpers/environment';
 
 /**

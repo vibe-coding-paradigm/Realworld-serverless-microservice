@@ -12,11 +12,9 @@ test.describe('Responsive Design', () => {
   for (const viewport of viewports) {
     test.describe(`${viewport.name} viewport (${viewport.width}x${viewport.height})`, () => {
       
-      test('should set viewport size', async ({ page }) => {
-        await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      });
-
       test('should render responsive layout', async ({ page }) => {
+        // Set viewport size for this test
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await navigateToPage(page, '/');
         await page.waitForLoadState('networkidle');
         
@@ -39,6 +37,8 @@ test.describe('Responsive Design', () => {
 
       test('should handle mobile interactions', async ({ page }) => {
         if (viewport.name === 'Mobile') {
+          // Set viewport size for this test
+          await page.setViewportSize({ width: viewport.width, height: viewport.height });
           await navigateToPage(page, '/');
           
           // Test touch interactions
@@ -63,6 +63,8 @@ test.describe('Responsive Design', () => {
       });
 
       test('should have responsive navigation', async ({ page }) => {
+        // Set viewport size for this test
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await navigateToPage(page, '/');
         
         // Check for navigation elements
@@ -89,6 +91,8 @@ test.describe('Responsive Design', () => {
     ['chromium', 'firefox', 'webkit'].forEach(browserName => {
       test(`should work on ${browserName}`, async ({ page }) => {
         // This test runs on different browsers automatically via playwright.config.ts projects
+        // Set a standard viewport size for cross-browser testing
+        await page.setViewportSize({ width: 1280, height: 720 });
         await navigateToPage(page, '/');
         await page.waitForLoadState('networkidle');
         
