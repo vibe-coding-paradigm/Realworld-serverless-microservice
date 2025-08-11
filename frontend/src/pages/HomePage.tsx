@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useArticles } from '@/hooks/useArticles';
 import { ArticleCard } from '@/components/article/ArticleCard';
 import { Link } from 'react-router-dom';
-import { Article } from '@/types';
+import type { Article } from '@/types';
 import { ROUTES } from '@/lib/routes';
 
 const HomePage: React.FC = () => {

@@ -127,7 +127,7 @@ const EditorPage: React.FC = () => {
             tagList: formData.tagList,
           }
         });
-        navigate(createRoutes.articleDetail(result.article.slug));
+        navigate(createRoutes.articleDetail((result as { article: { slug: string } }).article.slug));
       } else {
         const result = await createMutation.mutateAsync({
           title: formData.title,
@@ -135,7 +135,7 @@ const EditorPage: React.FC = () => {
           body: formData.body,
           tagList: formData.tagList,
         });
-        navigate(createRoutes.articleDetail(result.article.slug));
+        navigate(createRoutes.articleDetail((result as { article: { slug: string } }).article.slug));
       }
     } catch (error: unknown) {
       console.error('Failed to save article:', error);
