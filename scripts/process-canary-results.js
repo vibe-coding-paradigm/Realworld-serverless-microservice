@@ -29,6 +29,7 @@ function processTestResults(resultsPath) {
     // Use stats if available, otherwise fall back to suite processing
     let totalTests, passedTests, failedTests, skippedTests, successRate;
     let totalDuration = results.stats?.duration || 0;
+    let endpointResults = {}; // Initialize endpointResults for both branches
     
     if (results.stats) {
       console.log('🎯 Using stats data for metrics calculation');
@@ -62,7 +63,7 @@ function processTestResults(resultsPath) {
       
       passedTests = 0;
       failedTests = 0;
-      const endpointResults = {};
+      // endpointResults already initialized above
       
       // Process test suites
       results.suites?.forEach(suite => {
