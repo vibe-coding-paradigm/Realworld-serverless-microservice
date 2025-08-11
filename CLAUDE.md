@@ -252,3 +252,4 @@ This project demonstrates **progressive migration from monolith to serverless**:
 4. **Phase 4**: Serverless optimization (Complete serverless, 70%+ cost reduction) ✅
 
 The codebase preserves the legacy monolithic backend (`backend/`) alongside the new serverless functions (`infra/lambda-functions/`) for educational purposes and comparison.
+- 이 프로젝트는 교육용 프로젝트이므로 MVP 구현을 우선해서 진행시켜줘.
