@@ -4,6 +4,7 @@
 [![Frontend Deploy](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml)
 [![Infrastructure Deploy](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/infra-deploy.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/infra-deploy.yml)
 [![E2E Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/e2e-tests.yml)
+[![Canary Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-tests.yml)
 [![Load Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/load-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/load-tests.yml)
 
 ## 📊 프로젝트 정보
@@ -407,6 +408,108 @@ cd load-tests && k6 run performance-baseline.js
 
 # 인증 부하 테스트
 cd load-tests && k6 run auth-load-test.js
+```
+
+## 🕯️ 카나리 테스트 (Canary Testing)
+
+**실시간 서비스 상태 모니터링**을 위한 자동화된 카나리 테스트 시스템입니다.
+
+### 📊 모니터링 현황
+- **실행 주기**: 5분마다 자동 실행 (GitHub Actions Cron)
+- **테스트 대상**: 47개 E2E 시나리오 (서울 리전 운영 환경)
+- **모니터링 대시보드**: [CloudWatch 대시보드](https://console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#dashboards:name=Conduit-E2E-Canary-Tests)
+- **현재 성공률**: 100% (2025년 8월 기준)
+
+### 🚨 알림 시스템
+- **성공률 < 80%**: 자동 알림 발송
+- **응답 시간 > 10초**: 성능 저하 알림
+- **알림 채널**: SNS 토픽을 통한 이메일 알림
+
+### 📈 모니터링 메트릭
+
+#### E2E 테스트 기반 메트릭
+- **전체 성공률**: `(성공한 테스트 / 전체 테스트) × 100`
+- **평균 응답 시간**: E2E 테스트 실행 시간 평균
+- **테스트 실행 횟수**: 5분 간격 실행 빈도
+
+#### Lambda 함수별 실시간 메트릭
+각 API 엔드포인트의 실제 사용 패턴을 Lambda 네이티브 메트릭으로 추적:
+
+**인증 서비스**:
+- `POST /users` (Register) → `conduit-auth-register`
+- `POST /users/login` → `conduit-auth-login`
+- `GET /user` → `conduit-auth-getuser`
+
+**게시글 서비스**:
+- `GET /articles` → `conduit-articles-list`
+- `POST /articles` → `conduit-articles-create`
+- `GET /articles/:slug` → `conduit-articles-get`
+- `PUT /articles/:slug` → `conduit-articles-update`
+- `DELETE /articles/:slug` → `conduit-articles-delete`
+- `POST /articles/:slug/favorite` → `conduit-articles-favorite`
+
+**댓글 서비스**:
+- `GET /articles/:slug/comments` → `conduit-comments-list`
+- `POST /articles/:slug/comments` → `conduit-comments-create`
+- `DELETE /articles/:slug/comments/:id` → `conduit-comments-delete`
+
+### 💰 카나리 테스트 월간 운영 비용 (서울 리전)
+
+#### GitHub Actions 비용
+```
+실행 빈도: 5분마다 (월 8,640회)
+실행 시간: 약 3분/회
+총 실행 시간: 25,920분 (432시간)
+
+GitHub Actions 프리티어: 2,000분/월 무료
+초과 사용량: 23,920분
+비용: 23,920분 × $0.008/분 = $191.36 (약 ₩260,000)
+```
+
+#### AWS 서비스 비용
+```
+CloudWatch 메트릭:
+- 커스텀 메트릭: 5개 × $0.30 = $1.50
+- API 호출: 8,640회 × $0.0001 = $0.86
+- 알람: 2개 × $0.10 = $0.20
+
+SNS 알림:
+- 이메일 알림: 10회 × $0.0001 = $0.001
+
+CloudWatch 로그:
+- 로그 저장: 1GB × $0.50 = $0.50
+
+총 AWS 비용: 약 $3.06 (약 ₩4,200)
+```
+
+#### 📊 총 월간 비용 요약
+```
+GitHub Actions: ₩260,000
+AWS 서비스: ₩4,200
+──────────────────────
+총 월간 비용: 약 ₩264,200
+
+* 2025년 8월 환율 기준 ($1 = ₩1,360)
+* GitHub Actions 프리티어(2,000분) 초과분만 계산
+* 실제 운영 시에는 실행 빈도 조정 가능 (15분마다 → ₩87,000)
+```
+
+### ⚙️ 비용 최적화 옵션
+1. **실행 빈도 조정**: 5분 → 15분 간격 (비용 66% 절감)
+2. **테스트 시간 단축**: 병렬 실행 최적화로 실행 시간 단축
+3. **조건부 실행**: 업무 시간에만 실행 (비용 75% 절감)
+4. **셀프 호스티드 러너**: GitHub Actions 대신 EC2 사용 시 비용 절감
+
+### 🔧 카나리 테스트 설정
+```bash
+# 카나리 테스트 수동 실행
+gh workflow run canary-tests.yml
+
+# 카나리 테스트 결과 확인
+gh run list --workflow=canary-tests.yml
+
+# CloudWatch 대시보드 접속
+aws cloudwatch get-dashboard --dashboard-name Conduit-E2E-Canary-Tests --region ap-northeast-2
 ```
 
 ## 📁 프로젝트 구조

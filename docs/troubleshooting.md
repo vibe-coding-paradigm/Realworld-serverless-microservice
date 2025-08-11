@@ -5,7 +5,7 @@
 > **최종 성과**: **E2E 테스트 100% 성공률** + **DynamoDB 일관성 해결** + **75% 비용 절감** 달성  
 > **활용 가치**: 서버리스 마이크로서비스 마이그레이션 시 바로 적용 가능한 실무 중심 트러블슈팅 사례
 
-본 문서는 **모노리식에서 완전 서버리스 마이크로서비스로의 4단계 마이그레이션 과정**에서 발생한 **26개의 실제 문제들과 검증된 해결 방법**을 정리한 것입니다. 각 트러블슈팅 케이스는 실제 사용된 프롬프트와 명령어를 포함하여 재현 가능한 해결책을 제공하며, 특히 **2025년 1월 완료된 DynamoDB 일관성 문제 해결 과정**이 핵심 성과입니다.
+본 문서는 **모노리식에서 완전 서버리스 마이크로서비스로의 4단계 마이그레이션 과정**에서 발생한 **27개의 실제 문제들과 검증된 해결 방법**을 정리한 것입니다. 각 트러블슈팅 케이스는 실제 사용된 프롬프트와 명령어를 포함하여 재현 가능한 해결책을 제공하며, 특히 **2025년 1월 완료된 DynamoDB 일관성 문제 해결 과정**이 핵심 성과입니다.
 
 ## 목차
 1. [GitHub Actions 워크플로우 문제](#1-github-actions-워크플로우-문제)
@@ -34,7 +34,8 @@
 24. [API Gateway 응답 코드 처리 문제](#24-api-gateway-응답-코드-처리-문제)
 25. [E2E 테스트 DynamoDB Scan 페이징 문제](#25-e2e-테스트-dynamodb-scan-페이징-문제)
 26. [서버리스 환경 API Gateway URL 업데이트 누락](#26-서버리스-환경-api-gateway-url-업데이트-누락)
-27. [모범 사례 및 패턴](#27-모범-사례-및-패턴)
+27. [카나리 모니터링 시스템 0% 성공률 문제](#27-카나리-모니터링-시스템-0%-성공률-문제)
+28. [모범 사례 및 패턴](#28-모범-사례-및-패턴)
 
 ---
 
@@ -1595,7 +1596,117 @@ curl -I "https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/api/article
 
 ---
 
-## 27. 모범 사례 및 패턴
+## 27. 카나리 모니터링 시스템 0% 성공률 문제
+
+### 문제: 카나리 테스트가 성공하는데도 CloudWatch에서 0% 성공률 표시
+
+**문제 설명**: GitHub Actions 카나리 테스트가 실제로는 성공하고 있으나, CloudWatch 대시보드에서 지속적으로 0% 성공률이 표시되는 복합적인 문제
+
+**에러 증상**:
+```bash
+GitHub Actions 로그: ✅ All tests passed (47 passed, 8 skipped)
+CloudWatch 메트릭: SuccessRate = 0% (계속 유지)
+대시보드 상태: "Conduit-E2E-Canary-Tests" 차트에서 0% 표시
+```
+
+**사용된 프롬프트**:
+```
+"카나리 테스트의 성공률을 살펴봐줘."
+"이 문제에 대해서 필요하다면 퍼플렉시티 MCP를 사용해서 조사해"
+"여전히 카나리 테스트가 실패하고 있어."
+"Conduit-E2E-Canary-Tests 대시보드를 보면 SuccessRate 가 0%를 계속 유지하고 있어."
+```
+
+**해결 과정**:
+
+1. **테스트 경로 문제 발견**:
+```yaml
+# 문제가 있던 설정
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/canary-results.json npx playwright test \
+  --config=playwright.config.ts \
+  --reporter=json \
+  --output=test-results/canary \
+  tests/e2e/ \  # ❌ 잘못된 경로
+
+# 수정된 설정
+e2e/tests/ \  # ✅ 올바른 경로
+```
+
+2. **Perplexity MCP를 활용한 성공률 계산 공식 조사**:
+```javascript
+// 문제가 있던 공식 (Perplexity 조사 전)
+const totalTests = expected + skipped;
+const successRate = totalTests > 0 ? (expected / totalTests) * 100 : 100;
+
+// Perplexity 조사 결과 기반 수정된 공식
+const { expected = 0, unexpected = 0, skipped = 0 } = results.stats;
+const execDenom = expected + unexpected;  // 실제 실행된 테스트만 포함
+const execSuccess = execDenom > 0 ? (expected / execDenom) * 100 : 100;
+successRate = execSuccess;
+```
+
+3. **JavaScript 변수 스코프 에러 수정**:
+```javascript
+// 문제: endpointResults 변수가 stats 브랜치에서 정의되지 않음
+if (results.stats) {
+    // endpointResults 여기서 사용하려 했으나 정의되지 않음
+} else {
+    let endpointResults = {};  // 여기서만 정의됨
+}
+
+// 수정: 변수를 최상위 레벨로 이동
+let endpointResults = {};  // 두 브랜치 모두에서 사용 가능
+
+if (results.stats) {
+    // 이제 endpointResults 사용 가능
+} else {
+    // 이곳에서도 사용 가능
+}
+```
+
+4. **메트릭 파일 경로 불일치 수정**:
+```yaml
+# 워크플로우에서 메트릭 파일을 찾는 경로
+METRICS_FILE="frontend/test-results/canary/metrics.json"  # ❌ 잘못된 경로
+
+# 실제 스크립트가 저장하는 경로
+METRICS_FILE="frontend/test-results/metrics.json"        # ✅ 올바른 경로
+```
+
+5. **DynamoDB Scan 일관성 문제 동시 해결**:
+```typescript
+// 기존 접근 방식: DynamoDB Scan 일관성에 의존
+await api.waitForConsistency(8000);
+const { response: articlesResponse, data: articlesData } = await api.getArticles();
+const createdArticle = articlesData.articles.find(/*...*/);
+
+// 개선된 접근 방식: GSI 기반 개별 조회 사용
+await api.waitForArticle(articleData.article.slug, token, 25, 1500);
+const { response: fetchResponse, data: fetchedData } = await api.getArticle(articleData.article.slug);
+expect(fetchResponse.status()).toBe(200);
+expect(fetchedData.article.title).toBe(testArticle.title);
+```
+
+**검증 과정**:
+1. **GitHub Actions 로그 확인**: 47 passed, 8 skipped 테스트 성공 확인
+2. **CloudWatch 메트릭 검증**: AWS CLI로 실제 업로드된 성공률 확인
+3. **대시보드 모니터링**: Conduit-E2E-Canary-Tests에서 100% 성공률 표시 확인
+
+**최종 결과**: 
+- **카나리 테스트 시스템 완전 구축**: 5분마다 자동 실행되는 모니터링
+- **100% 성공률 달성**: 47개 테스트 통과, 8개 건너뛰기
+- **CloudWatch 실시간 모니터링**: 정확한 성공률 메트릭 전송
+- **복합 문제 해결**: 테스트 실행 → 결과 처리 → 메트릭 업로드 전체 파이프라인 수정
+
+**교훈**:
+- **Multi-layer 문제 분석의 중요성**: 테스트 경로, 계산 공식, 변수 스코프, 파일 경로가 모두 연관된 복합 문제
+- **외부 리소스 활용**: Perplexity MCP를 통한 성공률 계산 공식 검증으로 정확한 해결책 도출
+- **DynamoDB 일관성 이해**: Scan 작업의 결과적 일관성 특성을 고려한 테스트 설계 필요
+- **엔드투엔드 검증**: 각 단계별 수정 후 전체 파이프라인 동작 확인 필수
+
+---
+
+## 28. 모범 사례 및 패턴
 
 ### 식별된 트러블슈팅 패턴
 
@@ -1633,6 +1744,12 @@ curl -I "https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/api/article
 23. **서버리스 URL 관리**: API Gateway 재배포 시 URL 변경 사항 체계적 추적 및 업데이트
 24. **E2E 테스트 데이터 유니크성**: 프로세스 ID 및 타임스탬프 기반 충돌 방지 전략
 
+**카나리 모니터링 패턴 (2025-08 카나리 시스템 완전 구축)**:
+25. **복합 문제 Layer 분석**: 테스트 실행, 결과 처리, 메트릭 업로드 단계별 격리 및 수정
+26. **외부 리소스 활용 검증**: Perplexity MCP 등 외부 도구를 통한 계산 공식 검증
+27. **엔드투엔드 파이프라인 검증**: 각 단계별 수정 후 전체 흐름 동작 확인
+28. **실시간 모니터링 시스템**: CloudWatch 메트릭 기반 5분 간격 카나리 모니터링
+
 ### 개발 모범 사례
 
 **기존 모범 사례**:
@@ -1667,6 +1784,12 @@ curl -I "https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/api/article
 23. **테스트 데이터 유니크성**: 타임스탬프+PID+랜덤값으로 데이터베이스 제약 조건 준수
 24. **E2E 테스트 재시도 전략**: 각 재시도마다 새로운 테스트 데이터 생성으로 중복 방지
 
+**카나리 모니터링 시스템 모범 사례 (2025-08)**:
+25. **복합 문제 체계적 분석**: 여러 계층에 걸친 문제를 단계별로 격리하여 해결
+26. **외부 검증 도구 활용**: Perplexity MCP 등을 통한 계산 공식 및 방법론 검증
+27. **엔드투엔드 검증 필수**: 부분 수정 후 전체 파이프라인 동작 확인
+28. **실시간 모니터링 인프라**: CloudWatch + GitHub Actions 기반 자동화된 모니터링
+
 ### 커뮤니케이션 패턴
 
 **효과적인 트러블슈팅 프롬프트 예시**:
@@ -1694,6 +1817,13 @@ curl -I "https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/api/article
 - ✅ "E2E 테스트에서 Article을 생성한 후에 Articles 목록 API를 호출해도 생성한 Article이 안 보여. DynamoDB Scan 페이징 문제인 것 같은데 해결해줘"
 - ✅ "E2E 테스트에서 API Gateway에 연결이 안 되고 있어. API Gateway URL이 바뀌었나? 모든 파일에서 오래된 URL을 찾아서 최신 URL로 업데이트해줘"
 
+*카나리 모니터링 시스템 관련*:
+- ✅ "카나리 테스트의 성공률을 살펴봐줘"
+- ✅ "이 문제에 대해서 필요하다면 퍼플렉시티 MCP를 사용해서 조사해"
+- ✅ "여전히 카나리 테스트가 실패하고 있어"
+- ✅ "Conduit-E2E-Canary-Tests 대시보드를 보면 SuccessRate 가 0%를 계속 유지하고 있어"
+- ✅ "나머지 하나도 성공시켜줘" (마지막 실패 테스트 수정 요청)
+
 **비효과적인 프롬프트**:
 - ❌ "안 돼"
 - ❌ "에러 나"
@@ -1703,7 +1833,7 @@ curl -I "https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/api/article
 
 ## 결론
 
-이 트러블슈팅 가이드는 실제 개발 과정에서 마주친 문제들과 해결 방법을 체계적으로 정리한 것입니다. **2025년 8월 6일 현재까지 총 26개의 트러블슈팅 케이스**를 포함하며, 특히 **2025년 8월 4일 이후 추가된 최신 5개 케이스**(22-26번)는 서버리스 환경에서의 **DynamoDB 일관성 문제 해결**과 **E2E 테스트 100% 성공률 달성** 과정을 상세히 담고 있습니다.
+이 트러블슈팅 가이드는 실제 개발 과정에서 마주친 문제들과 해결 방법을 체계적으로 정리한 것입니다. **2025년 8월 11일 현재까지 총 27개의 트러블슈팅 케이스**를 포함하며, 특히 **2025년 8월 4일 이후 추가된 최신 6개 케이스**(22-27번)는 서버리스 환경에서의 **DynamoDB 일관성 문제 해결**, **E2E 테스트 100% 성공률 달성**, 그리고 **카나리 모니터링 시스템 완전 구축** 과정을 상세히 담고 있습니다.
 
 ### 주요 교훈
 
@@ -1735,16 +1865,25 @@ curl -I "https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/api/article
 - **서버리스 인프라 변경 추적**: API Gateway 재배포 시 URL 변경사항 체계적 관리 필수
 - **테스트 데이터 설계**: 프로세스 격리 및 타임스탬프 기반 유니크성으로 동시 실행 환경 대응
 
+**카나리 모니터링 시스템 구축 교훈 (2025-08)**:
+- **Multi-layer 문제 해결 접근법**: 테스트 실행, 결과 처리, 메트릭 업로드 각 단계별 독립적 분석 및 수정
+- **외부 검증 도구의 가치**: Perplexity MCP를 통한 성공률 계산 공식 검증으로 정확한 해결 방향 확보
+- **JavaScript 스코프 관리**: 조건부 실행 환경에서 변수 스코프 설계의 중요성
+- **파일 경로 일관성**: 스크립트 생성 경로와 워크플로우 참조 경로 간의 정확한 매칭 필수
+- **엔드투엔드 검증**: 각 단계별 수정 후 전체 파이프라인이 정상 동작하는지 반드시 확인
+- **실시간 모니터링 인프라**: CloudWatch + GitHub Actions 조합으로 5분 간격 자동화된 서비스 상태 감시
+
 ### 진화하는 트러블슈팅 접근법
 
 이 문서는 프로젝트의 진화와 함께 성장하는 **Living Document**입니다. Phase 1(모놀리식)에서 Phase 2(클라우드 전환)를 거쳐 **Phase 3(마이크로서비스 분해) 완료** 단계까지의 모든 트러블슈팅 경험을 포함하고 있습니다. 각 단계에서 발생하는 문제들이 서로 다른 특성을 보여주며, 이전 단계의 트러블슈팅 경험이 다음 단계의 예방적 설계에 기여하는 선순환 구조를 확인할 수 있습니다.
 
-특히 **2025년 8월 DynamoDB 일관성 문제 해결 과정에서 새롭게 발견된 5가지 트러블슈팅 패턴**(22-26번)은 서버리스 환경에서의 **데이터베이스 일관성**, **E2E 테스트 안정성**, **API Gateway 특성 이해** 등 실무에서 바로 적용 가능한 귀중한 인사이트를 제공합니다.
+특히 **2025년 8월 DynamoDB 일관성 문제 해결 과정에서 새롭게 발견된 6가지 트러블슈팅 패턴**(22-27번)은 서버리스 환경에서의 **데이터베이스 일관성**, **E2E 테스트 안정성**, **API Gateway 특성 이해**, 그리고 **카나리 모니터링 시스템** 구축 등 실무에서 바로 적용 가능한 귀중한 인사이트를 제공합니다.
 
 이번 업데이트로 추가된 주요 성과:
 - **E2E 테스트 100% 성공률 달성**: DynamoDB Primary Key 재설계를 통한 근본적 해결
 - **Strong Consistency 보장**: GSI 제거로 eventual consistency 문제 완전 해결
 - **서버리스 환경 최적화**: Lambda 함수 로직 개선 및 API Gateway 특성 반영
 - **테스트 안정성 향상**: 데이터 유니크성 및 페이징 문제 해결
+- **카나리 모니터링 시스템 완전 구축**: 5분 간격 자동화된 실시간 서비스 상태 감시 시스템
 
 이러한 경험들은 향후 유사한 서버리스 마이그레이션 프로젝트에서 참고할 수 있는 실무 중심의 레퍼런스가 될 것입니다.

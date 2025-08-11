@@ -161,46 +161,98 @@ export class CanaryMonitoringStack extends cdk.NestedStack {
       })
     );
 
-    // Endpoint-specific metrics if available
-    const commonEndpoints = [
-      'POST /users/login',
-      'POST /users',
-      'GET /user',
-      'GET /articles',
-      'POST /articles',
+    // Lambda function-specific metrics using AWS Lambda native metrics
+    const lambdaFunctions = [
+      { name: 'conduit-auth-register', label: 'POST /users (Register)' },
+      { name: 'conduit-auth-login', label: 'POST /users/login' },
+      { name: 'conduit-auth-getuser', label: 'GET /user' },
+      { name: 'conduit-articles-list', label: 'GET /articles' },
+      { name: 'conduit-articles-get', label: 'GET /articles/:slug' },
+      { name: 'conduit-articles-create', label: 'POST /articles' },
+      { name: 'conduit-articles-update', label: 'PUT /articles/:slug' },
+      { name: 'conduit-articles-delete', label: 'DELETE /articles/:slug' },
+      { name: 'conduit-articles-favorite', label: 'POST /articles/:slug/favorite' },
+      { name: 'conduit-comments-list', label: 'GET /articles/:slug/comments' },
+      { name: 'conduit-comments-create', label: 'POST /articles/:slug/comments' },
+      { name: 'conduit-comments-delete', label: 'DELETE /articles/:slug/comments/:id' },
     ];
 
-    const endpointWidgets: cloudwatch.IWidget[] = [];
-    commonEndpoints.forEach((endpoint, index) => {
-      endpointWidgets.push(
+    const functionWidgets: cloudwatch.IWidget[] = [];
+    
+    // Create widgets for each Lambda function
+    lambdaFunctions.forEach((func) => {
+      // Success Rate calculation: (Invocations - Errors) / Invocations * 100
+      const successRateMetric = new cloudwatch.MathExpression({
+        expression: '(invocations - errors) / invocations * 100',
+        usingMetrics: {
+          invocations: new cloudwatch.Metric({
+            namespace: 'AWS/Lambda',
+            metricName: 'Invocations',
+            dimensionsMap: { FunctionName: func.name },
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+          errors: new cloudwatch.Metric({
+            namespace: 'AWS/Lambda',
+            metricName: 'Errors',
+            dimensionsMap: { FunctionName: func.name },
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+        },
+        label: 'Success Rate (%)',
+      });
+
+      const durationMetric = new cloudwatch.Metric({
+        namespace: 'AWS/Lambda',
+        metricName: 'Duration',
+        dimensionsMap: { FunctionName: func.name },
+        statistic: 'Average',
+        period: cdk.Duration.minutes(5),
+      });
+
+      functionWidgets.push(
         new cloudwatch.GraphWidget({
-          title: `${endpoint} - Success Rate & Response Time`,
-          left: [
-            new cloudwatch.Metric({
-              namespace: 'Conduit/E2E',
-              metricName: 'EndpointSuccessRate',
-              dimensionsMap: { Endpoint: endpoint },
-              statistic: 'Average',
-              period: cdk.Duration.minutes(5),
-            }),
-          ],
-          right: [
-            new cloudwatch.Metric({
-              namespace: 'Conduit/E2E',
-              metricName: 'EndpointResponseTime',
-              dimensionsMap: { Endpoint: endpoint },
-              statistic: 'Average',
-              period: cdk.Duration.minutes(5),
-            }),
-          ],
+          title: `${func.label} - Success Rate & Response Time`,
+          left: [successRateMetric],
+          right: [durationMetric],
           width: 12,
           height: 6,
+          leftYAxis: {
+            min: 0,
+            max: 100,
+          },
         })
       );
     });
 
-    if (endpointWidgets.length > 0) {
-      this.dashboard.addWidgets(...endpointWidgets);
+    // Add Lambda function overview widget
+    const lambdaOverviewWidget = new cloudwatch.GraphWidget({
+      title: 'All Lambda Functions - Invocations & Errors',
+      left: lambdaFunctions.map(func => new cloudwatch.Metric({
+        namespace: 'AWS/Lambda',
+        metricName: 'Invocations',
+        dimensionsMap: { FunctionName: func.name },
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+        label: `${func.label} - Invocations`,
+      })),
+      right: lambdaFunctions.map(func => new cloudwatch.Metric({
+        namespace: 'AWS/Lambda',
+        metricName: 'Errors',
+        dimensionsMap: { FunctionName: func.name },
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+        label: `${func.label} - Errors`,
+      })),
+      width: 24,
+      height: 6,
+    });
+
+    functionWidgets.unshift(lambdaOverviewWidget);
+
+    if (functionWidgets.length > 0) {
+      this.dashboard.addWidgets(...functionWidgets);
     }
 
     // Output useful information
