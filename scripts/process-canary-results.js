@@ -14,6 +14,16 @@ function processTestResults(resultsPath) {
     const rawResults = fs.readFileSync(resultsPath, 'utf8');
     const results = JSON.parse(rawResults);
     
+    // Debug: Log results structure
+    console.log('🔍 Results keys:', Object.keys(results));
+    console.log('🔍 Results structure:');
+    console.log('  - config:', results.config ? 'exists' : 'missing');
+    console.log('  - suites:', results.suites ? `${results.suites.length} suites` : 'missing');
+    console.log('  - stats:', results.stats ? JSON.stringify(results.stats) : 'missing');
+    if (results.suites && results.suites.length > 0) {
+      console.log('  - first suite specs:', results.suites[0].specs ? `${results.suites[0].specs.length} specs` : 'no specs');
+    }
+    
     const timestamp = new Date().toISOString();
     const totalTests = results.suites?.reduce((acc, suite) => 
       acc + (suite.specs?.length || 0), 0) || 0;

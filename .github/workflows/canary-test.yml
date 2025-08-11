@@ -87,6 +87,8 @@ jobs:
           # Check if results.json exists in various possible locations
           if [ -f "test-results/canary-results.json" ]; then
             echo "✅ Found test-results/canary-results.json"
+            echo "🔍 First 50 lines of results file:"
+            head -50 test-results/canary-results.json
             node ../scripts/process-canary-results.js test-results/canary-results.json
           elif [ -f "test-results/results.json" ]; then
             echo "✅ Found test-results/results.json"
