@@ -45,6 +45,7 @@ export class ConduitStack extends cdk.Stack {
     // CloudWatch Dashboard for Service Monitoring  
     const monitoringStack = new MonitoringStack(this, 'Monitoring', {
       apiGatewayId: serverlessAuthStack.api.restApiId,
+      apiGatewayName: serverlessAuthStack.api.restApiName || 'conduit-api',
       lambdaFunctions: {
         authFunction: serverlessAuthStack.registerFunction.functionName,
         articlesFunction: serverlessArticlesStack.listArticlesFunction.functionName,
@@ -54,7 +55,8 @@ export class ConduitStack extends cdk.Stack {
         usersTable: serverlessAuthStack.usersTable.tableName,
         articlesTable: serverlessArticlesStack.articlesTable.tableName,
         commentsTable: serverlessCommentsStack.commentsTable.tableName,
-      }
+      },
+      // notificationEmail: 'your-email@example.com', // Optional: Add email for notifications
     });
     monitoringStack.addDependency(serverlessAuthStack);
     monitoringStack.addDependency(serverlessArticlesStack);  

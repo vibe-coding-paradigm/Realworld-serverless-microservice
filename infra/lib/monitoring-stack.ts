@@ -1,9 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { Construct } from 'constructs';
 
 export interface MonitoringStackProps extends cdk.NestedStackProps {
   apiGatewayId: string;
+  apiGatewayName: string;
   lambdaFunctions: {
     authFunction: string;
     articlesFunction: string;
@@ -14,30 +18,56 @@ export interface MonitoringStackProps extends cdk.NestedStackProps {
     articlesTable: string;
     commentsTable: string;
   };
+  /**
+   * Email for alarm notifications
+   */
+  notificationEmail?: string;
 }
 
 export class MonitoringStack extends cdk.NestedStack {
   public readonly dashboard: cloudwatch.Dashboard;
+  public readonly alertTopic: sns.Topic;
+  public lambdaErrorAlarm: cloudwatch.Alarm;
+  public apiGatewayErrorAlarm: cloudwatch.Alarm;
 
   constructor(scope: Construct, id: string, props: MonitoringStackProps) {
     super(scope, id, props);
+
+    // SNS Topic for alerts
+    this.alertTopic = new sns.Topic(this, 'ServiceAlertTopic', {
+      topicName: 'conduit-service-alerts',
+      displayName: 'Conduit Service Monitoring Alerts',
+    });
+
+    // Add email subscription if provided
+    if (props.notificationEmail) {
+      this.alertTopic.addSubscription(
+        new subscriptions.EmailSubscription(props.notificationEmail)
+      );
+    }
+
+    // Create Alarms
+    this.createAlarms(props);
 
     // Create CloudWatch Dashboard
     this.dashboard = new cloudwatch.Dashboard(this, 'RealWorldServiceMonitor', {
       dashboardName: 'RealWorld-Service-Monitor',
     });
 
+    // System Overview Widget (first)
+    this.addSystemOverviewWidget(props);
+
     // Lambda Functions Monitoring Widgets
     this.addLambdaMonitoringWidgets(props.lambdaFunctions);
 
     // API Gateway Monitoring Widgets  
-    this.addApiGatewayMonitoringWidgets(props.apiGatewayId);
+    this.addApiGatewayMonitoringWidgets(props.apiGatewayId, props.apiGatewayName);
 
     // DynamoDB Monitoring Widgets
     this.addDynamoDBMonitoringWidgets(props.dynamoDBTables);
 
-    // System Overview Widget
-    this.addSystemOverviewWidget();
+    // Add API endpoint details (from canary stack)
+    this.addApiEndpointDetails(props.apiGatewayName);
 
     // Output dashboard URL
     new cdk.CfnOutput(this, 'DashboardUrl', {
@@ -45,6 +75,99 @@ export class MonitoringStack extends cdk.NestedStack {
       description: 'CloudWatch Dashboard URL',
       exportName: 'RealWorldDashboardUrl'
     });
+
+    new cdk.CfnOutput(this, 'AlertTopicArn', {
+      description: 'SNS Topic ARN for service alerts',
+      value: this.alertTopic.topicArn,
+    });
+
+    // Tags
+    cdk.Tags.of(this).add('Component', 'Monitoring');
+    cdk.Tags.of(this).add('Type', 'Service');
+  }
+
+  private createAlarms(props: MonitoringStackProps) {
+    // Lambda Error Rate Alarm
+    this.lambdaErrorAlarm = new cloudwatch.Alarm(this, 'LambdaErrorRateAlarm', {
+      alarmName: 'RealWorld-Lambda-ErrorRate-High',
+      alarmDescription: 'Lambda functions error rate is above 5%',
+      metric: new cloudwatch.MathExpression({
+        expression: '(errors / invocations) * 100',
+        usingMetrics: {
+          errors: new cloudwatch.Metric({
+            namespace: 'AWS/Lambda',
+            metricName: 'Errors',
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+          invocations: new cloudwatch.Metric({
+            namespace: 'AWS/Lambda',
+            metricName: 'Invocations',
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+        },
+        label: 'Error Rate (%)',
+      }),
+      threshold: 5,
+      evaluationPeriods: 2,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // API Gateway Error Rate Alarm
+    this.apiGatewayErrorAlarm = new cloudwatch.Alarm(this, 'ApiGatewayErrorRateAlarm', {
+      alarmName: 'RealWorld-API-ErrorRate-High',
+      alarmDescription: 'API Gateway error rate is above 1%',
+      metric: new cloudwatch.MathExpression({
+        expression: '((errors4xx + errors5xx) / count) * 100',
+        usingMetrics: {
+          count: new cloudwatch.Metric({
+            namespace: 'AWS/ApiGateway',
+            metricName: 'Count',
+            dimensionsMap: {
+              ApiName: props.apiGatewayName,
+              Stage: 'prod',
+            },
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+          errors4xx: new cloudwatch.Metric({
+            namespace: 'AWS/ApiGateway',
+            metricName: '4XXError',
+            dimensionsMap: {
+              ApiName: props.apiGatewayName,
+              Stage: 'prod',
+            },
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+          errors5xx: new cloudwatch.Metric({
+            namespace: 'AWS/ApiGateway',
+            metricName: '5XXError',
+            dimensionsMap: {
+              ApiName: props.apiGatewayName,
+              Stage: 'prod',
+            },
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+        },
+        label: 'Error Rate (%)',
+      }),
+      threshold: 1,
+      evaluationPeriods: 2,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Connect alarms to SNS topic
+    this.lambdaErrorAlarm.addAlarmAction(
+      new cloudwatchActions.SnsAction(this.alertTopic)
+    );
+    this.apiGatewayErrorAlarm.addAlarmAction(
+      new cloudwatchActions.SnsAction(this.alertTopic)
+    );
   }
 
   private addLambdaMonitoringWidgets(lambdaFunctions: { authFunction: string; articlesFunction: string; commentsFunction: string }) {
@@ -164,7 +287,7 @@ export class MonitoringStack extends cdk.NestedStack {
     );
   }
 
-  private addApiGatewayMonitoringWidgets(apiGatewayId: string) {
+  private addApiGatewayMonitoringWidgets(apiGatewayId: string, apiGatewayName: string) {
     // API Gateway Request Count
     const apiRequestCountWidget = new cloudwatch.GraphWidget({
       title: 'API Gateway Requests',
@@ -173,7 +296,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: 'Count',
           dimensionsMap: {
-            ApiName: apiGatewayId,
+            ApiName: apiGatewayName,
+            Stage: 'prod',
           },
           statistic: 'Sum',
           label: 'Total Requests',
@@ -191,7 +315,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: 'Latency',
           dimensionsMap: {
-            ApiName: apiGatewayId,
+            ApiName: apiGatewayName,
+            Stage: 'prod',
           },
           statistic: 'Average',
           label: 'Average Latency',
@@ -209,7 +334,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: '4XXError',
           dimensionsMap: {
-            ApiName: apiGatewayId,
+            ApiName: apiGatewayName,
+            Stage: 'prod',
           },
           statistic: 'Sum',
           label: '4XX Errors',
@@ -218,7 +344,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: '5XXError',
           dimensionsMap: {
-            ApiName: apiGatewayId,
+            ApiName: apiGatewayName,
+            Stage: 'prod',
           },
           statistic: 'Sum',
           label: '5XX Errors',
@@ -353,7 +480,7 @@ export class MonitoringStack extends cdk.NestedStack {
     );
   }
 
-  private addSystemOverviewWidget() {
+  private addSystemOverviewWidget(props: MonitoringStackProps) {
     // System Health Overview - Number widgets
     const systemOverviewWidget = new cloudwatch.Row(
       new cloudwatch.SingleValueWidget({
@@ -362,6 +489,10 @@ export class MonitoringStack extends cdk.NestedStack {
           new cloudwatch.Metric({
             namespace: 'AWS/ApiGateway',
             metricName: 'Count',
+            dimensionsMap: {
+              ApiName: props.apiGatewayName,
+              Stage: 'prod',
+            },
             statistic: 'Sum',
             period: cdk.Duration.hours(1),
           }),
@@ -375,6 +506,10 @@ export class MonitoringStack extends cdk.NestedStack {
           new cloudwatch.Metric({
             namespace: 'AWS/ApiGateway', 
             metricName: 'Latency',
+            dimensionsMap: {
+              ApiName: props.apiGatewayName,
+              Stage: 'prod',
+            },
             statistic: 'Average',
             period: cdk.Duration.minutes(5),
           }),
@@ -391,18 +526,30 @@ export class MonitoringStack extends cdk.NestedStack {
               e1: new cloudwatch.Metric({
                 namespace: 'AWS/ApiGateway',
                 metricName: '4XXError',
+                dimensionsMap: {
+                  ApiName: props.apiGatewayName,
+                  Stage: 'prod',
+                },
                 statistic: 'Sum',
                 period: cdk.Duration.hours(1),
               }),
               e2: new cloudwatch.Metric({
                 namespace: 'AWS/ApiGateway',
                 metricName: '5XXError',
+                dimensionsMap: {
+                  ApiName: props.apiGatewayName,
+                  Stage: 'prod',
+                },
                 statistic: 'Sum',
                 period: cdk.Duration.hours(1),
               }),
               m1: new cloudwatch.Metric({
                 namespace: 'AWS/ApiGateway',
                 metricName: 'Count',
+                dimensionsMap: {
+                  ApiName: props.apiGatewayName,
+                  Stage: 'prod',
+                },
                 statistic: 'Sum',
                 period: cdk.Duration.hours(1),
               }),
@@ -429,5 +576,75 @@ export class MonitoringStack extends cdk.NestedStack {
     );
 
     this.dashboard.addWidgets(systemOverviewWidget);
+  }
+
+  private addApiEndpointDetails(apiGatewayName: string) {
+    // API Endpoints based on RealWorld spec
+    const apiEndpoints = [
+      { method: 'POST', resource: 'users', label: 'POST /users (Register)' },
+      { method: 'POST', resource: 'users/login', label: 'POST /users/login' },
+      { method: 'GET', resource: 'user', label: 'GET /user' },
+      { method: 'PUT', resource: 'user', label: 'PUT /user' },
+      { method: 'GET', resource: 'articles', label: 'GET /articles' },
+      { method: 'GET', resource: 'articles/{slug}', label: 'GET /articles/:slug' },
+      { method: 'POST', resource: 'articles', label: 'POST /articles' },
+      { method: 'PUT', resource: 'articles/{slug}', label: 'PUT /articles/:slug' },
+      { method: 'DELETE', resource: 'articles/{slug}', label: 'DELETE /articles/:slug' },
+      { method: 'POST', resource: 'articles/{slug}/favorite', label: 'POST /articles/:slug/favorite' },
+      { method: 'DELETE', resource: 'articles/{slug}/favorite', label: 'DELETE /articles/:slug/favorite' },
+      { method: 'GET', resource: 'articles/{slug}/comments', label: 'GET /articles/:slug/comments' },
+      { method: 'POST', resource: 'articles/{slug}/comments', label: 'POST /articles/:slug/comments' },
+      { method: 'DELETE', resource: 'articles/{slug}/comments/{id}', label: 'DELETE /articles/:slug/comments/:id' },
+    ];
+
+    // Add API Gateway overview widget
+    const apiOverviewWidget = new cloudwatch.GraphWidget({
+      title: 'All API Endpoints - Requests & Errors',
+      left: apiEndpoints.slice(0, 7).map(api => new cloudwatch.Metric({
+        namespace: 'AWS/ApiGateway',
+        metricName: 'Count',
+        dimensionsMap: { 
+          ApiName: apiGatewayName,
+          Method: api.method,
+          Resource: api.resource,
+          Stage: 'prod'
+        },
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+        label: `${api.label}`,
+      })),
+      right: [
+        ...apiEndpoints.slice(0, 7).map(api => new cloudwatch.Metric({
+          namespace: 'AWS/ApiGateway',
+          metricName: '4XXError',
+          dimensionsMap: { 
+            ApiName: apiGatewayName,
+            Method: api.method,
+            Resource: api.resource,
+            Stage: 'prod'
+          },
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+          label: `${api.label} - 4XX`,
+        })),
+        ...apiEndpoints.slice(0, 3).map(api => new cloudwatch.Metric({
+          namespace: 'AWS/ApiGateway',
+          metricName: '5XXError',
+          dimensionsMap: { 
+            ApiName: apiGatewayName,
+            Method: api.method,
+            Resource: api.resource,
+            Stage: 'prod'
+          },
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+          label: `${api.label} - 5XX`,
+        }))
+      ],
+      width: 24,
+      height: 6,
+    });
+
+    this.dashboard.addWidgets(apiOverviewWidget);
   }
 }
