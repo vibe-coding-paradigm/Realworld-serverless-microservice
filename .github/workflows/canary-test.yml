@@ -108,12 +108,17 @@ jobs:
       - name: Upload metrics to CloudWatch
         if: steps.process.conclusion == 'success' && github.event.inputs.dry_run != 'true'
         run: |
-          # Read processed metrics
-          METRICS_FILE="frontend/test-results/canary/metrics.json"
+          # Read processed metrics (script saves to test-results/metrics.json)
+          METRICS_FILE="frontend/test-results/metrics.json"
           if [ -f "$METRICS_FILE" ]; then
+            echo "✅ Found metrics file at: $METRICS_FILE"
+            cat "$METRICS_FILE"
             node scripts/upload-metrics.js "$METRICS_FILE"
           else
-            echo "Metrics file not found, creating basic failure metric"
+            echo "❌ Metrics file not found at: $METRICS_FILE"
+            echo "🔍 Available files in test-results:"
+            ls -la frontend/test-results/ || echo "No test-results directory"
+            echo "Creating basic failure metric..."
             aws cloudwatch put-metric-data \
               --namespace "Conduit/E2E" \
               --metric-data MetricName=SuccessRate,Value=0,Unit=Percent,Timestamp=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
