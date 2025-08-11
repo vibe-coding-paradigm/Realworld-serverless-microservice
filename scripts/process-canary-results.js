@@ -25,54 +25,70 @@ function processTestResults(resultsPath) {
     }
     
     const timestamp = new Date().toISOString();
-    const totalTests = results.suites?.reduce((acc, suite) => 
-      acc + (suite.specs?.length || 0), 0) || 0;
     
-    let passedTests = 0;
-    let failedTests = 0;
-    let totalDuration = 0;
-    const endpointResults = {};
+    // Use stats if available, otherwise fall back to suite processing
+    let totalTests, passedTests, failedTests, skippedTests;
+    let totalDuration = results.stats?.duration || 0;
     
-    // Process test suites
-    results.suites?.forEach(suite => {
-      suite.specs?.forEach(spec => {
-        spec.tests?.forEach(test => {
-          const duration = test.results?.[0]?.duration || 0;
-          totalDuration += duration;
-          
-          if (test.results?.[0]?.status === 'passed') {
-            passedTests++;
-          } else {
-            failedTests++;
-          }
-          
-          // Extract endpoint information from test title
-          const testTitle = test.title || '';
-          const endpointMatch = testTitle.match(/(GET|POST|PUT|DELETE)\s+([^\s]+)/i);
-          if (endpointMatch) {
-            const method = endpointMatch[1].toUpperCase();
-            const endpoint = endpointMatch[2];
-            const key = `${method} ${endpoint}`;
-            
-            if (!endpointResults[key]) {
-              endpointResults[key] = { passed: 0, failed: 0, totalDuration: 0, count: 0 };
-            }
+    if (results.stats) {
+      console.log('🎯 Using stats data for metrics calculation');
+      totalTests = (results.stats.expected || 0) + (results.stats.skipped || 0);
+      passedTests = results.stats.expected || 0;
+      failedTests = results.stats.unexpected || 0;
+      skippedTests = results.stats.skipped || 0;
+      console.log(`📊 Stats: expected=${passedTests}, skipped=${skippedTests}, unexpected=${failedTests}`);
+    } else {
+      console.log('🔄 Falling back to suite processing');
+      totalTests = results.suites?.reduce((acc, suite) => 
+        acc + (suite.specs?.length || 0), 0) || 0;
+      
+      passedTests = 0;
+      failedTests = 0;
+      const endpointResults = {};
+      
+      // Process test suites
+      results.suites?.forEach(suite => {
+        suite.specs?.forEach(spec => {
+          spec.tests?.forEach(test => {
+            const duration = test.results?.[0]?.duration || 0;
+            totalDuration += duration;
             
             if (test.results?.[0]?.status === 'passed') {
-              endpointResults[key].passed++;
+              passedTests++;
             } else {
-              endpointResults[key].failed++;
+              failedTests++;
             }
-            endpointResults[key].totalDuration += duration;
-            endpointResults[key].count++;
-          }
+            
+            // Extract endpoint information from test title
+            const testTitle = test.title || '';
+            const endpointMatch = testTitle.match(/(GET|POST|PUT|DELETE)\s+([^\s]+)/i);
+            if (endpointMatch) {
+              const method = endpointMatch[1].toUpperCase();
+              const endpoint = endpointMatch[2];
+              const key = `${method} ${endpoint}`;
+              
+              if (!endpointResults[key]) {
+                endpointResults[key] = { passed: 0, failed: 0, totalDuration: 0, count: 0 };
+              }
+              
+              if (test.results?.[0]?.status === 'passed') {
+                endpointResults[key].passed++;
+              } else {
+                endpointResults[key].failed++;
+              }
+              endpointResults[key].totalDuration += duration;
+              endpointResults[key].count++;
+            }
+          });
         });
       });
-    });
+    }
     
     // Calculate metrics
     const successRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
     const avgResponseTime = totalTests > 0 ? totalDuration / totalTests : 0;
+    
+    console.log(`📈 Calculated metrics: totalTests=${totalTests}, passedTests=${passedTests}, successRate=${successRate.toFixed(2)}%`);
     
     // Generate CloudWatch metrics
     const metrics = {
