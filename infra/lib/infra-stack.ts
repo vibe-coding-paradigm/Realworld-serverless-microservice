@@ -5,6 +5,7 @@ import { ServerlessAuthStack } from './serverless-auth-stack';
 import { ServerlessArticlesStack } from './serverless-articles-stack';
 import { ServerlessCommentsStack } from './serverless-comments-stack';
 import { CanaryMonitoringStack } from './canary-monitoring-stack';
+import { MonitoringStack } from './monitoring-stack';
 // import { ApiGatewayProxyStack } from './api-gateway-proxy-stack';  // DISABLED: ALB proxy no longer needed
 
 export class ConduitStack extends cdk.Stack {
@@ -40,6 +41,24 @@ export class ConduitStack extends cdk.Stack {
     const canaryMonitoringStack = new CanaryMonitoringStack(this, 'CanaryMonitoring', {
       // notificationEmail: 'your-email@example.com', // Optional: Add email for notifications
     });
+
+    // CloudWatch Dashboard for Service Monitoring  
+    const monitoringStack = new MonitoringStack(this, 'Monitoring', {
+      apiGatewayId: serverlessAuthStack.api.restApiId,
+      lambdaFunctions: {
+        authFunction: serverlessAuthStack.registerFunction.functionName,
+        articlesFunction: serverlessArticlesStack.listArticlesFunction.functionName,
+        commentsFunction: serverlessCommentsStack.createCommentFunction.functionName,
+      },
+      dynamoDBTables: {
+        usersTable: serverlessAuthStack.usersTable.tableName,
+        articlesTable: serverlessArticlesStack.articlesTable.tableName,
+        commentsTable: serverlessCommentsStack.commentsTable.tableName,
+      }
+    });
+    monitoringStack.addDependency(serverlessAuthStack);
+    monitoringStack.addDependency(serverlessArticlesStack);  
+    monitoringStack.addDependency(serverlessCommentsStack);
 
     // MIGRATION COMPLETE: ECS infrastructure has been fully replaced by serverless Lambda functions
     // - No more compute-stack (ECS cluster, ALB, containers)
