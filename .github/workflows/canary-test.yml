@@ -62,8 +62,8 @@ jobs:
           # Create results directory
           mkdir -p test-results/canary
           
-          # Run E2E tests with custom reporter
-          npx playwright test \
+          # Run E2E tests with JSON reporter
+          PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/canary-results.json npx playwright test \
             --config=playwright.config.ts \
             --reporter=json \
             --output=test-results/canary \
@@ -78,15 +78,26 @@ jobs:
         id: process
         run: |
           cd frontend
-          # Check if results.json exists, otherwise use the default Playwright output
-          if [ -f "test-results/results.json" ]; then
-            echo "Found test-results/results.json"
+          # Debug: List all files in test-results directory
+          echo "🔍 Debugging - Contents of frontend directory:"
+          find . -name "*.json" -type f | head -10
+          echo "🔍 Contents of test-results directory:"
+          ls -la test-results/ 2>/dev/null || echo "test-results directory not found"
+          
+          # Check if results.json exists in various possible locations
+          if [ -f "test-results/canary-results.json" ]; then
+            echo "✅ Found test-results/canary-results.json"
+            node ../scripts/process-canary-results.js test-results/canary-results.json
+          elif [ -f "test-results/results.json" ]; then
+            echo "✅ Found test-results/results.json"
             node ../scripts/process-canary-results.js test-results/results.json
           elif [ -f "test-results.json" ]; then
-            echo "Found test-results.json"
+            echo "✅ Found test-results.json"
             node ../scripts/process-canary-results.js test-results.json
           else
-            echo "No test results file found, creating basic failure metric"
+            echo "❌ No test results file found, creating basic failure metric"
+            echo "Available files:"
+            find . -name "*results*.json" -o -name "*test*.json" 2>/dev/null || echo "No JSON files found"
             mkdir -p test-results/canary
             echo '{"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'","namespace":"Conduit/E2E","metrics":[{"MetricName":"SuccessRate","Value":0,"Unit":"Percent","Timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"},{"MetricName":"ProcessingError","Value":1,"Unit":"Count","Timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}]}' > test-results/canary/metrics.json
           fi
