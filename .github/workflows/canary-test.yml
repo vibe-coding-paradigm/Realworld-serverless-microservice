@@ -71,14 +71,25 @@ jobs:
             --timeout=30000 \
             --retries=1
         env:
-          VITE_API_URL: https://5hlad3iru9.execute-api.ap-northeast-2.amazonaws.com/prod
+          VITE_API_URL: https://8e299o0dw4.execute-api.ap-northeast-2.amazonaws.com/v1
         continue-on-error: true
 
       - name: Process test results
         id: process
         run: |
           cd frontend
-          node ../scripts/process-canary-results.js test-results/results.json
+          # Check if results.json exists, otherwise use the default Playwright output
+          if [ -f "test-results/results.json" ]; then
+            echo "Found test-results/results.json"
+            node ../scripts/process-canary-results.js test-results/results.json
+          elif [ -f "test-results.json" ]; then
+            echo "Found test-results.json"
+            node ../scripts/process-canary-results.js test-results.json
+          else
+            echo "No test results file found, creating basic failure metric"
+            mkdir -p test-results/canary
+            echo '{"timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'","namespace":"Conduit/E2E","metrics":[{"MetricName":"SuccessRate","Value":0,"Unit":"Percent","Timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"},{"MetricName":"ProcessingError","Value":1,"Unit":"Count","Timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}]}' > test-results/canary/metrics.json
+          fi
         continue-on-error: true
 
       - name: Upload metrics to CloudWatch
