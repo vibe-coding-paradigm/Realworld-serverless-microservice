@@ -40,6 +40,9 @@ jobs:
           cd frontend
           npm ci
 
+      - name: Install root dependencies for scripts
+        run: npm ci
+
       - name: Install Playwright browsers
         run: |
           cd frontend
