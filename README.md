@@ -4,7 +4,7 @@
 [![Frontend Deploy](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/frontend-deploy.yml)
 [![Infrastructure Deploy](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/infra-deploy.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/infra-deploy.yml)
 [![E2E Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/e2e-tests.yml)
-[![Canary Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-tests.yml)
+[![Canary Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-test.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-test.yml)
 [![Load Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/load-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/load-tests.yml)
 
 ## 📊 프로젝트 정보
@@ -503,10 +503,10 @@ AWS 서비스: ₩4,200
 ### 🔧 카나리 테스트 설정
 ```bash
 # 카나리 테스트 수동 실행
-gh workflow run canary-tests.yml
+gh workflow run canary-test.yml
 
 # 카나리 테스트 결과 확인
-gh run list --workflow=canary-tests.yml
+gh run list --workflow=canary-test.yml
 
 # CloudWatch 대시보드 접속
 aws cloudwatch get-dashboard --dashboard-name Conduit-E2E-Canary-Tests --region ap-northeast-2
