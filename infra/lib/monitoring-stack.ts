@@ -54,20 +54,12 @@ export class MonitoringStack extends cdk.NestedStack {
       dashboardName: 'RealWorld-Service-Monitor',
     });
 
-    // System Overview Widget (first)
-    this.addSystemOverviewWidget(props);
-
-    // Lambda Functions Monitoring Widgets
-    this.addLambdaMonitoringWidgets(props.lambdaFunctions);
-
-    // API Gateway Monitoring Widgets  
-    this.addApiGatewayMonitoringWidgets(props.apiGatewayId, props.apiGatewayName);
-
-    // DynamoDB Monitoring Widgets
-    this.addDynamoDBMonitoringWidgets(props.dynamoDBTables);
-
-    // Add API endpoint details (from canary stack)
-    this.addApiEndpointDetails(props.apiGatewayName);
+    // Add dashboard sections with clear separation
+    this.addSystemOverviewSection(props);
+    this.addCanaryTestingSection();
+    this.addLambdaSection(props.lambdaFunctions);
+    this.addApiGatewaySection(props.apiGatewayId, props.apiGatewayName);
+    this.addDynamoDBSection(props.dynamoDBTables);
 
     // Output dashboard URL
     new cdk.CfnOutput(this, 'DashboardUrl', {
@@ -126,8 +118,8 @@ export class MonitoringStack extends cdk.NestedStack {
             namespace: 'AWS/ApiGateway',
             metricName: 'Count',
             dimensionsMap: {
-              ApiName: props.apiGatewayName,
-              Stage: 'prod',
+              ApiName: 'conduit-auth-api',
+              Stage: 'v1',
             },
             statistic: 'Sum',
             period: cdk.Duration.minutes(5),
@@ -136,8 +128,8 @@ export class MonitoringStack extends cdk.NestedStack {
             namespace: 'AWS/ApiGateway',
             metricName: '4XXError',
             dimensionsMap: {
-              ApiName: props.apiGatewayName,
-              Stage: 'prod',
+              ApiName: 'conduit-auth-api',
+              Stage: 'v1',
             },
             statistic: 'Sum',
             period: cdk.Duration.minutes(5),
@@ -146,8 +138,8 @@ export class MonitoringStack extends cdk.NestedStack {
             namespace: 'AWS/ApiGateway',
             metricName: '5XXError',
             dimensionsMap: {
-              ApiName: props.apiGatewayName,
-              Stage: 'prod',
+              ApiName: 'conduit-auth-api',
+              Stage: 'v1',
             },
             statistic: 'Sum',
             period: cdk.Duration.minutes(5),
@@ -287,6 +279,20 @@ export class MonitoringStack extends cdk.NestedStack {
     );
   }
 
+  private addApiGatewaySection(apiGatewayId: string, apiGatewayName: string) {
+    // Section header
+    this.dashboard.addWidgets(
+      new cloudwatch.TextWidget({
+        markdown: '# 🌐 API Gateway\n\nAPI request metrics, latency, and error rates across all endpoints.',
+        width: 24,
+        height: 2,
+      })
+    );
+
+    this.addApiGatewayMonitoringWidgets(apiGatewayId, apiGatewayName);
+    this.addApiEndpointDetails(apiGatewayName);
+  }
+
   private addApiGatewayMonitoringWidgets(apiGatewayId: string, apiGatewayName: string) {
     // API Gateway Request Count
     const apiRequestCountWidget = new cloudwatch.GraphWidget({
@@ -296,8 +302,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: 'Count',
           dimensionsMap: {
-            ApiName: apiGatewayName,
-            Stage: 'prod',
+            ApiName: 'conduit-auth-api',
+            Stage: 'v1',
           },
           statistic: 'Sum',
           label: 'Total Requests',
@@ -315,8 +321,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: 'Latency',
           dimensionsMap: {
-            ApiName: apiGatewayName,
-            Stage: 'prod',
+            ApiName: 'conduit-auth-api',
+            Stage: 'v1',
           },
           statistic: 'Average',
           label: 'Average Latency',
@@ -334,8 +340,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: '4XXError',
           dimensionsMap: {
-            ApiName: apiGatewayName,
-            Stage: 'prod',
+            ApiName: 'conduit-auth-api',
+            Stage: 'v1',
           },
           statistic: 'Sum',
           label: '4XX Errors',
@@ -344,8 +350,8 @@ export class MonitoringStack extends cdk.NestedStack {
           namespace: 'AWS/ApiGateway',
           metricName: '5XXError',
           dimensionsMap: {
-            ApiName: apiGatewayName,
-            Stage: 'prod',
+            ApiName: 'conduit-auth-api',
+            Stage: 'v1',
           },
           statistic: 'Sum',
           label: '5XX Errors',
@@ -361,6 +367,19 @@ export class MonitoringStack extends cdk.NestedStack {
       apiLatencyWidget,
       apiErrorsWidget
     );
+  }
+
+  private addDynamoDBSection(tables: { usersTable: string; articlesTable: string; commentsTable: string }) {
+    // Section header
+    this.dashboard.addWidgets(
+      new cloudwatch.TextWidget({
+        markdown: '# 🗄️ DynamoDB Tables\n\nDatabase capacity usage, throttling, and performance metrics.',
+        width: 24,
+        height: 2,
+      })
+    );
+
+    this.addDynamoDBMonitoringWidgets(tables);
   }
 
   private addDynamoDBMonitoringWidgets(tables: { usersTable: string; articlesTable: string; commentsTable: string }) {
@@ -480,7 +499,15 @@ export class MonitoringStack extends cdk.NestedStack {
     );
   }
 
-  private addSystemOverviewWidget(props: MonitoringStackProps) {
+  private addSystemOverviewSection(props: MonitoringStackProps) {
+    // Section header
+    this.dashboard.addWidgets(
+      new cloudwatch.TextWidget({
+        markdown: '# 🎯 System Overview\n\nHigh-level system health metrics and alerts status.',
+        width: 24,
+        height: 2,
+      })
+    );
     // System Health Overview - Number widgets
     const systemOverviewWidget = new cloudwatch.Row(
       new cloudwatch.SingleValueWidget({
@@ -490,8 +517,8 @@ export class MonitoringStack extends cdk.NestedStack {
             namespace: 'AWS/ApiGateway',
             metricName: 'Count',
             dimensionsMap: {
-              ApiName: props.apiGatewayName,
-              Stage: 'prod',
+              ApiName: 'conduit-auth-api',
+              Stage: 'v1',
             },
             statistic: 'Sum',
             period: cdk.Duration.hours(1),
@@ -507,8 +534,8 @@ export class MonitoringStack extends cdk.NestedStack {
             namespace: 'AWS/ApiGateway', 
             metricName: 'Latency',
             dimensionsMap: {
-              ApiName: props.apiGatewayName,
-              Stage: 'prod',
+              ApiName: 'conduit-auth-api',
+              Stage: 'v1',
             },
             statistic: 'Average',
             period: cdk.Duration.minutes(5),
@@ -528,7 +555,7 @@ export class MonitoringStack extends cdk.NestedStack {
                 metricName: '4XXError',
                 dimensionsMap: {
                   ApiName: props.apiGatewayName,
-                  Stage: 'prod',
+                  Stage: 'v1',
                 },
                 statistic: 'Sum',
                 period: cdk.Duration.hours(1),
@@ -538,7 +565,7 @@ export class MonitoringStack extends cdk.NestedStack {
                 metricName: '5XXError',
                 dimensionsMap: {
                   ApiName: props.apiGatewayName,
-                  Stage: 'prod',
+                  Stage: 'v1',
                 },
                 statistic: 'Sum',
                 period: cdk.Duration.hours(1),
@@ -548,7 +575,7 @@ export class MonitoringStack extends cdk.NestedStack {
                 metricName: 'Count',
                 dimensionsMap: {
                   ApiName: props.apiGatewayName,
-                  Stage: 'prod',
+                  Stage: 'v1',
                 },
                 statistic: 'Sum',
                 period: cdk.Duration.hours(1),
@@ -576,6 +603,143 @@ export class MonitoringStack extends cdk.NestedStack {
     );
 
     this.dashboard.addWidgets(systemOverviewWidget);
+  }
+
+  private addCanaryTestingSection() {
+    // Section header
+    this.dashboard.addWidgets(
+      new cloudwatch.TextWidget({
+        markdown: '# 🧪 Canary Testing (E2E)\n\nEnd-to-end test results and API endpoint monitoring.',
+        width: 24,
+        height: 2,
+      })
+    );
+
+    // E2E Test Success Rate
+    const canarySuccessWidget = new cloudwatch.GraphWidget({
+      title: 'E2E Test Success Rate',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'SuccessRate',
+          statistic: 'Average',
+          period: cdk.Duration.minutes(5),
+          label: 'Success Rate (%)',
+        }),
+      ],
+      width: 12,
+      height: 6,
+    });
+
+    // E2E Test Response Time
+    const canaryResponseTimeWidget = new cloudwatch.GraphWidget({
+      title: 'E2E Test Response Time',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'ResponseTime',
+          statistic: 'Average',
+          period: cdk.Duration.minutes(5),
+          label: 'Response Time (ms)',
+        }),
+      ],
+      width: 12,
+      height: 6,
+    });
+
+    // Current test status
+    const canaryStatusWidget = new cloudwatch.SingleValueWidget({
+      title: 'Current Success Rate',
+      metrics: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'SuccessRate',
+          statistic: 'Average',
+          period: cdk.Duration.minutes(5),
+        }),
+      ],
+      width: 8,
+      height: 4,
+    });
+
+    const canaryCountWidget = new cloudwatch.SingleValueWidget({
+      title: 'Total Tests (Last 5min)',
+      metrics: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'TestCount',
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+        }),
+      ],
+      width: 8,
+      height: 4,
+    });
+
+    const canaryFailuresWidget = new cloudwatch.SingleValueWidget({
+      title: 'Failed Tests (Last 5min)',
+      metrics: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'FailedTests',
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+        }),
+      ],
+      width: 8,
+      height: 4,
+    });
+
+    // Test Results (Passed vs Failed)
+    const canaryTestResultsWidget = new cloudwatch.GraphWidget({
+      title: 'Test Results (Passed vs Failed)',
+      left: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'PassedTests',
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+          label: 'Passed Tests',
+        }),
+      ],
+      right: [
+        new cloudwatch.Metric({
+          namespace: 'Conduit/E2E',
+          metricName: 'FailedTests',
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+          label: 'Failed Tests',
+        }),
+      ],
+      width: 12,
+      height: 6,
+    });
+
+    this.dashboard.addWidgets(
+      canarySuccessWidget,
+      canaryResponseTimeWidget,
+      canaryTestResultsWidget
+    );
+
+    // Status summary row
+    this.dashboard.addWidgets(
+      canaryStatusWidget,
+      canaryCountWidget,
+      canaryFailuresWidget
+    );
+  }
+
+  private addLambdaSection(lambdaFunctions: { authFunction: string; articlesFunction: string; commentsFunction: string }) {
+    // Section header
+    this.dashboard.addWidgets(
+      new cloudwatch.TextWidget({
+        markdown: '# ⚡ Lambda Functions\n\nServerless function performance, invocations, and error tracking.',
+        width: 24,
+        height: 2,
+      })
+    );
+
+    this.addLambdaMonitoringWidgets(lambdaFunctions);
   }
 
   private addApiEndpointDetails(apiGatewayName: string) {
@@ -607,7 +771,7 @@ export class MonitoringStack extends cdk.NestedStack {
           ApiName: apiGatewayName,
           Method: api.method,
           Resource: api.resource,
-          Stage: 'prod'
+          Stage: 'v1'
         },
         statistic: 'Sum',
         period: cdk.Duration.minutes(5),
@@ -621,7 +785,7 @@ export class MonitoringStack extends cdk.NestedStack {
             ApiName: apiGatewayName,
             Method: api.method,
             Resource: api.resource,
-            Stage: 'prod'
+            Stage: 'v1'
           },
           statistic: 'Sum',
           period: cdk.Duration.minutes(5),
@@ -634,7 +798,7 @@ export class MonitoringStack extends cdk.NestedStack {
             ApiName: apiGatewayName,
             Method: api.method,
             Resource: api.resource,
-            Stage: 'prod'
+            Stage: 'v1'
           },
           statistic: 'Sum',
           period: cdk.Duration.minutes(5),
