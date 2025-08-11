@@ -432,26 +432,28 @@ cd load-tests && k6 run auth-load-test.js
 - **평균 응답 시간**: E2E 테스트 실행 시간 평균
 - **테스트 실행 횟수**: 일 1회 실행 빈도
 
-#### Lambda 함수별 실시간 메트릭
-각 API 엔드포인트의 실제 사용 패턴을 Lambda 네이티브 메트릭으로 추적:
+#### API Gateway별 실시간 메트릭
+각 API 엔드포인트의 실제 HTTP 요청 패턴을 API Gateway 네이티브 메트릭으로 추적:
 
-**인증 서비스**:
-- `POST /users` (Register) → `conduit-auth-register`
-- `POST /users/login` → `conduit-auth-login`
-- `GET /user` → `conduit-auth-getuser`
+**인증 API**:
+- `POST /users` (회원가입)
+- `POST /users/login` (로그인)
+- `GET /user` (사용자 정보 조회)
+- `PUT /user` (사용자 정보 수정)
 
-**게시글 서비스**:
-- `GET /articles` → `conduit-articles-list`
-- `POST /articles` → `conduit-articles-create`
-- `GET /articles/:slug` → `conduit-articles-get`
-- `PUT /articles/:slug` → `conduit-articles-update`
-- `DELETE /articles/:slug` → `conduit-articles-delete`
-- `POST /articles/:slug/favorite` → `conduit-articles-favorite`
+**게시글 API**:
+- `GET /articles` (게시글 목록)
+- `POST /articles` (게시글 작성)
+- `GET /articles/:slug` (게시글 조회)
+- `PUT /articles/:slug` (게시글 수정)
+- `DELETE /articles/:slug` (게시글 삭제)
+- `POST /articles/:slug/favorite` (좋아요 추가)
+- `DELETE /articles/:slug/favorite` (좋아요 취소)
 
-**댓글 서비스**:
-- `GET /articles/:slug/comments` → `conduit-comments-list`
-- `POST /articles/:slug/comments` → `conduit-comments-create`
-- `DELETE /articles/:slug/comments/:id` → `conduit-comments-delete`
+**댓글 API**:
+- `GET /articles/:slug/comments` (댓글 목록)
+- `POST /articles/:slug/comments` (댓글 작성)
+- `DELETE /articles/:slug/comments/:id` (댓글 삭제)
 
 ### 💰 카나리 테스트 월간 운영 비용 (서울 리전)
 

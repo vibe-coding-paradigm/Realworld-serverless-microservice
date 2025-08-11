@@ -161,41 +161,65 @@ export class CanaryMonitoringStack extends cdk.NestedStack {
       })
     );
 
-    // Lambda function-specific metrics using AWS Lambda native metrics
-    const lambdaFunctions = [
-      { name: 'conduit-auth-register', label: 'POST /users (Register)' },
-      { name: 'conduit-auth-login', label: 'POST /users/login' },
-      { name: 'conduit-auth-getuser', label: 'GET /user' },
-      { name: 'conduit-articles-list', label: 'GET /articles' },
-      { name: 'conduit-articles-get', label: 'GET /articles/:slug' },
-      { name: 'conduit-articles-create', label: 'POST /articles' },
-      { name: 'conduit-articles-update', label: 'PUT /articles/:slug' },
-      { name: 'conduit-articles-delete', label: 'DELETE /articles/:slug' },
-      { name: 'conduit-articles-favorite', label: 'POST /articles/:slug/favorite' },
-      { name: 'conduit-comments-list', label: 'GET /articles/:slug/comments' },
-      { name: 'conduit-comments-create', label: 'POST /articles/:slug/comments' },
-      { name: 'conduit-comments-delete', label: 'DELETE /articles/:slug/comments/:id' },
+    // API Gateway metrics using AWS API Gateway native metrics
+    const apiEndpoints = [
+      { method: 'POST', resource: 'users', label: 'POST /users (Register)' },
+      { method: 'POST', resource: 'users/login', label: 'POST /users/login' },
+      { method: 'GET', resource: 'user', label: 'GET /user' },
+      { method: 'PUT', resource: 'user', label: 'PUT /user' },
+      { method: 'GET', resource: 'articles', label: 'GET /articles' },
+      { method: 'GET', resource: 'articles/{slug}', label: 'GET /articles/:slug' },
+      { method: 'POST', resource: 'articles', label: 'POST /articles' },
+      { method: 'PUT', resource: 'articles/{slug}', label: 'PUT /articles/:slug' },
+      { method: 'DELETE', resource: 'articles/{slug}', label: 'DELETE /articles/:slug' },
+      { method: 'POST', resource: 'articles/{slug}/favorite', label: 'POST /articles/:slug/favorite' },
+      { method: 'DELETE', resource: 'articles/{slug}/favorite', label: 'DELETE /articles/:slug/favorite' },
+      { method: 'GET', resource: 'articles/{slug}/comments', label: 'GET /articles/:slug/comments' },
+      { method: 'POST', resource: 'articles/{slug}/comments', label: 'POST /articles/:slug/comments' },
+      { method: 'DELETE', resource: 'articles/{slug}/comments/{id}', label: 'DELETE /articles/:slug/comments/:id' },
     ];
 
-    const functionWidgets: cloudwatch.IWidget[] = [];
+    const apiWidgets: cloudwatch.IWidget[] = [];
     
-    // Create widgets for each Lambda function
-    lambdaFunctions.forEach((func) => {
-      // Success Rate calculation: (Invocations - Errors) / Invocations * 100
+    // Create widgets for each API endpoint
+    apiEndpoints.forEach((api) => {
+      // Success Rate calculation: ((Count - 4XXError - 5XXError) / Count) * 100
       const successRateMetric = new cloudwatch.MathExpression({
-        expression: '(invocations - errors) / invocations * 100',
+        expression: '((count - errors4xx - errors5xx) / count) * 100',
         usingMetrics: {
-          invocations: new cloudwatch.Metric({
-            namespace: 'AWS/Lambda',
-            metricName: 'Invocations',
-            dimensionsMap: { FunctionName: func.name },
+          count: new cloudwatch.Metric({
+            namespace: 'AWS/ApiGateway',
+            metricName: 'Count',
+            dimensionsMap: { 
+              ApiName: 'conduit-proxy-api',  // API Gateway name from api-gateway-proxy-stack
+              Method: api.method,
+              Resource: api.resource,
+              Stage: 'prod'  // API Gateway stage
+            },
             statistic: 'Sum',
             period: cdk.Duration.minutes(5),
           }),
-          errors: new cloudwatch.Metric({
-            namespace: 'AWS/Lambda',
-            metricName: 'Errors',
-            dimensionsMap: { FunctionName: func.name },
+          errors4xx: new cloudwatch.Metric({
+            namespace: 'AWS/ApiGateway',
+            metricName: '4XXError',
+            dimensionsMap: { 
+              ApiName: 'conduit-proxy-api',
+              Method: api.method,
+              Resource: api.resource,
+              Stage: 'prod'
+            },
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+          errors5xx: new cloudwatch.Metric({
+            namespace: 'AWS/ApiGateway',
+            metricName: '5XXError',
+            dimensionsMap: { 
+              ApiName: 'conduit-proxy-api',
+              Method: api.method,
+              Resource: api.resource,
+              Stage: 'prod'
+            },
             statistic: 'Sum',
             period: cdk.Duration.minutes(5),
           }),
@@ -203,19 +227,24 @@ export class CanaryMonitoringStack extends cdk.NestedStack {
         label: 'Success Rate (%)',
       });
 
-      const durationMetric = new cloudwatch.Metric({
-        namespace: 'AWS/Lambda',
-        metricName: 'Duration',
-        dimensionsMap: { FunctionName: func.name },
+      const latencyMetric = new cloudwatch.Metric({
+        namespace: 'AWS/ApiGateway',
+        metricName: 'Latency',
+        dimensionsMap: { 
+          ApiName: 'conduit-api',
+          Method: api.method,
+          Resource: api.resource,
+          Stage: 'v1'
+        },
         statistic: 'Average',
         period: cdk.Duration.minutes(5),
       });
 
-      functionWidgets.push(
+      apiWidgets.push(
         new cloudwatch.GraphWidget({
-          title: `${func.label} - Success Rate & Response Time`,
+          title: `${api.label} - Success Rate & Latency`,
           left: [successRateMetric],
-          right: [durationMetric],
+          right: [latencyMetric],
           width: 12,
           height: 6,
           leftYAxis: {
@@ -226,33 +255,58 @@ export class CanaryMonitoringStack extends cdk.NestedStack {
       );
     });
 
-    // Add Lambda function overview widget
-    const lambdaOverviewWidget = new cloudwatch.GraphWidget({
-      title: 'All Lambda Functions - Invocations & Errors',
-      left: lambdaFunctions.map(func => new cloudwatch.Metric({
-        namespace: 'AWS/Lambda',
-        metricName: 'Invocations',
-        dimensionsMap: { FunctionName: func.name },
+    // Add API Gateway overview widget
+    const apiOverviewWidget = new cloudwatch.GraphWidget({
+      title: 'All API Endpoints - Requests & Errors',
+      left: apiEndpoints.map(api => new cloudwatch.Metric({
+        namespace: 'AWS/ApiGateway',
+        metricName: 'Count',
+        dimensionsMap: { 
+          ApiName: 'conduit-api',
+          Method: api.method,
+          Resource: api.resource,
+          Stage: 'v1'
+        },
         statistic: 'Sum',
         period: cdk.Duration.minutes(5),
-        label: `${func.label} - Invocations`,
+        label: `${api.label} - Requests`,
       })),
-      right: lambdaFunctions.map(func => new cloudwatch.Metric({
-        namespace: 'AWS/Lambda',
-        metricName: 'Errors',
-        dimensionsMap: { FunctionName: func.name },
-        statistic: 'Sum',
-        period: cdk.Duration.minutes(5),
-        label: `${func.label} - Errors`,
-      })),
+      right: [
+        ...apiEndpoints.map(api => new cloudwatch.Metric({
+          namespace: 'AWS/ApiGateway',
+          metricName: '4XXError',
+          dimensionsMap: { 
+            ApiName: 'conduit-api',
+            Method: api.method,
+            Resource: api.resource,
+            Stage: 'v1'
+          },
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+          label: `${api.label} - 4XX`,
+        })),
+        ...apiEndpoints.map(api => new cloudwatch.Metric({
+          namespace: 'AWS/ApiGateway',
+          metricName: '5XXError',
+          dimensionsMap: { 
+            ApiName: 'conduit-api',
+            Method: api.method,
+            Resource: api.resource,
+            Stage: 'v1'
+          },
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+          label: `${api.label} - 5XX`,
+        }))
+      ],
       width: 24,
       height: 6,
     });
 
-    functionWidgets.unshift(lambdaOverviewWidget);
+    apiWidgets.unshift(apiOverviewWidget);
 
-    if (functionWidgets.length > 0) {
-      this.dashboard.addWidgets(...functionWidgets);
+    if (apiWidgets.length > 0) {
+      this.dashboard.addWidgets(...apiWidgets);
     }
 
     // Output useful information
