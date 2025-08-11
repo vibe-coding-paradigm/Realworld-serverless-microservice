@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { Construct } from 'constructs';
@@ -67,10 +68,10 @@ export class CanaryMonitoringStack extends cdk.NestedStack {
 
     // Connect alarms to SNS topic
     this.successRateAlarm.addAlarmAction(
-      new cloudwatch.SnsAction(this.alertTopic)
+      new cloudwatchActions.SnsAction(this.alertTopic)
     );
     this.responseTimeAlarm.addAlarmAction(
-      new cloudwatch.SnsAction(this.alertTopic)
+      new cloudwatchActions.SnsAction(this.alertTopic)
     );
 
     // CloudWatch Dashboard
