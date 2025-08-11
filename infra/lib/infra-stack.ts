@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 import { ServerlessAuthStack } from './serverless-auth-stack';
 import { ServerlessArticlesStack } from './serverless-articles-stack';
 import { ServerlessCommentsStack } from './serverless-comments-stack';
+import { CanaryMonitoringStack } from './canary-monitoring-stack';
 // import { ApiGatewayProxyStack } from './api-gateway-proxy-stack';  // DISABLED: ALB proxy no longer needed
 
 export class ConduitStack extends cdk.Stack {
@@ -34,6 +35,11 @@ export class ConduitStack extends cdk.Stack {
     });
     serverlessCommentsStack.addDependency(serverlessAuthStack);
     serverlessCommentsStack.addDependency(serverlessArticlesStack);
+
+    // Canary Monitoring Stack for E2E tests
+    const canaryMonitoringStack = new CanaryMonitoringStack(this, 'CanaryMonitoring', {
+      // notificationEmail: 'your-email@example.com', // Optional: Add email for notifications
+    });
 
     // MIGRATION COMPLETE: ECS infrastructure has been fully replaced by serverless Lambda functions
     // - No more compute-stack (ECS cluster, ALB, containers)

@@ -16,6 +16,7 @@
     "husky": "^8.0.3"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.849.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.849.0",
     "@aws-sdk/client-ecr": "^3.851.0",
     "@aws-sdk/client-ecs": "^3.848.0",

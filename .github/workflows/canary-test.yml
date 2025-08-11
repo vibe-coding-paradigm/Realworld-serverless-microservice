@@ -1,0 +1,113 @@
+name: Canary E2E Tests
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (skip metrics upload)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  AWS_REGION: ap-northeast-2
+  
+jobs:
+  canary-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    permissions:
+      contents: read
+      id-token: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps chromium
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run canary E2E tests
+        id: e2e
+        run: |
+          cd frontend
+          
+          # Create results directory
+          mkdir -p test-results/canary
+          
+          # Run E2E tests with custom reporter
+          npx playwright test \
+            --config=playwright.config.ts \
+            --reporter=json \
+            --output=test-results/canary \
+            tests/e2e/ \
+            --timeout=30000 \
+            --retries=1
+        env:
+          VITE_API_URL: https://5hlad3iru9.execute-api.ap-northeast-2.amazonaws.com/prod
+        continue-on-error: true
+
+      - name: Process test results
+        id: process
+        run: |
+          cd frontend
+          node ../scripts/process-canary-results.js test-results/results.json
+        continue-on-error: true
+
+      - name: Upload metrics to CloudWatch
+        if: steps.process.conclusion == 'success' && github.event.inputs.dry_run != 'true'
+        run: |
+          # Read processed metrics
+          METRICS_FILE="frontend/test-results/canary/metrics.json"
+          if [ -f "$METRICS_FILE" ]; then
+            node scripts/upload-metrics.js "$METRICS_FILE"
+          else
+            echo "Metrics file not found, creating basic failure metric"
+            aws cloudwatch put-metric-data \
+              --namespace "Conduit/E2E" \
+              --metric-data MetricName=SuccessRate,Value=0,Unit=Percent,Timestamp=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+          fi
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-test-results-${{ github.run_id }}
+          path: |
+            frontend/test-results/
+          retention-days: 7
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "Canary test completed"
+          echo "E2E Status: ${{ steps.e2e.outcome }}"
+          echo "Process Status: ${{ steps.process.outcome }}"
+          if [ -f "frontend/test-results/canary/metrics.json" ]; then
+            echo "Metrics generated:"
+            cat frontend/test-results/canary/metrics.json
+          fi
