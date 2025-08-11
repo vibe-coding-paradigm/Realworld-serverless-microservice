@@ -60,7 +60,7 @@ export function useUpdateArticle() {
   return useMutation({
     mutationFn: ({ slug, article }: { slug: string; article: Parameters<typeof articlesAPI.updateArticle>[1] }) =>
       articlesAPI.updateArticle(slug, article),
-    onSuccess: (_: any, variables: { slug: string; article: any }) => {
+    onSuccess: (_: unknown, variables: { slug: string; article: Parameters<typeof articlesAPI.updateArticle>[1] }) => {
       queryClient.invalidateQueries({ queryKey: articleKeys.detail(variables.slug) });
       queryClient.invalidateQueries({ queryKey: articleKeys.lists() });
     },

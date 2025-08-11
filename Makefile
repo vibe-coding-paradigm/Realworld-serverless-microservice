@@ -60,6 +60,11 @@ help:
 	@echo "  deploy-debug   - 배포 디버깅"
 	@echo "  verify-all     - 전체 시스템 검증"
 	@echo ""
+	@echo "🔍 파이프라인 상태:"
+	@echo "  pipeline-status - 현재 브랜치 파이프라인 상태 확인"
+	@echo "  pipeline-check  - 전체 파이프라인 상태 상세 보기"
+	@echo "  pipeline-watch  - 실시간 파이프라인 상태 모니터링"
+	@echo ""
 	@echo "💡 자세한 사용법: make <command> 또는 CLAUDE.md 참조"
 
 # 개발 명령어
@@ -109,24 +114,30 @@ test-integration:
 
 # 코드 품질 명령어
 lint: lint-backend lint-frontend
+	@echo "✅ 모든 린팅 검사가 완료되었습니다!"
 
 lint-backend:
 	@echo "🔍 백엔드 코드를 린팅하는 중..."
-	cd backend && golangci-lint run || echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+	@cd backend && golangci-lint run 2>/dev/null || (echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
+	@echo "✅ 백엔드 린팅 완료!"
 
 lint-frontend:
 	@echo "🔍 프론트엔드 코드를 린팅하는 중..."
 	cd frontend && npm run lint
+	@echo "✅ 프론트엔드 린팅 완료!"
 
 fmt: fmt-backend fmt-frontend
+	@echo "✅ 모든 코드 포맷팅이 완료되었습니다!"
 
 fmt-backend:
 	@echo "📝 백엔드 코드를 포맷팅하는 중..."
 	cd backend && go fmt ./...
+	@echo "✅ 백엔드 포맷팅 완료!"
 
 fmt-frontend:
 	@echo "📝 프론트엔드 코드를 포맷팅하는 중..."
 	cd frontend && npm run format || echo "⚠️  format 스크립트를 찾을 수 없습니다"
+	@echo "✅ 프론트엔드 포맷팅 완료!"
 
 # 데이터베이스 명령어
 migrate:
@@ -573,14 +584,28 @@ api-test:
 # 린터 자동 수정
 lint-fix:
 	@echo "🔧 린터 자동 수정 실행 중..."
-	@cd backend && golangci-lint run --fix || echo "⚠️ 백엔드 lint-fix 완료 (일부 수동 수정 필요할 수 있음)"
+	@echo "🔍 백엔드 코드 자동 수정 중..."
+	@cd backend && golangci-lint run --fix 2>/dev/null || (echo "⚠️  golangci-lint를 찾을 수 없습니다. 설치하세요: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
+	@echo "🔍 프론트엔드 코드 자동 수정 중..."
 	@cd frontend && npm run lint -- --fix || echo "⚠️ 프론트엔드 lint-fix 완료"
+	@echo "✅ 모든 코드 자동 수정이 완료되었습니다!"
 
 # 테스트 데이터 삽입
 seed-db:
 	@echo "🌱 테스트 데이터 삽입 중..."
 	@echo "TODO: 테스트 데이터 생성 스크립트 구현 필요"
 	@echo "현재는 수동으로 API를 통해 데이터를 생성하세요"
+
+# 파이프라인 상태 체크 명령어
+pipeline-status:
+	@./scripts/pipeline-status.sh
+
+pipeline-check:
+	@./scripts/check-pipeline.sh
+
+pipeline-watch:
+	@echo "📡 실시간 파이프라인 모니터링 시작..."
+	@gh run watch
 
 # 전체 환경 초기화
 reset-env:

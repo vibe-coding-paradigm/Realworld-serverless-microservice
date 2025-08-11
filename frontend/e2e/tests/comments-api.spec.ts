@@ -6,7 +6,7 @@ test.describe('Comments API Tests', () => {
   let api: ApiHelper;
   let testUser: { username: string; email: string; password: string };
   let userToken: string;
-  let testArticle: any;
+  let testArticle: { title: string; description: string; body: string; tagList: string[] };
   let articleSlug: string;
 
   test.beforeEach(async ({ request }) => {
@@ -84,7 +84,7 @@ test.describe('Comments API Tests', () => {
     expect(data.comments.length).toBeGreaterThan(0);
     
     // Find our comment
-    const ourComment = data.comments.find((c: any) => c.body === commentData.body);
+    const ourComment = data.comments.find((c: { body: string; author: { username: string } }) => c.body === commentData.body);
     expect(ourComment).toBeTruthy();
     expect(ourComment.author.username).toBe(testUser.username);
   });
@@ -109,7 +109,7 @@ test.describe('Comments API Tests', () => {
     expect(getResponse.status()).toBe(200);
     
     if (getData && getData.comments && Array.isArray(getData.comments)) {
-      const remainingComment = getData.comments.find((c: any) => c.id === commentId);
+      const remainingComment = getData.comments.find((c: { id: string }) => c.id === commentId);
       expect(remainingComment).toBeFalsy();
     }
   });
