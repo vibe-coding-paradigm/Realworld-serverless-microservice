@@ -7,6 +7,13 @@
 [![Canary Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-test.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/canary-test.yml)
 [![Load Tests](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/load-tests.yml/badge.svg)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/actions/workflows/load-tests.yml)
 
+## 📊 모니터링 대시보드
+- **CloudWatch Dashboard**: 서비스 상태를 실시간으로 모니터링
+- **Lambda 메트릭**: Duration, Invocations, Errors, Throttles
+- **API Gateway 메트릭**: 요청 수, 지연 시간, 오류율  
+- **DynamoDB 메트릭**: 읽기/쓰기 용량, 제한 요청
+- **시스템 개요**: 전체 상태를 한 눈에 파악
+
 ## 📊 프로젝트 정보
 [![Issues](https://img.shields.io/github/issues/vibe-coding-paradigm/Realworld-serverless-microservice)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/issues)
 [![Pull Requests](https://img.shields.io/github/issues-pr/vibe-coding-paradigm/Realworld-serverless-microservice)](https://github.com/vibe-coding-paradigm/Realworld-serverless-microservice/pulls)
