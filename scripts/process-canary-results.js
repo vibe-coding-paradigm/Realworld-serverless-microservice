@@ -27,16 +27,34 @@ function processTestResults(resultsPath) {
     const timestamp = new Date().toISOString();
     
     // Use stats if available, otherwise fall back to suite processing
-    let totalTests, passedTests, failedTests, skippedTests;
+    let totalTests, passedTests, failedTests, skippedTests, successRate;
     let totalDuration = results.stats?.duration || 0;
     
     if (results.stats) {
       console.log('🎯 Using stats data for metrics calculation');
-      totalTests = (results.stats.expected || 0) + (results.stats.skipped || 0);
-      passedTests = results.stats.expected || 0;
-      failedTests = results.stats.unexpected || 0;
-      skippedTests = results.stats.skipped || 0;
-      console.log(`📊 Stats: expected=${passedTests}, skipped=${skippedTests}, unexpected=${failedTests}`);
+      
+      const { expected = 0, unexpected = 0, skipped = 0 } = results.stats;
+      
+      // Calculate using industry standard: execution success rate (exclude skipped)
+      const execDenom = expected + unexpected;
+      const execSuccess = execDenom > 0 ? (expected / execDenom) * 100 : 100; // 100% if no tests ran
+      
+      // Also calculate overall rate (include skipped) for completeness
+      const overallDenom = expected + unexpected + skipped;
+      const overallSuccess = overallDenom > 0 ? (expected / overallDenom) * 100 : 100;
+      
+      // Use execution success rate as primary metric
+      totalTests = execDenom;
+      passedTests = expected;
+      failedTests = unexpected;
+      skippedTests = skipped;
+      
+      // Override calculated success rate with correct formula
+      successRate = execSuccess;
+      
+      console.log(`📊 Stats: expected=${expected}, unexpected=${unexpected}, skipped=${skipped}`);
+      console.log(`📈 Execution success rate: ${execSuccess.toFixed(2)}% (${expected}/${execDenom})`);
+      console.log(`📈 Overall success rate: ${overallSuccess.toFixed(2)}% (${expected}/${overallDenom})`);
     } else {
       console.log('🔄 Falling back to suite processing');
       totalTests = results.suites?.reduce((acc, suite) => 
@@ -84,11 +102,13 @@ function processTestResults(resultsPath) {
       });
     }
     
-    // Calculate metrics
-    const successRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
+    // Calculate metrics (successRate already set above for stats, calculate for fallback)
+    if (!results.stats) {
+      successRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
+    }
     const avgResponseTime = totalTests > 0 ? totalDuration / totalTests : 0;
     
-    console.log(`📈 Calculated metrics: totalTests=${totalTests}, passedTests=${passedTests}, successRate=${successRate.toFixed(2)}%`);
+    console.log(`📈 Final metrics: totalTests=${totalTests}, passedTests=${passedTests}, successRate=${successRate.toFixed(2)}%`);
     
     // Generate CloudWatch metrics
     const metrics = {
