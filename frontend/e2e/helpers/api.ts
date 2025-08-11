@@ -120,6 +120,40 @@ export class ApiHelper {
     };
   }
 
+  /**
+   * Wait for article to appear in articles list (handles DynamoDB Scan consistency)
+   */
+  async waitForArticleInList(slug: string, maxRetries: number = 15, delayMs: number = 2000) {
+    console.log(`⏳ Waiting for article '${slug}' to appear in articles list...`);
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { response, data } = await this.getArticles();
+        
+        if (response.ok() && data && data.articles) {
+          const foundArticle = data.articles.find(
+            (article: { slug: string }) => article.slug === slug
+          );
+          
+          if (foundArticle) {
+            console.log(`✅ Article '${slug}' found in articles list (attempt ${attempt}/${maxRetries})`);
+            return { response, data, article: foundArticle };
+          }
+        }
+        
+        console.log(`⏳ Article '${slug}' not in list yet (attempt ${attempt}/${maxRetries}), retrying...`);
+      } catch (error) {
+        console.log(`⚠️ Error checking articles list for '${slug}' (attempt ${attempt}/${maxRetries}):`, error);
+      }
+      
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+    
+    throw new Error(`Article '${slug}' did not appear in articles list after ${maxRetries} attempts`);
+  }
+
   async getArticle(slug: string) {
     const response = await this.request.get(`${this.apiBaseURL}/articles/${slug}`);
     
